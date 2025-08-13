@@ -59,7 +59,7 @@ Respond in JSON format with:
     {
       "serverId": "server-id",
       "metricType": "cpu|memory|disk|network",
-      "severity": "low|medium|high|critical",
+      "severity": "info|warning|critical",
       "confidence": 0-100,
       "description": "Brief description",
       "reasoning": "Detailed technical reasoning"

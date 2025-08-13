@@ -256,8 +256,25 @@ export class AnomalyDetectorAgent implements Agent {
     this.anomaliesDetected++;
   }
 
+  private mapSeverity(aiSeverity: string): "info" | "warning" | "critical" {
+    switch (aiSeverity.toLowerCase()) {
+      case "low":
+      case "info":
+        return "info";
+      case "medium":
+      case "warning":
+        return "warning";
+      case "high":
+      case "critical":
+        return "critical";
+      default:
+        return "warning";
+    }
+  }
+
   private async createAIAnomaly(anomaly: any) {
     try {
+      const mappedSeverity = this.mapSeverity(anomaly.severity);
       // Create anomaly record
       await storage.createAnomaly({
         serverId: anomaly.serverId,
@@ -265,7 +282,7 @@ export class AnomalyDetectorAgent implements Agent {
         metricValue: "AI-detected",
         baseline: "AI-determined",
         deviationScore: anomaly.confidence.toString(),
-        severity: anomaly.severity,
+        severity: mappedSeverity,
         detectionMethod: "ai_analysis",
       });
 
@@ -275,7 +292,7 @@ export class AnomalyDetectorAgent implements Agent {
         agentId: this.id,
         title: `AI Detected ${anomaly.metricType.toUpperCase()} Anomaly`,
         message: anomaly.description,
-        severity: anomaly.severity,
+        severity: mappedSeverity,
         metricType: anomaly.metricType,
         metricValue: anomaly.confidence.toString(),
         threshold: "AI-determined",
