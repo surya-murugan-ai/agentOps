@@ -7,6 +7,9 @@ import Dashboard from "@/pages/dashboard";
 import ServersPage from "@/pages/servers";
 import AgentsPage from "@/pages/agents";
 import AlertsPage from "@/pages/alerts";
+import RemediationsPage from "@/pages/remediations";
+import AuditPage from "@/pages/audit";
+import AnalyticsPage from "@/pages/analytics";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -17,6 +20,9 @@ function Router() {
       <Route path="/servers" component={ServersPage} />
       <Route path="/agents" component={AgentsPage} />
       <Route path="/alerts" component={AlertsPage} />
+      <Route path="/remediations" component={RemediationsPage} />
+      <Route path="/audit" component={AuditPage} />
+      <Route path="/analytics" component={AnalyticsPage} />
       <Route component={NotFound} />
     </Switch>
   );
