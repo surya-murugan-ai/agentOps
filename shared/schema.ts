@@ -1,0 +1,218 @@
+import { sql } from "drizzle-orm";
+import { pgTable, text, varchar, integer, timestamp, boolean, jsonb, decimal, pgEnum } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+import { relations } from "drizzle-orm";
+
+// Enums
+export const severityLevelEnum = pgEnum("severity_level", ["info", "warning", "critical"]);
+export const alertStatusEnum = pgEnum("alert_status", ["active", "acknowledged", "resolved"]);
+export const remediationStatusEnum = pgEnum("remediation_status", ["pending", "approved", "executing", "completed", "failed", "rejected"]);
+export const agentStatusEnum = pgEnum("agent_status", ["active", "inactive", "error"]);
+export const agentTypeEnum = pgEnum("agent_type", ["collector", "detector", "predictor", "recommender", "approval", "executor", "audit"]);
+
+// Users table
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  username: text("username").notNull().unique(),
+  password: text("password").notNull(),
+  role: text("role").notNull().default("operator"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Servers table
+export const servers = pgTable("servers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  hostname: text("hostname").notNull().unique(),
+  ipAddress: text("ip_address").notNull(),
+  environment: text("environment").notNull(), // prod, staging, dev
+  location: text("location").notNull(),
+  status: text("status").notNull().default("healthy"), // healthy, warning, critical, offline
+  tags: jsonb("tags").$type<string[]>().default([]),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Server metrics/telemetry
+export const serverMetrics = pgTable("server_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  serverId: varchar("server_id").notNull().references(() => servers.id),
+  cpuUsage: decimal("cpu_usage", { precision: 5, scale: 2 }).notNull(),
+  memoryUsage: decimal("memory_usage", { precision: 5, scale: 2 }).notNull(),
+  memoryTotal: integer("memory_total").notNull(), // in MB
+  diskUsage: decimal("disk_usage", { precision: 5, scale: 2 }).notNull(),
+  diskTotal: integer("disk_total").notNull(), // in GB
+  networkLatency: decimal("network_latency", { precision: 8, scale: 3 }), // in ms
+  networkThroughput: decimal("network_throughput", { precision: 10, scale: 2 }), // in MB/s
+  processCount: integer("process_count").notNull(),
+  timestamp: timestamp("timestamp").defaultNow(),
+});
+
+// Agents table
+export const agents = pgTable("agents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  type: agentTypeEnum("type").notNull(),
+  status: agentStatusEnum("status").notNull().default("active"),
+  cpuUsage: decimal("cpu_usage", { precision: 5, scale: 2 }).default("0"),
+  memoryUsage: integer("memory_usage").default(0), // in MB
+  processedCount: integer("processed_count").default(0),
+  errorCount: integer("error_count").default(0),
+  lastHeartbeat: timestamp("last_heartbeat").defaultNow(),
+  startedAt: timestamp("started_at").defaultNow(),
+  config: jsonb("config").$type<Record<string, any>>().default({}),
+});
+
+// Alerts table
+export const alerts = pgTable("alerts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  serverId: varchar("server_id").notNull().references(() => servers.id),
+  agentId: varchar("agent_id").references(() => agents.id),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  severity: severityLevelEnum("severity").notNull(),
+  status: alertStatusEnum("status").notNull().default("active"),
+  metricType: text("metric_type").notNull(), // cpu, memory, disk, network
+  metricValue: decimal("metric_value", { precision: 10, scale: 3 }),
+  threshold: decimal("threshold", { precision: 10, scale: 3 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  resolvedAt: timestamp("resolved_at"),
+  acknowledgedBy: varchar("acknowledged_by").references(() => users.id),
+});
+
+// Remediation actions
+export const remediationActions = pgTable("remediation_actions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  alertId: varchar("alert_id").references(() => alerts.id),
+  serverId: varchar("server_id").notNull().references(() => servers.id),
+  agentId: varchar("agent_id").references(() => agents.id),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  actionType: text("action_type").notNull(), // restart_service, clear_cache, cleanup_files, optimize_memory
+  confidence: decimal("confidence", { precision: 5, scale: 2 }).notNull(),
+  estimatedDowntime: integer("estimated_downtime").default(0), // in seconds
+  requiresApproval: boolean("requires_approval").notNull().default(true),
+  status: remediationStatusEnum("status").notNull().default("pending"),
+  command: text("command"),
+  parameters: jsonb("parameters").$type<Record<string, any>>().default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+  approvedAt: timestamp("approved_at"),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  executedAt: timestamp("executed_at"),
+  completedAt: timestamp("completed_at"),
+  result: jsonb("result").$type<Record<string, any>>(),
+});
+
+// Audit logs
+export const auditLogs = pgTable("audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").references(() => agents.id),
+  serverId: varchar("server_id").references(() => servers.id),
+  userId: varchar("user_id").references(() => users.id),
+  action: text("action").notNull(),
+  details: text("details").notNull(),
+  status: text("status").notNull(), // success, failed, pending
+  impact: text("impact"),
+  metadata: jsonb("metadata").$type<Record<string, any>>().default({}),
+  timestamp: timestamp("timestamp").defaultNow(),
+});
+
+// Anomaly detections
+export const anomalies = pgTable("anomalies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  serverId: varchar("server_id").notNull().references(() => servers.id),
+  agentId: varchar("agent_id").references(() => agents.id),
+  metricType: text("metric_type").notNull(),
+  actualValue: decimal("actual_value", { precision: 10, scale: 3 }).notNull(),
+  expectedValue: decimal("expected_value", { precision: 10, scale: 3 }),
+  deviationScore: decimal("deviation_score", { precision: 5, scale: 2 }).notNull(),
+  severity: severityLevelEnum("severity").notNull(),
+  detectionMethod: text("detection_method").notNull(), // statistical, ml, threshold
+  resolved: boolean("resolved").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+});
+
+// Predictions
+export const predictions = pgTable("predictions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  serverId: varchar("server_id").notNull().references(() => servers.id),
+  agentId: varchar("agent_id").references(() => agents.id),
+  metricType: text("metric_type").notNull(),
+  currentValue: decimal("current_value", { precision: 10, scale: 3 }).notNull(),
+  predictedValue: decimal("predicted_value", { precision: 10, scale: 3 }).notNull(),
+  predictionTime: timestamp("prediction_time").notNull(),
+  confidence: decimal("confidence", { precision: 5, scale: 2 }).notNull(),
+  model: text("model").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Relations
+export const serversRelations = relations(servers, ({ many }) => ({
+  metrics: many(serverMetrics),
+  alerts: many(alerts),
+  remediationActions: many(remediationActions),
+  auditLogs: many(auditLogs),
+  anomalies: many(anomalies),
+  predictions: many(predictions),
+}));
+
+export const agentsRelations = relations(agents, ({ many }) => ({
+  alerts: many(alerts),
+  remediationActions: many(remediationActions),
+  auditLogs: many(auditLogs),
+  anomalies: many(anomalies),
+  predictions: many(predictions),
+}));
+
+export const alertsRelations = relations(alerts, ({ one, many }) => ({
+  server: one(servers, { fields: [alerts.serverId], references: [servers.id] }),
+  agent: one(agents, { fields: [alerts.agentId], references: [agents.id] }),
+  acknowledgedByUser: one(users, { fields: [alerts.acknowledgedBy], references: [users.id] }),
+  remediationActions: many(remediationActions),
+}));
+
+export const remediationActionsRelations = relations(remediationActions, ({ one }) => ({
+  alert: one(alerts, { fields: [remediationActions.alertId], references: [alerts.id] }),
+  server: one(servers, { fields: [remediationActions.serverId], references: [servers.id] }),
+  agent: one(agents, { fields: [remediationActions.agentId], references: [agents.id] }),
+  approvedByUser: one(users, { fields: [remediationActions.approvedBy], references: [users.id] }),
+}));
+
+// Insert schemas
+export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
+export const insertServerSchema = createInsertSchema(servers).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertServerMetricsSchema = createInsertSchema(serverMetrics).omit({ id: true, timestamp: true });
+export const insertAgentSchema = createInsertSchema(agents).omit({ id: true, lastHeartbeat: true, startedAt: true });
+export const insertAlertSchema = createInsertSchema(alerts).omit({ id: true, createdAt: true, acknowledgedAt: true, resolvedAt: true });
+export const insertRemediationActionSchema = createInsertSchema(remediationActions).omit({ 
+  id: true, 
+  createdAt: true, 
+  approvedAt: true, 
+  executedAt: true, 
+  completedAt: true 
+});
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, timestamp: true });
+export const insertAnomalySchema = createInsertSchema(anomalies).omit({ id: true, createdAt: true, resolvedAt: true });
+export const insertPredictionSchema = createInsertSchema(predictions).omit({ id: true, createdAt: true });
+
+// Types
+export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type Server = typeof servers.$inferSelect;
+export type InsertServer = z.infer<typeof insertServerSchema>;
+export type ServerMetrics = typeof serverMetrics.$inferSelect;
+export type InsertServerMetrics = z.infer<typeof insertServerMetricsSchema>;
+export type Agent = typeof agents.$inferSelect;
+export type InsertAgent = z.infer<typeof insertAgentSchema>;
+export type Alert = typeof alerts.$inferSelect;
+export type InsertAlert = z.infer<typeof insertAlertSchema>;
+export type RemediationAction = typeof remediationActions.$inferSelect;
+export type InsertRemediationAction = z.infer<typeof insertRemediationActionSchema>;
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export type Anomaly = typeof anomalies.$inferSelect;
+export type InsertAnomaly = z.infer<typeof insertAnomalySchema>;
+export type Prediction = typeof predictions.$inferSelect;
+export type InsertPrediction = z.infer<typeof insertPredictionSchema>;

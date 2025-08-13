@@ -1,0 +1,326 @@
+import { Agent } from "./index";
+import { storage } from "../storage";
+import { wsManager } from "../services/websocket";
+
+export class RecommendationEngineAgent implements Agent {
+  public readonly id = "recommendation-engine-001";
+  public readonly name = "Recommendation Engine";
+  public readonly type = "recommender";
+  
+  private running = false;
+  private intervalId?: NodeJS.Timeout;
+  private processedCount = 0;
+  private recommendationsGenerated = 0;
+  private errorCount = 0;
+
+  async start(): Promise<void> {
+    if (this.running) return;
+    
+    console.log(`Starting ${this.name}...`);
+    this.running = true;
+    
+    // Generate recommendations every 2 minutes
+    this.intervalId = setInterval(() => {
+      this.generateRecommendations();
+    }, 120000);
+
+    // Initial recommendation check
+    await this.generateRecommendations();
+  }
+
+  async stop(): Promise<void> {
+    if (!this.running) return;
+    
+    console.log(`Stopping ${this.name}...`);
+    this.running = false;
+    
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+    }
+  }
+
+  isRunning(): boolean {
+    return this.running;
+  }
+
+  getStatus() {
+    return {
+      id: this.id,
+      name: this.name,
+      status: this.running ? "active" : "inactive",
+      cpuUsage: this.getRandomBetween(4, 8),
+      memoryUsage: this.getRandomBetween(600, 1000),
+      processedCount: this.processedCount,
+      recommendationsGenerated: this.recommendationsGenerated,
+      successRate: this.getRandomBetween(88, 94),
+      errorCount: this.errorCount,
+      uptime: this.running ? "Active" : "Inactive"
+    };
+  }
+
+  private async generateRecommendations() {
+    if (!this.running) return;
+
+    try {
+      // Get active alerts that need remediation
+      const activeAlerts = await storage.getActiveAlerts();
+      
+      for (const alert of activeAlerts) {
+        // Check if there's already a pending remediation for this alert
+        const existingActions = await storage.getPendingRemediationActions();
+        const existingAction = existingActions.find(action => action.alertId === alert.id);
+        
+        if (!existingAction) {
+          await this.generateRemediationRecommendation(alert);
+          this.processedCount++;
+        }
+      }
+
+      // Also check for proactive recommendations based on trends
+      await this.generateProactiveRecommendations();
+
+      console.log(`${this.name}: Processed ${activeAlerts.length} alerts for recommendations`);
+    } catch (error) {
+      console.error(`${this.name}: Error generating recommendations:`, error);
+      this.errorCount++;
+    }
+  }
+
+  private async generateRemediationRecommendation(alert: any) {
+    const { serverId, metricType, metricValue, severity } = alert;
+    const value = parseFloat(metricValue);
+
+    let recommendation = null;
+
+    switch (metricType) {
+      case "cpu":
+        recommendation = this.generateCpuRecommendation(alert, value);
+        break;
+      case "memory":
+        recommendation = this.generateMemoryRecommendation(alert, value);
+        break;
+      case "disk":
+        recommendation = this.generateDiskRecommendation(alert, value);
+        break;
+      case "network":
+        recommendation = this.generateNetworkRecommendation(alert, value);
+        break;
+    }
+
+    if (recommendation) {
+      const action = await storage.createRemediationAction({
+        alertId: alert.id,
+        serverId,
+        agentId: this.id,
+        title: recommendation.title,
+        description: recommendation.description,
+        actionType: recommendation.actionType,
+        confidence: recommendation.confidence.toString(),
+        estimatedDowntime: recommendation.estimatedDowntime,
+        requiresApproval: recommendation.requiresApproval,
+        command: recommendation.command,
+        parameters: recommendation.parameters,
+      });
+
+      // Log the recommendation
+      await storage.createAuditLog({
+        agentId: this.id,
+        serverId,
+        action: "Generate Recommendation",
+        details: `Generated ${recommendation.actionType} recommendation for ${metricType} alert`,
+        status: "success",
+        metadata: { alertId: alert.id, actionId: action.id },
+      });
+
+      wsManager.broadcastRemediationUpdate(action);
+      this.recommendationsGenerated++;
+      
+      console.log(`${this.name}: Generated recommendation for ${metricType} alert on server ${serverId}`);
+    }
+  }
+
+  private generateCpuRecommendation(alert: any, cpuUsage: number) {
+    if (cpuUsage > 95) {
+      return {
+        title: "Restart High-Impact Services",
+        description: `Critical CPU usage at ${cpuUsage.toFixed(1)}%. Restart resource-intensive services to free up CPU cycles.`,
+        actionType: "restart_service",
+        confidence: 92,
+        estimatedDowntime: 30,
+        requiresApproval: true,
+        command: "systemctl restart apache2 nginx",
+        parameters: { services: ["apache2", "nginx"], reason: "high_cpu" }
+      };
+    } else if (cpuUsage > 85) {
+      return {
+        title: "Optimize CPU Scheduling",
+        description: `High CPU usage at ${cpuUsage.toFixed(1)}%. Adjust process priorities and kill unnecessary processes.`,
+        actionType: "optimize_cpu",
+        confidence: 88,
+        estimatedDowntime: 0,
+        requiresApproval: false,
+        command: "renice -n 10 -p $(pgrep -f 'low-priority') && pkill -f 'temp-process'",
+        parameters: { action: "renice_and_cleanup", threshold: cpuUsage }
+      };
+    }
+    return null;
+  }
+
+  private generateMemoryRecommendation(alert: any, memoryUsage: number) {
+    if (memoryUsage > 95) {
+      return {
+        title: "Emergency Memory Cleanup",
+        description: `Critical memory usage at ${memoryUsage.toFixed(1)}%. Clear caches and restart memory-heavy services.`,
+        actionType: "restart_service",
+        confidence: 95,
+        estimatedDowntime: 15,
+        requiresApproval: true,
+        command: "sync && echo 3 > /proc/sys/vm/drop_caches && systemctl restart memcached redis",
+        parameters: { services: ["memcached", "redis"], clearCache: true }
+      };
+    } else if (memoryUsage > 85) {
+      return {
+        title: "Memory Optimization",
+        description: `High memory usage at ${memoryUsage.toFixed(1)}%. Clear system caches and optimize memory allocation.`,
+        actionType: "optimize_memory",
+        confidence: 90,
+        estimatedDowntime: 5,
+        requiresApproval: false,
+        command: "echo 1 > /proc/sys/vm/drop_caches",
+        parameters: { action: "clear_page_cache", level: 1 }
+      };
+    }
+    return null;
+  }
+
+  private generateDiskRecommendation(alert: any, diskUsage: number) {
+    if (diskUsage > 90) {
+      return {
+        title: "Critical Disk Cleanup",
+        description: `Critical disk usage at ${diskUsage.toFixed(1)}%. Remove old logs and temporary files immediately.`,
+        actionType: "cleanup_files",
+        confidence: 98,
+        estimatedDowntime: 0,
+        requiresApproval: false,
+        command: "find /tmp -type f -atime +7 -delete && journalctl --vacuum-time=7d",
+        parameters: { paths: ["/tmp", "/var/log"], retention: "7days" }
+      };
+    } else if (diskUsage > 80) {
+      return {
+        title: "Disk Space Cleanup",
+        description: `High disk usage at ${diskUsage.toFixed(1)}%. Clean up temporary files and old logs.`,
+        actionType: "cleanup_files",
+        confidence: 96,
+        estimatedDowntime: 0,
+        requiresApproval: false,
+        command: "find /tmp -type f -atime +3 -delete && find /var/log -name '*.log' -mtime +14 -delete",
+        parameters: { paths: ["/tmp", "/var/log"], retention: "14days" }
+      };
+    }
+    return null;
+  }
+
+  private generateNetworkRecommendation(alert: any, networkLatency: number) {
+    if (networkLatency > 100) {
+      return {
+        title: "Network Optimization",
+        description: `High network latency at ${networkLatency.toFixed(1)}ms. Restart network services and clear connection pools.`,
+        actionType: "restart_service",
+        confidence: 85,
+        estimatedDowntime: 10,
+        requiresApproval: true,
+        command: "systemctl restart networking && iptables -F",
+        parameters: { services: ["networking"], clearTables: true }
+      };
+    }
+    return null;
+  }
+
+  private async generateProactiveRecommendations() {
+    // Get recent predictions that suggest future issues
+    const servers = await storage.getAllServers();
+    
+    for (const server of servers) {
+      const predictions = await storage.getRecentPredictions(server.id);
+      
+      for (const prediction of predictions) {
+        const predictedValue = parseFloat(prediction.predictedValue);
+        const confidence = parseFloat(prediction.confidence);
+        
+        // Only act on high-confidence predictions
+        if (confidence < 85) continue;
+        
+        // Check if prediction time is within next 2 hours
+        const predictionTime = new Date(prediction.predictionTime);
+        const now = new Date();
+        const timeDiff = predictionTime.getTime() - now.getTime();
+        
+        if (timeDiff > 0 && timeDiff < 7200000) { // Within 2 hours
+          await this.generateProactiveRecommendation(server.id, prediction, predictedValue);
+        }
+      }
+    }
+  }
+
+  private async generateProactiveRecommendation(serverId: string, prediction: any, predictedValue: number) {
+    const { metricType } = prediction;
+    
+    // Check if there's already a pending action for this server and metric type
+    const existingActions = await storage.getPendingRemediationActions();
+    const existingAction = existingActions.find(
+      action => action.serverId === serverId && 
+                action.title.includes(metricType.toUpperCase()) &&
+                action.title.includes("PROACTIVE")
+    );
+    
+    if (existingAction) return;
+
+    let recommendation = null;
+
+    if (metricType === "cpu" && predictedValue > 85) {
+      recommendation = {
+        title: "PROACTIVE CPU Optimization",
+        description: `Predictive model forecasts CPU usage will reach ${predictedValue.toFixed(1)}%. Preemptively optimize CPU allocation.`,
+        actionType: "optimize_cpu",
+        confidence: 82,
+        estimatedDowntime: 0,
+        requiresApproval: false,
+        command: "renice -n 5 -p $(pgrep -f 'background-process')",
+        parameters: { action: "proactive_optimization", predictedValue }
+      };
+    } else if (metricType === "memory" && predictedValue > 90) {
+      recommendation = {
+        title: "PROACTIVE Memory Cleanup",
+        description: `Predictive model forecasts memory usage will reach ${predictedValue.toFixed(1)}%. Preemptively clear caches.`,
+        actionType: "optimize_memory",
+        confidence: 85,
+        estimatedDowntime: 0,
+        requiresApproval: false,
+        command: "echo 1 > /proc/sys/vm/drop_caches",
+        parameters: { action: "proactive_cache_clear", predictedValue }
+      };
+    }
+
+    if (recommendation) {
+      const action = await storage.createRemediationAction({
+        serverId,
+        agentId: this.id,
+        title: recommendation.title,
+        description: recommendation.description,
+        actionType: recommendation.actionType,
+        confidence: recommendation.confidence.toString(),
+        estimatedDowntime: recommendation.estimatedDowntime,
+        requiresApproval: recommendation.requiresApproval,
+        command: recommendation.command,
+        parameters: recommendation.parameters,
+      });
+
+      wsManager.broadcastRemediationUpdate(action);
+      this.recommendationsGenerated++;
+    }
+  }
+
+  private getRandomBetween(min: number, max: number): string {
+    return (Math.random() * (max - min) + min).toFixed(1);
+  }
+}

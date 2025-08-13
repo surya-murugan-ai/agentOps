@@ -1,0 +1,280 @@
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import { WebSocketServer } from "ws";
+import { storage } from "./storage";
+import { setupWebSocket } from "./services/websocket";
+import { agentManager } from "./agents";
+import { insertServerMetricsSchema, insertRemediationActionSchema, insertAuditLogSchema } from "@shared/schema";
+import { z } from "zod";
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  const httpServer = createServer(app);
+
+  // Setup WebSocket server
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  setupWebSocket(wss);
+
+  // Dashboard metrics endpoint
+  app.get("/api/dashboard/metrics", async (req, res) => {
+    try {
+      const metrics = await storage.getDashboardMetrics();
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching dashboard metrics:", error);
+      res.status(500).json({ error: "Failed to fetch dashboard metrics" });
+    }
+  });
+
+  // Servers endpoints
+  app.get("/api/servers", async (req, res) => {
+    try {
+      const servers = await storage.getAllServers();
+      res.json(servers);
+    } catch (error) {
+      console.error("Error fetching servers:", error);
+      res.status(500).json({ error: "Failed to fetch servers" });
+    }
+  });
+
+  app.get("/api/servers/:id", async (req, res) => {
+    try {
+      const server = await storage.getServer(req.params.id);
+      if (!server) {
+        return res.status(404).json({ error: "Server not found" });
+      }
+      res.json(server);
+    } catch (error) {
+      console.error("Error fetching server:", error);
+      res.status(500).json({ error: "Failed to fetch server" });
+    }
+  });
+
+  app.get("/api/servers/:id/metrics", async (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+      const metrics = await storage.getServerMetrics(req.params.id, limit);
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching server metrics:", error);
+      res.status(500).json({ error: "Failed to fetch server metrics" });
+    }
+  });
+
+  // Latest metrics for all servers
+  app.get("/api/metrics/latest", async (req, res) => {
+    try {
+      const metrics = await storage.getLatestMetrics();
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching latest metrics:", error);
+      res.status(500).json({ error: "Failed to fetch latest metrics" });
+    }
+  });
+
+  // Metrics in time range
+  app.get("/api/metrics/range", async (req, res) => {
+    try {
+      const { start, end } = req.query;
+      if (!start || !end) {
+        return res.status(400).json({ error: "Start and end time required" });
+      }
+      
+      const startTime = new Date(start as string);
+      const endTime = new Date(end as string);
+      const metrics = await storage.getMetricsInTimeRange(startTime, endTime);
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching metrics range:", error);
+      res.status(500).json({ error: "Failed to fetch metrics range" });
+    }
+  });
+
+  // Add server metrics (used by telemetry collector)
+  app.post("/api/metrics", async (req, res) => {
+    try {
+      const validatedMetrics = insertServerMetricsSchema.parse(req.body);
+      const metrics = await storage.addServerMetrics(validatedMetrics);
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error adding metrics:", error);
+      res.status(500).json({ error: "Failed to add metrics" });
+    }
+  });
+
+  // Agents endpoints
+  app.get("/api/agents", async (req, res) => {
+    try {
+      const agents = await storage.getAllAgents();
+      res.json(agents);
+    } catch (error) {
+      console.error("Error fetching agents:", error);
+      res.status(500).json({ error: "Failed to fetch agents" });
+    }
+  });
+
+  app.get("/api/agents/:id", async (req, res) => {
+    try {
+      const agent = await storage.getAgent(req.params.id);
+      if (!agent) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      res.json(agent);
+    } catch (error) {
+      console.error("Error fetching agent:", error);
+      res.status(500).json({ error: "Failed to fetch agent" });
+    }
+  });
+
+  // Alerts endpoints
+  app.get("/api/alerts", async (req, res) => {
+    try {
+      const active = req.query.active === 'true';
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      
+      const alerts = active 
+        ? await storage.getActiveAlerts()
+        : await storage.getAllAlerts(limit);
+      
+      res.json(alerts);
+    } catch (error) {
+      console.error("Error fetching alerts:", error);
+      res.status(500).json({ error: "Failed to fetch alerts" });
+    }
+  });
+
+  app.post("/api/alerts/:id/acknowledge", async (req, res) => {
+    try {
+      const { userId } = req.body;
+      if (!userId) {
+        return res.status(400).json({ error: "User ID required" });
+      }
+      
+      await storage.acknowledgeAlert(req.params.id, userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error acknowledging alert:", error);
+      res.status(500).json({ error: "Failed to acknowledge alert" });
+    }
+  });
+
+  app.post("/api/alerts/:id/resolve", async (req, res) => {
+    try {
+      await storage.resolveAlert(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error resolving alert:", error);
+      res.status(500).json({ error: "Failed to resolve alert" });
+    }
+  });
+
+  // Remediation actions endpoints
+  app.get("/api/remediation-actions", async (req, res) => {
+    try {
+      const pending = req.query.pending === 'true';
+      
+      if (pending) {
+        const actions = await storage.getPendingRemediationActions();
+        res.json(actions);
+      } else {
+        // For now, just return pending actions
+        const actions = await storage.getPendingRemediationActions();
+        res.json(actions);
+      }
+    } catch (error) {
+      console.error("Error fetching remediation actions:", error);
+      res.status(500).json({ error: "Failed to fetch remediation actions" });
+    }
+  });
+
+  app.post("/api/remediation-actions", async (req, res) => {
+    try {
+      const validatedAction = insertRemediationActionSchema.parse(req.body);
+      const action = await storage.createRemediationAction(validatedAction);
+      res.json(action);
+    } catch (error) {
+      console.error("Error creating remediation action:", error);
+      res.status(500).json({ error: "Failed to create remediation action" });
+    }
+  });
+
+  app.post("/api/remediation-actions/:id/approve", async (req, res) => {
+    try {
+      const { userId } = req.body;
+      if (!userId) {
+        return res.status(400).json({ error: "User ID required" });
+      }
+      
+      await storage.approveRemediationAction(req.params.id, userId);
+      
+      // Execute the remediation action
+      agentManager.executeRemediationAction(req.params.id);
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error approving remediation action:", error);
+      res.status(500).json({ error: "Failed to approve remediation action" });
+    }
+  });
+
+  app.post("/api/remediation-actions/:id/reject", async (req, res) => {
+    try {
+      await storage.rejectRemediationAction(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error rejecting remediation action:", error);
+      res.status(500).json({ error: "Failed to reject remediation action" });
+    }
+  });
+
+  // Audit logs endpoints
+  app.get("/api/audit-logs", async (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      const logs = await storage.getAuditLogs(limit);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching audit logs:", error);
+      res.status(500).json({ error: "Failed to fetch audit logs" });
+    }
+  });
+
+  app.post("/api/audit-logs", async (req, res) => {
+    try {
+      const validatedLog = insertAuditLogSchema.parse(req.body);
+      const log = await storage.createAuditLog(validatedLog);
+      res.json(log);
+    } catch (error) {
+      console.error("Error creating audit log:", error);
+      res.status(500).json({ error: "Failed to create audit log" });
+    }
+  });
+
+  // Anomalies endpoints
+  app.get("/api/anomalies", async (req, res) => {
+    try {
+      const serverId = req.query.serverId as string;
+      const anomalies = await storage.getRecentAnomalies(serverId);
+      res.json(anomalies);
+    } catch (error) {
+      console.error("Error fetching anomalies:", error);
+      res.status(500).json({ error: "Failed to fetch anomalies" });
+    }
+  });
+
+  // Predictions endpoints
+  app.get("/api/predictions", async (req, res) => {
+    try {
+      const serverId = req.query.serverId as string;
+      const predictions = await storage.getRecentPredictions(serverId);
+      res.json(predictions);
+    } catch (error) {
+      console.error("Error fetching predictions:", error);
+      res.status(500).json({ error: "Failed to fetch predictions" });
+    }
+  });
+
+  // Start the agent manager
+  agentManager.start();
+
+  return httpServer;
+}
