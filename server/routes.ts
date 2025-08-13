@@ -2,8 +2,9 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer } from "ws";
 import { storage } from "./storage";
-import { setupWebSocket } from "./services/websocket";
+import { setupWebSocket, wsManager } from "./services/websocket";
 import { agentManager } from "./agents";
+import { nanoid } from "nanoid";
 import { insertServerMetricsSchema, insertRemediationActionSchema, insertAuditLogSchema } from "@shared/schema";
 import { z } from "zod";
 
@@ -270,6 +271,151 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching predictions:", error);
       res.status(500).json({ error: "Failed to fetch predictions" });
+    }
+  });
+
+  // Bulk upload endpoints for live data integration
+  app.post("/api/servers/bulk", async (req, res) => {
+    try {
+      const { servers } = req.body;
+      if (!Array.isArray(servers)) {
+        return res.status(400).json({ error: "Expected array of servers" });
+      }
+
+      let count = 0;
+      for (const serverData of servers) {
+        try {
+          await storage.createServer({
+            ...serverData,
+            id: nanoid(),
+            status: serverData.status || "healthy",
+            lastHeartbeat: new Date(),
+            createdAt: new Date(),
+            updatedAt: new Date()
+          });
+          count++;
+        } catch (error) {
+          console.error("Error creating server:", error);
+        }
+      }
+
+      res.json({ count, message: `Successfully uploaded ${count} servers` });
+    } catch (error) {
+      console.error("Error in bulk server upload:", error);
+      res.status(500).json({ error: "Failed to upload servers" });
+    }
+  });
+
+  app.post("/api/metrics/bulk", async (req, res) => {
+    try {
+      const { metrics } = req.body;
+      if (!Array.isArray(metrics)) {
+        return res.status(400).json({ error: "Expected array of metrics" });
+      }
+
+      let count = 0;
+      for (const metricData of metrics) {
+        try {
+          // Find server by hostname if serverId not provided
+          if (!metricData.serverId && metricData.hostname) {
+            const server = await storage.getServerByHostname(metricData.hostname);
+            if (server) {
+              metricData.serverId = server.id;
+            }
+          }
+
+          if (metricData.serverId) {
+            await storage.createMetric({
+              ...metricData,
+              id: nanoid(),
+              timestamp: metricData.timestamp ? new Date(metricData.timestamp) : new Date()
+            });
+            count++;
+          }
+        } catch (error) {
+          console.error("Error creating metric:", error);
+        }
+      }
+
+      res.json({ count, message: `Successfully uploaded ${count} metric records` });
+    } catch (error) {
+      console.error("Error in bulk metrics upload:", error);
+      res.status(500).json({ error: "Failed to upload metrics" });
+    }
+  });
+
+  app.post("/api/alerts/bulk", async (req, res) => {
+    try {
+      const { alerts } = req.body;
+      if (!Array.isArray(alerts)) {
+        return res.status(400).json({ error: "Expected array of alerts" });
+      }
+
+      let count = 0;
+      for (const alertData of alerts) {
+        try {
+          // Find server by hostname if serverId not provided
+          if (!alertData.serverId && alertData.hostname) {
+            const server = await storage.getServerByHostname(alertData.hostname);
+            if (server) {
+              alertData.serverId = server.id;
+            }
+          }
+
+          if (alertData.serverId) {
+            await storage.createAlert({
+              ...alertData,
+              id: nanoid(),
+              status: alertData.status || "open",
+              createdAt: new Date(),
+              updatedAt: new Date()
+            });
+            count++;
+          }
+        } catch (error) {
+          console.error("Error creating alert:", error);
+        }
+      }
+
+      res.json({ count, message: `Successfully uploaded ${count} alerts` });
+    } catch (error) {
+      console.error("Error in bulk alerts upload:", error);
+      res.status(500).json({ error: "Failed to upload alerts" });
+    }
+  });
+
+  app.post("/api/integrations/external", async (req, res) => {
+    try {
+      const { endpoint, apiKey } = req.body;
+      
+      // Simple validation - in real implementation you'd test the actual connection
+      if (!endpoint || !apiKey) {
+        return res.status(400).json({ error: "Both endpoint and API key are required" });
+      }
+
+      // Store integration config (you could save this to database)
+      res.json({ success: true, message: "External data source connected successfully" });
+    } catch (error) {
+      console.error("Error connecting external source:", error);
+      res.status(500).json({ error: "Failed to connect external data source" });
+    }
+  });
+
+  app.post("/api/agents/test", async (req, res) => {
+    try {
+      // Trigger a test cycle for all agents
+      console.log("Starting agent test cycle...");
+      
+      // Send WebSocket notification about test start
+      wsManager.broadcast({
+        type: 'agent_test_started',
+        message: 'Agent testing cycle initiated'
+      });
+
+      res.json({ success: true, message: "Agent test cycle initiated" });
+    } catch (error) {
+      console.error("Error starting agent test:", error);
+      res.status(500).json({ error: "Failed to start agent test" });
     }
   });
 

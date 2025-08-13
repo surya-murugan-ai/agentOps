@@ -10,6 +10,7 @@ import AlertsPage from "@/pages/alerts";
 import RemediationsPage from "@/pages/remediations";
 import AuditPage from "@/pages/audit";
 import AnalyticsPage from "@/pages/analytics";
+import DataUploadPage from "@/pages/data-upload";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -23,6 +24,7 @@ function Router() {
       <Route path="/remediations" component={RemediationsPage} />
       <Route path="/audit" component={AuditPage} />
       <Route path="/analytics" component={AnalyticsPage} />
+      <Route path="/data-upload" component={DataUploadPage} />
       <Route component={NotFound} />
     </Switch>
   );

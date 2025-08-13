@@ -109,6 +109,11 @@ export class DatabaseStorage implements IStorage {
     return newServer;
   }
 
+  async getServerByHostname(hostname: string): Promise<Server | undefined> {
+    const [server] = await db.select().from(servers).where(eq(servers.hostname, hostname));
+    return server || undefined;
+  }
+
   async updateServerStatus(id: string, status: string): Promise<void> {
     await db.update(servers).set({ status, updatedAt: new Date() }).where(eq(servers.id, id));
   }
@@ -126,6 +131,11 @@ export class DatabaseStorage implements IStorage {
   async addServerMetrics(metrics: InsertServerMetrics): Promise<ServerMetrics> {
     const [newMetrics] = await db.insert(serverMetrics).values(metrics).returning();
     return newMetrics;
+  }
+
+  // Alias for consistency with bulk upload
+  async createMetric(metrics: InsertServerMetrics): Promise<ServerMetrics> {
+    return await this.addServerMetrics(metrics);
   }
 
   async getLatestMetrics(): Promise<(ServerMetrics & { server: Server })[]> {

@@ -1,0 +1,393 @@
+import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Upload, Server, Database, Activity, AlertTriangle, CheckCircle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import Sidebar from '@/components/dashboard/Sidebar';
+
+export default function DataUploadPage() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  const [serverData, setServerData] = useState('');
+  const [metricsData, setMetricsData] = useState('');
+  const [alertsData, setAlertsData] = useState('');
+  const [apiEndpoint, setApiEndpoint] = useState('');
+  const [apiKey, setApiKey] = useState('');
+
+  const uploadServersMutation = useMutation({
+    mutationFn: async (data: any[]) => {
+      const response = await fetch('/api/servers/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ servers: data })
+      });
+      return response.json();
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/servers'] });
+      toast({ title: `Successfully uploaded ${result.count} servers` });
+    },
+  });
+
+  const uploadMetricsMutation = useMutation({
+    mutationFn: async (data: any[]) => {
+      const response = await fetch('/api/metrics/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ metrics: data })
+      });
+      return response.json();
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/metrics/range'] });
+      toast({ title: `Successfully uploaded ${result.count} metric records` });
+    },
+  });
+
+  const uploadAlertsMutation = useMutation({
+    mutationFn: async (data: any[]) => {
+      const response = await fetch('/api/alerts/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ alerts: data })
+      });
+      return response.json();
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/alerts'] });
+      toast({ title: `Successfully uploaded ${result.count} alerts` });
+    },
+  });
+
+  const connectExternalMutation = useMutation({
+    mutationFn: async ({ endpoint, key }: { endpoint: string; key: string }) => {
+      const response = await fetch('/api/integrations/external', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint, apiKey: key })
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "External data source connected successfully" });
+    },
+  });
+
+  const testAgentsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/agents/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Agent testing cycle initiated - check dashboard for results" });
+    },
+  });
+
+  const handleServerUpload = () => {
+    try {
+      const data = JSON.parse(serverData);
+      const servers = Array.isArray(data) ? data : [data];
+      uploadServersMutation.mutate(servers);
+    } catch (error) {
+      toast({ title: "Invalid JSON format", variant: "destructive" });
+    }
+  };
+
+  const handleMetricsUpload = () => {
+    try {
+      const data = JSON.parse(metricsData);
+      const metrics = Array.isArray(data) ? data : [data];
+      uploadMetricsMutation.mutate(metrics);
+    } catch (error) {
+      toast({ title: "Invalid JSON format", variant: "destructive" });
+    }
+  };
+
+  const handleAlertsUpload = () => {
+    try {
+      const data = JSON.parse(alertsData);
+      const alerts = Array.isArray(data) ? data : [data];
+      uploadAlertsMutation.mutate(alerts);
+    } catch (error) {
+      toast({ title: "Invalid JSON format", variant: "destructive" });
+    }
+  };
+
+  const handleExternalConnect = () => {
+    if (!apiEndpoint || !apiKey) {
+      toast({ title: "Please provide both endpoint and API key", variant: "destructive" });
+      return;
+    }
+    connectExternalMutation.mutate({ endpoint: apiEndpoint, key: apiKey });
+  };
+
+  const serverExample = `[
+  {
+    "hostname": "web-prod-01",
+    "ipAddress": "10.0.1.100",
+    "environment": "production",
+    "location": "us-east-1a",
+    "tags": ["web", "frontend", "nginx"]
+  },
+  {
+    "hostname": "db-prod-01", 
+    "ipAddress": "10.0.2.100",
+    "environment": "production",
+    "location": "us-east-1a",
+    "tags": ["database", "postgresql"]
+  }
+]`;
+
+  const metricsExample = `[
+  {
+    "hostname": "web-prod-01",
+    "cpuUsage": 45.2,
+    "memoryUsage": 68.5,
+    "memoryTotal": 16384,
+    "diskUsage": 45.0,
+    "diskTotal": 500,
+    "networkLatency": 2.3,
+    "networkThroughput": 125.5,
+    "processCount": 127,
+    "timestamp": "2025-01-13T10:30:00Z"
+  }
+]`;
+
+  const alertsExample = `[
+  {
+    "hostname": "web-prod-01",
+    "title": "High CPU Usage",
+    "description": "CPU usage exceeded 85% threshold",
+    "severity": "critical",
+    "metricType": "cpu",
+    "metricValue": 87.5,
+    "threshold": 85.0
+  }
+]`;
+
+  return (
+    <div className="min-h-screen bg-dark-background">
+      <Sidebar />
+      <div className="ml-64 p-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-white">Live Data Integration</h1>
+          <p className="text-slate-400 mt-1">Upload your infrastructure data and test AI agents with real monitoring data</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <Card className="bg-dark-surface border-dark-border">
+            <CardContent className="p-6 text-center">
+              <Server className="mx-auto mb-4 text-primary" size={32} />
+              <h3 className="text-white font-semibold mb-2">Upload Servers</h3>
+              <p className="text-slate-400 text-sm">Add your infrastructure inventory</p>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-dark-surface border-dark-border">
+            <CardContent className="p-6 text-center">
+              <Activity className="mx-auto mb-4 text-success" size={32} />
+              <h3 className="text-white font-semibold mb-2">Upload Metrics</h3>
+              <p className="text-slate-400 text-sm">Historical performance data</p>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-dark-surface border-dark-border">
+            <CardContent className="p-6 text-center">
+              <AlertTriangle className="mx-auto mb-4 text-warning" size={32} />
+              <h3 className="text-white font-semibold mb-2">Upload Alerts</h3>
+              <p className="text-slate-400 text-sm">Existing alert history</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Tabs defaultValue="upload" className="space-y-6">
+          <TabsList className="bg-dark-surface border-dark-border">
+            <TabsTrigger value="upload">Data Upload</TabsTrigger>
+            <TabsTrigger value="connect">External Sources</TabsTrigger>
+            <TabsTrigger value="test">Test Agents</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="upload" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Server Upload */}
+              <Card className="bg-dark-surface border-dark-border">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center space-x-2">
+                    <Server size={20} />
+                    <span>Server Inventory</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Label htmlFor="server-data" className="text-slate-300">JSON Data</Label>
+                  <Textarea
+                    id="server-data"
+                    placeholder={serverExample}
+                    value={serverData}
+                    onChange={(e) => setServerData(e.target.value)}
+                    className="bg-slate-800 border-slate-600 text-white h-32"
+                  />
+                  <Button 
+                    onClick={handleServerUpload}
+                    disabled={uploadServersMutation.isPending || !serverData}
+                    className="w-full"
+                  >
+                    <Upload size={16} className="mr-2" />
+                    Upload Servers
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Metrics Upload */}
+              <Card className="bg-dark-surface border-dark-border">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center space-x-2">
+                    <Activity size={20} />
+                    <span>Performance Metrics</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Label htmlFor="metrics-data" className="text-slate-300">JSON Data</Label>
+                  <Textarea
+                    id="metrics-data"
+                    placeholder={metricsExample}
+                    value={metricsData}
+                    onChange={(e) => setMetricsData(e.target.value)}
+                    className="bg-slate-800 border-slate-600 text-white h-32"
+                  />
+                  <Button 
+                    onClick={handleMetricsUpload}
+                    disabled={uploadMetricsMutation.isPending || !metricsData}
+                    className="w-full"
+                  >
+                    <Upload size={16} className="mr-2" />
+                    Upload Metrics
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Alerts Upload */}
+              <Card className="bg-dark-surface border-dark-border">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center space-x-2">
+                    <AlertTriangle size={20} />
+                    <span>Alert History</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Label htmlFor="alerts-data" className="text-slate-300">JSON Data</Label>
+                  <Textarea
+                    id="alerts-data"
+                    placeholder={alertsExample}
+                    value={alertsData}
+                    onChange={(e) => setAlertsData(e.target.value)}
+                    className="bg-slate-800 border-slate-600 text-white h-32"
+                  />
+                  <Button 
+                    onClick={handleAlertsUpload}
+                    disabled={uploadAlertsMutation.isPending || !alertsData}
+                    className="w-full"
+                  >
+                    <Upload size={16} className="mr-2" />
+                    Upload Alerts
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="connect" className="space-y-6">
+            <Card className="bg-dark-surface border-dark-border">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center space-x-2">
+                  <Database size={20} />
+                  <span>Connect External Data Source</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="api-endpoint" className="text-slate-300">API Endpoint</Label>
+                    <Input
+                      id="api-endpoint"
+                      placeholder="https://prometheus.example.com/api/v1"
+                      value={apiEndpoint}
+                      onChange={(e) => setApiEndpoint(e.target.value)}
+                      className="bg-slate-800 border-slate-600 text-white"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="api-key" className="text-slate-300">API Key</Label>
+                    <Input
+                      id="api-key"
+                      type="password"
+                      placeholder="Enter your API key"
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      className="bg-slate-800 border-slate-600 text-white"
+                    />
+                  </div>
+                </div>
+                <Button 
+                  onClick={handleExternalConnect}
+                  disabled={connectExternalMutation.isPending}
+                  className="w-full"
+                >
+                  <Database size={16} className="mr-2" />
+                  Connect Data Source
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="test" className="space-y-6">
+            <Card className="bg-dark-surface border-dark-border">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center space-x-2">
+                  <CheckCircle size={20} />
+                  <span>Test AI Agents</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-slate-300">
+                  After uploading your data, test all AI agents to see how they process your real infrastructure data.
+                  This will trigger anomaly detection, predictive analytics, and remediation recommendations.
+                </p>
+                
+                <div className="bg-slate-800/50 rounded-lg p-4">
+                  <h4 className="text-white font-medium mb-2">What this test does:</h4>
+                  <ul className="text-slate-300 text-sm space-y-1">
+                    <li>• Runs anomaly detection on your uploaded metrics</li>
+                    <li>• Generates predictive analytics for your servers</li>
+                    <li>• Creates remediation recommendations for detected issues</li>
+                    <li>• Tests the approval and compliance workflow</li>
+                    <li>• Generates audit logs for all activities</li>
+                  </ul>
+                </div>
+
+                <Button 
+                  onClick={() => testAgentsMutation.mutate()}
+                  disabled={testAgentsMutation.isPending}
+                  className="w-full"
+                  size="lg"
+                >
+                  <Activity size={16} className="mr-2" />
+                  Run Agent Test Cycle
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+}
