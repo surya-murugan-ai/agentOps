@@ -249,11 +249,28 @@ export default function DataUploadPage() {
     if (!data || data.length === 0) return 'unknown';
     
     const firstRow = data[0];
-    const columns = Object.keys(firstRow);
+    const columns = Object.keys(firstRow).map(col => col.toLowerCase());
     
-    if (columns.includes('hostname') && columns.includes('cpuUsage')) return 'metrics';
-    if (columns.includes('hostname') && columns.includes('ipAddress')) return 'servers';  
-    if (columns.includes('title') && columns.includes('severity')) return 'alerts';
+    // More flexible matching for metrics data
+    const hasHostname = columns.some(col => col.includes('hostname') || col.includes('host') || col.includes('server'));
+    const hasCpu = columns.some(col => col.includes('cpu') || col.includes('processor'));
+    const hasMemory = columns.some(col => col.includes('memory') || col.includes('mem') || col.includes('ram'));
+    
+    // More flexible matching for servers data  
+    const hasIpAddress = columns.some(col => col.includes('ip') || col.includes('address'));
+    const hasEnvironment = columns.some(col => col.includes('env') || col.includes('environment'));
+    
+    // More flexible matching for alerts data
+    const hasTitle = columns.some(col => col.includes('title') || col.includes('message') || col.includes('description'));
+    const hasSeverity = columns.some(col => col.includes('severity') || col.includes('level') || col.includes('priority'));
+    
+    if (hasHostname && (hasCpu || hasMemory)) return 'metrics';
+    if (hasHostname && hasIpAddress) return 'servers';  
+    if (hasTitle && hasSeverity) return 'alerts';
+    
+    // Additional detection patterns
+    if (columns.includes('status') && hasHostname) return 'servers';
+    if (columns.includes('timestamp') && hasCpu) return 'metrics';
     
     return 'unknown';
   };
@@ -545,7 +562,7 @@ export default function DataUploadPage() {
                       </Button>
                       <Button
                         onClick={confirmUpload}
-                        disabled={uploadDataMutation.isPending || (uploadState.validationErrors?.length || 0) > 0}
+                        disabled={uploadDataMutation.isPending || uploadState.dataType === 'unknown'}
                         data-testid="button-confirm-upload"
                       >
                         {uploadDataMutation.isPending ? (
@@ -574,6 +591,31 @@ export default function DataUploadPage() {
                             <li key={index} className="text-sm">{error}</li>
                           ))}
                         </ul>
+                        {uploadState.dataType === 'unknown' && (
+                          <div className="mt-3 p-3 bg-slate-700 rounded">
+                            <p className="text-sm text-slate-300 mb-2">
+                              Can't automatically detect data type. Please select manually:
+                            </p>
+                            <Select 
+                              value={selectedDataType} 
+                              onValueChange={(value) => {
+                                setSelectedDataType(value);
+                                if (uploadState.currentFile) {
+                                  processFileData(uploadState.currentFile);
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="w-32 bg-slate-800 border-slate-600">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="servers">Servers</SelectItem>
+                                <SelectItem value="metrics">Metrics</SelectItem>
+                                <SelectItem value="alerts">Alerts</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
                       </AlertDescription>
                     </Alert>
                   )}
