@@ -15,9 +15,39 @@ export default function DataUploadPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  const [serverData, setServerData] = useState('');
-  const [metricsData, setMetricsData] = useState('');
-  const [alertsData, setAlertsData] = useState('');
+  const [serverData, setServerData] = useState(`[
+  {
+    "hostname": "web-prod-01",
+    "ipAddress": "10.0.1.100",
+    "environment": "production",
+    "location": "us-east-1a",
+    "tags": ["web", "frontend", "nginx"]
+  }
+]`);
+  const [metricsData, setMetricsData] = useState(`[
+  {
+    "hostname": "web-prod-01",
+    "cpuUsage": 45.2,
+    "memoryUsage": 68.5,
+    "memoryTotal": 16384,
+    "diskUsage": 45.0,
+    "diskTotal": 500,
+    "networkLatency": 2.3,
+    "networkThroughput": 125.5,
+    "processCount": 127
+  }
+]`);
+  const [alertsData, setAlertsData] = useState(`[
+  {
+    "hostname": "web-prod-01",
+    "title": "High CPU Usage",
+    "description": "CPU usage exceeded 85% threshold",
+    "severity": "critical",
+    "metricType": "cpu",
+    "metricValue": 87.5,
+    "threshold": 85.0
+  }
+]`);
   const [apiEndpoint, setApiEndpoint] = useState('');
   const [apiKey, setApiKey] = useState('');
 
@@ -240,9 +270,10 @@ export default function DataUploadPage() {
                     onClick={handleServerUpload}
                     disabled={uploadServersMutation.isPending || !serverData}
                     className="w-full"
+                    data-testid="button-upload-servers"
                   >
                     <Upload size={16} className="mr-2" />
-                    Upload Servers
+                    {uploadServersMutation.isPending ? 'Uploading...' : 'Upload Servers'}
                   </Button>
                 </CardContent>
               </Card>
@@ -268,9 +299,10 @@ export default function DataUploadPage() {
                     onClick={handleMetricsUpload}
                     disabled={uploadMetricsMutation.isPending || !metricsData}
                     className="w-full"
+                    data-testid="button-upload-metrics"
                   >
                     <Upload size={16} className="mr-2" />
-                    Upload Metrics
+                    {uploadMetricsMutation.isPending ? 'Uploading...' : 'Upload Metrics'}
                   </Button>
                 </CardContent>
               </Card>
@@ -296,9 +328,10 @@ export default function DataUploadPage() {
                     onClick={handleAlertsUpload}
                     disabled={uploadAlertsMutation.isPending || !alertsData}
                     className="w-full"
+                    data-testid="button-upload-alerts"
                   >
                     <Upload size={16} className="mr-2" />
-                    Upload Alerts
+                    {uploadAlertsMutation.isPending ? 'Uploading...' : 'Upload Alerts'}
                   </Button>
                 </CardContent>
               </Card>
