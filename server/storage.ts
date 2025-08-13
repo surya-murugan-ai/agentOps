@@ -168,6 +168,14 @@ export class DatabaseStorage implements IStorage {
       .limit(100);
   }
 
+  async getAllMetrics(limit: number = 200): Promise<ServerMetrics[]> {
+    return await db
+      .select()
+      .from(serverMetrics)
+      .orderBy(desc(serverMetrics.timestamp))
+      .limit(limit);
+  }
+
   async getMetricsInTimeRange(startTime: Date, endTime: Date): Promise<ServerMetrics[]> {
     return await db
       .select()
@@ -469,6 +477,34 @@ export class DatabaseStorage implements IStorage {
       autoRemediations: remediationCounts[0]?.auto || 0,
       manualRemediations: remediationCounts[0]?.manual || 0,
     };
+  }
+
+  // Agent Settings
+  async getAgentSettings(): Promise<AgentSettings[]> {
+    return await db.select().from(agentSettings).orderBy(agentSettings.agentId);
+  }
+
+  async getAgentSettingsByAgentId(agentId: string): Promise<AgentSettings | undefined> {
+    const [settings] = await db.select().from(agentSettings).where(eq(agentSettings.agentId, agentId));
+    return settings || undefined;
+  }
+
+  async createAgentSettings(settings: InsertAgentSettings): Promise<AgentSettings> {
+    const [newSettings] = await db.insert(agentSettings).values(settings).returning();
+    return newSettings;
+  }
+
+  async updateAgentSettings(agentId: string, settings: Partial<InsertAgentSettings>): Promise<AgentSettings> {
+    const [updatedSettings] = await db
+      .update(agentSettings)
+      .set({ ...settings, updatedAt: new Date() })
+      .where(eq(agentSettings.agentId, agentId))
+      .returning();
+    return updatedSettings;
+  }
+
+  async deleteAgentSettings(agentId: string): Promise<void> {
+    await db.delete(agentSettings).where(eq(agentSettings.agentId, agentId));
   }
 }
 

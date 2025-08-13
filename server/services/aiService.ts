@@ -158,7 +158,14 @@ Focus on financial infrastructure best practices: minimal downtime, data integri
         }`
       });
 
-      const result = JSON.parse(response.content[0].text);
+      let responseText = response.content[0].text;
+      
+      // Clean up response if it contains markdown formatting
+      if (responseText.includes('```json')) {
+        responseText = responseText.replace(/```json\n?/, '').replace(/\n?```/, '');
+      }
+      
+      const result = JSON.parse(responseText);
       return result;
     } catch (error) {
       console.error('AI Recommendation Error:', error);

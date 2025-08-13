@@ -1,4 +1,4 @@
-import { Brain, BarChart3, Server, Users, AlertTriangle, Settings, ClipboardList, Activity, Upload, Database } from 'lucide-react';
+import { Brain, BarChart3, Server, Users, AlertTriangle, Settings, ClipboardList, Activity, Upload, Database, Wrench } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 
 export default function Sidebar() {
@@ -45,6 +45,11 @@ export default function Sidebar() {
           <span className="ml-auto bg-success text-xs px-2 py-1 rounded-full">7</span>
         </Link>
         
+        <Link href="/agent-settings" className={getNavItemClass("/agent-settings")} data-testid="nav-agent-settings">
+          <Settings size={20} />
+          <span>Agent Settings</span>
+        </Link>
+        
         <Link href="/alerts" className={getNavItemClass("/alerts")} data-testid="nav-alerts">
           <AlertTriangle size={20} />
           <span>Alerts</span>
@@ -52,7 +57,7 @@ export default function Sidebar() {
         </Link>
         
         <Link href="/remediations" className={getNavItemClass("/remediations")} data-testid="nav-remediations">
-          <Settings size={20} />
+          <Wrench size={20} />
           <span>Remediations</span>
         </Link>
         

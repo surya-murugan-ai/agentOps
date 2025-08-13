@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Dashboard from "@/pages/dashboard";
 import ServersPage from "@/pages/servers";
 import AgentsPage from "@/pages/agents";
+import AgentSettingsPage from "@/pages/agent-settings";
 import AlertsPage from "@/pages/alerts";
 import RemediationsPage from "@/pages/remediations";
 import AuditPage from "@/pages/audit";
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/servers" component={ServersPage} />
       <Route path="/agents" component={AgentsPage} />
+      <Route path="/agent-settings" component={AgentSettingsPage} />
       <Route path="/alerts" component={AlertsPage} />
       <Route path="/remediations" component={RemediationsPage} />
       <Route path="/audit" component={AuditPage} />

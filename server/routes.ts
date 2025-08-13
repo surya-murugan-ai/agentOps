@@ -471,6 +471,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Agent Settings endpoints
+  app.get("/api/agent-settings", async (req, res) => {
+    try {
+      const settings = await storage.getAgentSettings();
+      res.json(settings);
+    } catch (error) {
+      console.error("Error fetching agent settings:", error);
+      res.status(500).json({ error: "Failed to fetch agent settings" });
+    }
+  });
+
+  app.put("/api/agent-settings", async (req, res) => {
+    try {
+      const settingsData = req.body;
+      
+      const existingSettings = await storage.getAgentSettingsByAgentId(settingsData.agentId);
+      
+      let settings;
+      if (existingSettings) {
+        settings = await storage.updateAgentSettings(settingsData.agentId, settingsData);
+      } else {
+        settings = await storage.createAgentSettings(settingsData);
+      }
+      
+      res.json(settings);
+    } catch (error) {
+      console.error("Error updating agent settings:", error);
+      res.status(500).json({ error: "Failed to update agent settings" });
+    }
+  });
+
   // Start the agent manager
   agentManager.start();
 

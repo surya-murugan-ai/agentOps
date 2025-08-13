@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, boolean, jsonb, decimal, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, boolean, jsonb, decimal, pgEnum, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -216,3 +216,34 @@ export type Anomaly = typeof anomalies.$inferSelect;
 export type InsertAnomaly = z.infer<typeof insertAnomalySchema>;
 export type Prediction = typeof predictions.$inferSelect;
 export type InsertPrediction = z.infer<typeof insertPredictionSchema>;
+
+// Agent Settings table for configuring AI models and prompts
+export const agentSettings = pgTable("agent_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: text("agent_id").notNull().unique(),
+  aiModel: text("ai_model").notNull().default("openai"),
+  modelName: text("model_name").notNull().default("gpt-4o"),
+  temperature: real("temperature").notNull().default(0.1),
+  systemPrompt: text("system_prompt").notNull(),
+  maxTokens: integer("max_tokens").notNull().default(1000),
+  frequencyPenalty: real("frequency_penalty").notNull().default(0),
+  presencePenalty: real("presence_penalty").notNull().default(0),
+  fineTuningRules: jsonb("fine_tuning_rules").$type<{
+    customInstructions: string[];
+    restrictedActions: string[];
+    priorityKeywords: string[];
+    responseFormat: string;
+  }>(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const insertAgentSettingsSchema = createInsertSchema(agentSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type AgentSettings = typeof agentSettings.$inferSelect;
+export type InsertAgentSettings = z.infer<typeof insertAgentSettingsSchema>;
