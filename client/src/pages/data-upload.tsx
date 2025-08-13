@@ -104,11 +104,16 @@ export default function DataUploadPage() {
     mutationFn: async ({ data, type }: { data: any[], type: string }) => {
       setUploadState(prev => ({ ...prev, isUploading: true, progress: 0 }));
       
-      const endpoint = type === 'servers' ? '/api/servers/bulk' :
+      // Use smart upload endpoint when auto-detect is selected
+      const useSmartUpload = selectedDataType === 'auto' || type === 'auto';
+      
+      const endpoint = useSmartUpload ? '/api/data/smart-upload' :
+                     type === 'servers' ? '/api/servers/bulk' :
                      type === 'metrics' ? '/api/metrics/bulk' :
                      '/api/alerts/bulk';
       
-      const payload = type === 'servers' ? { servers: data } :
+      const payload = useSmartUpload ? { data } :
+                     type === 'servers' ? { servers: data } :
                      type === 'metrics' ? { metrics: data } :
                      { alerts: data };
 
@@ -127,7 +132,8 @@ export default function DataUploadPage() {
       setUploadState(prev => ({ ...prev, progress: 100 }));
       
       if (!response.ok) {
-        throw new Error(`Upload failed: ${response.statusText}`);
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Upload failed: ${response.statusText}`);
       }
       
       return response.json();
@@ -138,9 +144,12 @@ export default function DataUploadPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/alerts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/metrics'] });
       
+      const confidence = result.confidence ? ` (${Math.round(result.confidence * 100)}% confidence)` : '';
+      const dataTypeInfo = result.dataType ? ` as ${result.dataType}` : '';
+      
       toast({ 
         title: `✅ Upload Complete`, 
-        description: `Successfully uploaded ${result.count} ${type} records`
+        description: `Successfully uploaded ${result.count} records${dataTypeInfo}${confidence}`
       });
       
       setUploadState({ isUploading: false, progress: 0 });
@@ -448,7 +457,7 @@ export default function DataUploadPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="auto">Auto-detect</SelectItem>
+                        <SelectItem value="auto">🤖 Auto-detect with LLM</SelectItem>
                         <SelectItem value="servers">Servers</SelectItem>
                         <SelectItem value="metrics">Metrics</SelectItem>
                         <SelectItem value="alerts">Alerts</SelectItem>
@@ -551,6 +560,11 @@ export default function DataUploadPage() {
                       <span className="text-slate-300">
                         {uploadState.previewData.length} records detected
                       </span>
+                      {selectedDataType === 'auto' && (
+                        <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/30">
+                          🤖 LLM Analyzed
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex space-x-2">
                       <Button

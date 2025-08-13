@@ -7,9 +7,11 @@ import { agentManager } from "./agents";
 import { nanoid } from "nanoid";
 import { insertServerMetricsSchema, insertRemediationActionSchema, insertAuditLogSchema } from "@shared/schema";
 import { z } from "zod";
+import { DataExtractionService } from "./services/dataExtractionService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
+  const dataExtractor = new DataExtractionService();
 
   // Setup WebSocket server
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
@@ -384,6 +386,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error in bulk alerts upload:", error);
       res.status(500).json({ error: "Failed to upload alerts" });
+    }
+  });
+
+  // LLM-powered intelligent data upload endpoint
+  app.post("/api/data/smart-upload", async (req, res) => {
+    try {
+      const { data } = req.body;
+      if (!Array.isArray(data) || data.length === 0) {
+        return res.status(400).json({ error: "Expected non-empty array of data" });
+      }
+
+      // Use LLM to analyze and extract data
+      const extractionResult = await dataExtractor.analyzeAndExtractData(data);
+      
+      if (extractionResult.dataType === 'unknown') {
+        return res.status(400).json({ 
+          error: "Unable to determine data type",
+          issues: extractionResult.issues,
+          suggestion: "Please manually specify the data type or check the data format"
+        });
+      }
+
+      let count = 0;
+      const errors: string[] = [];
+
+      // Process extracted data based on detected type
+      for (const item of extractionResult.extractedData) {
+        try {
+          if (extractionResult.dataType === 'servers') {
+            // Check if server already exists
+            const existingServer = item.hostname ? await storage.getServerByHostname(item.hostname) : null;
+            if (!existingServer) {
+              await storage.createServer({
+                hostname: item.hostname,
+                ipAddress: item.ipAddress,
+                environment: item.environment || 'production',
+                status: item.status || 'healthy',
+                location: item.location
+              });
+              count++;
+            }
+          } else if (extractionResult.dataType === 'metrics') {
+            // Find server by hostname if serverId not provided
+            if (!item.serverId && item.hostname) {
+              const server = await storage.getServerByHostname(item.hostname);
+              if (server) {
+                item.serverId = server.id;
+              }
+            }
+
+            if (item.serverId) {
+              await storage.addServerMetrics({
+                serverId: item.serverId,
+                cpuUsage: (parseFloat(item.cpuUsage) || 0).toString(),
+                memoryUsage: (parseFloat(item.memoryUsage) || 0).toString(),
+                diskUsage: (parseFloat(item.diskUsage) || 0).toString(),
+                networkIn: parseFloat(item.networkIn) || 0,
+                networkOut: parseFloat(item.networkOut) || 0,
+                timestamp: item.timestamp ? new Date(item.timestamp) : new Date()
+              });
+              count++;
+            } else {
+              errors.push(`Metrics for ${item.hostname || 'unknown host'}: Server not found`);
+            }
+          } else if (extractionResult.dataType === 'alerts') {
+            // Find server by hostname if serverId not provided
+            if (!item.serverId && item.hostname) {
+              const server = await storage.getServerByHostname(item.hostname);
+              if (server) {
+                item.serverId = server.id;
+              }
+            }
+
+            if (item.serverId) {
+              await storage.createAlert({
+                serverId: item.serverId,
+                title: item.title,
+                description: item.description,
+                severity: item.severity === 'critical' ? 'critical' : item.severity === 'warning' ? 'warning' : 'info',
+                status: item.status === 'resolved' ? 'resolved' : item.status === 'acknowledged' ? 'acknowledged' : 'active',
+                metricType: item.metricType || 'system'
+              });
+              count++;
+            } else {
+              errors.push(`Alert '${item.title}': Server not found`);
+            }
+          }
+        } catch (error) {
+          console.error(`Error processing ${extractionResult.dataType} item:`, error);
+          errors.push(`Failed to process item: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+
+      // Notify WebSocket clients of new data
+      if (count > 0) {
+        wsManager.broadcast({
+          type: 'data_upload',
+          data: {
+            dataType: extractionResult.dataType,
+            count,
+            timestamp: new Date()
+          }
+        });
+      }
+
+      res.json({ 
+        success: true,
+        dataType: extractionResult.dataType,
+        confidence: extractionResult.confidence,
+        count,
+        total: extractionResult.extractedData.length,
+        mappings: extractionResult.mappings,
+        issues: extractionResult.issues,
+        errors: errors.length > 0 ? errors : undefined,
+        message: `Successfully processed ${count} ${extractionResult.dataType} records with ${extractionResult.confidence * 100}% confidence`
+      });
+    } catch (error) {
+      console.error("Error in smart data upload:", error);
+      res.status(500).json({ 
+        error: "Failed to process data upload",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
