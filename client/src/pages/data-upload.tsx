@@ -7,9 +7,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, Server, Database, Activity, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Upload, Server, Database, Activity, AlertTriangle, CheckCircle, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Sidebar from '@/components/dashboard/Sidebar';
+import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 
 export default function DataUploadPage() {
   const { toast } = useToast();
@@ -50,6 +52,7 @@ export default function DataUploadPage() {
 ]`);
   const [apiEndpoint, setApiEndpoint] = useState('');
   const [apiKey, setApiKey] = useState('');
+  const [uploadingFile, setUploadingFile] = useState(false);
 
   const uploadServersMutation = useMutation({
     mutationFn: async (data: any[]) => {
@@ -161,6 +164,62 @@ export default function DataUploadPage() {
     connectExternalMutation.mutate({ endpoint: apiEndpoint, key: apiKey });
   };
 
+  // File upload handler
+  const handleFileUpload = async (file: File) => {
+    setUploadingFile(true);
+    try {
+      const extension = file.name.split('.').pop()?.toLowerCase();
+      let data: any[] = [];
+
+      if (extension === 'csv') {
+        // Parse CSV
+        const text = await file.text();
+        const result = Papa.parse(text, { header: true, skipEmptyLines: true });
+        data = result.data;
+      } else if (extension === 'xlsx' || extension === 'xls') {
+        // Parse Excel
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        data = XLSX.utils.sheet_to_json(firstSheet);
+      } else {
+        throw new Error('Unsupported file format. Please use CSV or Excel files.');
+      }
+
+      // Detect data type based on columns and upload appropriately
+      if (data.length > 0) {
+        const firstRow = data[0];
+        const columns = Object.keys(firstRow);
+        
+        if (columns.includes('hostname') && columns.includes('cpuUsage')) {
+          // Metrics data
+          await uploadMetricsMutation.mutateAsync(data);
+        } else if (columns.includes('hostname') && columns.includes('ipAddress')) {
+          // Server data
+          await uploadServersMutation.mutateAsync(data);
+        } else if (columns.includes('title') && columns.includes('severity')) {
+          // Alert data
+          await uploadAlertsMutation.mutateAsync(data);
+        } else {
+          toast({ 
+            title: "Unknown data format", 
+            description: "Could not determine data type from file columns",
+            variant: "destructive"
+          });
+        }
+      }
+    } catch (error) {
+      console.error('File upload error:', error);
+      toast({ 
+        title: "Upload failed", 
+        description: error instanceof Error ? error.message : "Failed to process file",
+        variant: "destructive"
+      });
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
   const serverExample = `[
   {
     "hostname": "web-prod-01",
@@ -242,7 +301,8 @@ export default function DataUploadPage() {
 
         <Tabs defaultValue="upload" className="space-y-6">
           <TabsList className="bg-dark-surface border-dark-border">
-            <TabsTrigger value="upload">Data Upload</TabsTrigger>
+            <TabsTrigger value="upload">JSON Upload</TabsTrigger>
+            <TabsTrigger value="files">CSV/Excel Upload</TabsTrigger>
             <TabsTrigger value="connect">External Sources</TabsTrigger>
             <TabsTrigger value="test">Test Agents</TabsTrigger>
           </TabsList>
@@ -336,6 +396,48 @@ export default function DataUploadPage() {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          <TabsContent value="files" className="space-y-6">
+            <Card className="bg-dark-surface border-dark-border">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center space-x-2">
+                  <FileText size={20} />
+                  <span>CSV & Excel File Upload</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-slate-300 space-y-2">
+                  <p>Upload CSV or Excel files containing your data. The system will automatically detect the data type based on column headers:</p>
+                  <ul className="list-disc pl-5 space-y-1 text-sm">
+                    <li><strong>Server Data:</strong> Must include 'hostname' and 'ipAddress' columns</li>
+                    <li><strong>Metrics Data:</strong> Must include 'hostname' and 'cpuUsage' columns</li>
+                    <li><strong>Alert Data:</strong> Must include 'title' and 'severity' columns</li>
+                  </ul>
+                </div>
+                
+                <Input
+                  type="file"
+                  accept=".csv,.xlsx,.xls"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      handleFileUpload(file);
+                    }
+                  }}
+                  disabled={uploadingFile}
+                  className="bg-slate-800 border-slate-600 text-white"
+                  data-testid="input-file-upload"
+                />
+                
+                {uploadingFile && (
+                  <div className="flex items-center space-x-2 text-slate-300">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Processing file...</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="connect" className="space-y-6">
