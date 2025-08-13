@@ -6,8 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Database, Search, Trash2, Edit, RefreshCw, Download, Filter } from 'lucide-react';
+import { Database, Search, Trash2, Edit, RefreshCw, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Sidebar from '@/components/dashboard/Sidebar';
 
@@ -29,7 +28,7 @@ export default function DataManagementPage() {
   });
 
   const { data: alerts, isLoading: alertsLoading } = useQuery({
-    queryKey: ['/api/alerts'],
+    queryKey: ['/api/alerts', {}],
     refetchInterval: 30000,
   });
 
@@ -39,12 +38,12 @@ export default function DataManagementPage() {
   });
 
   const { data: remediations, isLoading: remediationsLoading } = useQuery({
-    queryKey: ['/api/remediation-actions'],
+    queryKey: ['/api/remediation-actions', {}],
     refetchInterval: 30000,
   });
 
   const { data: auditLogs, isLoading: auditLoading } = useQuery({
-    queryKey: ['/api/audit-logs'],
+    queryKey: ['/api/audit-logs', {}],
     refetchInterval: 30000,
   });
 
@@ -132,6 +131,20 @@ export default function DataManagementPage() {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
+
+  // Show loading state while any critical data is loading
+  if (serversLoading && metricsLoading && alertsLoading) {
+    return (
+      <div className="min-h-screen bg-dark-background">
+        <Sidebar />
+        <div className="ml-64 p-6">
+          <div className="flex items-center justify-center h-96">
+            <div className="text-white text-lg">Loading data management...</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-dark-background">
@@ -236,30 +249,18 @@ export default function DataManagementPage() {
                               <Button variant="ghost" size="sm">
                                 <Edit size={16} />
                               </Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="text-error hover:text-error">
-                                    <Trash2 size={16} />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent className="bg-dark-surface border-dark-border">
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle className="text-white">Delete Server</AlertDialogTitle>
-                                    <AlertDialogDescription className="text-slate-400">
-                                      Are you sure you want to delete {server.hostname}? This action cannot be undone.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => deleteServerMutation.mutate(server.id)}
-                                      className="bg-error hover:bg-error/80"
-                                    >
-                                      Delete
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-error hover:text-error"
+                                onClick={() => {
+                                  if (confirm(`Are you sure you want to delete ${server.hostname}?`)) {
+                                    deleteServerMutation.mutate(server.id);
+                                  }
+                                }}
+                              >
+                                <Trash2 size={16} />
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -288,31 +289,19 @@ export default function DataManagementPage() {
                     <Download size={16} className="mr-2" />
                     Export
                   </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="text-warning hover:text-warning">
-                        <Trash2 size={16} className="mr-2" />
-                        Clear All
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="bg-dark-surface border-dark-border">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle className="text-white">Clear Metrics Data</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-400">
-                          Are you sure you want to clear all metrics data? This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => clearMetricsMutation.mutate()}
-                          className="bg-warning hover:bg-warning/80"
-                        >
-                          Clear All
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-warning hover:text-warning"
+                    onClick={() => {
+                      if (confirm("Are you sure you want to clear all metrics data? This action cannot be undone.")) {
+                        clearMetricsMutation.mutate();
+                      }
+                    }}
+                  >
+                    <Trash2 size={16} className="mr-2" />
+                    Clear All
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
