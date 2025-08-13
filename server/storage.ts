@@ -18,12 +18,14 @@ export interface IStorage {
   getServer(id: string): Promise<Server | undefined>;
   createServer(server: InsertServer): Promise<Server>;
   updateServerStatus(id: string, status: string): Promise<void>;
+  deleteServer(id: string): Promise<void>;
 
   // Server Metrics
   getServerMetrics(serverId: string, limit?: number): Promise<ServerMetrics[]>;
   addServerMetrics(metrics: InsertServerMetrics): Promise<ServerMetrics>;
   getLatestMetrics(): Promise<(ServerMetrics & { server: Server })[]>;
   getMetricsInTimeRange(startTime: Date, endTime: Date): Promise<ServerMetrics[]>;
+  clearAllMetrics(): Promise<void>;
 
   // Agents
   getAllAgents(): Promise<Agent[]>;
