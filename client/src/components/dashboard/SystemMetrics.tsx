@@ -33,10 +33,13 @@ export default function SystemMetrics() {
   const [chartData, setChartData] = useState<any>(null);
 
   const { data: metricsData, isLoading } = useQuery({
-    queryKey: ['/api/metrics/range', { 
-      start: new Date(Date.now() - (timeRange === '1h' ? 3600000 : timeRange === '6h' ? 21600000 : 86400000)).toISOString(),
-      end: new Date().toISOString()
-    }],
+    queryKey: ['/api/metrics/range', timeRange],
+    queryFn: async () => {
+      const startTime = new Date(Date.now() - (timeRange === '1h' ? 3600000 : timeRange === '6h' ? 21600000 : 86400000));
+      const endTime = new Date();
+      const response = await fetch(`/api/metrics/range?start=${startTime.toISOString()}&end=${endTime.toISOString()}`);
+      return response.json();
+    },
     refetchInterval: 60000,
   });
 

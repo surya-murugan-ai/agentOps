@@ -184,7 +184,7 @@ export class DatabaseStorage implements IStorage {
   async updateAgentMetrics(id: string, cpuUsage: string, memoryUsage: number, processedCount: number): Promise<void> {
     await db
       .update(agents)
-      .set({ cpuUsage, memoryUsage, processedCount, lastHeartbeat: new Date() })
+      .set({ cpuUsage, memoryUsage: memoryUsage.toString(), processedCount, lastHeartbeat: new Date() })
       .where(eq(agents.id, id));
   }
 

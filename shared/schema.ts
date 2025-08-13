@@ -55,7 +55,7 @@ export const agents = pgTable("agents", {
   type: agentTypeEnum("type").notNull(),
   status: agentStatusEnum("status").notNull().default("active"),
   cpuUsage: decimal("cpu_usage", { precision: 5, scale: 2 }).default("0"),
-  memoryUsage: integer("memory_usage").default(0), // in MB
+  memoryUsage: decimal("memory_usage", { precision: 7, scale: 1 }).default("0"), // in MB
   processedCount: integer("processed_count").default(0),
   errorCount: integer("error_count").default(0),
   lastHeartbeat: timestamp("last_heartbeat").defaultNow(),
