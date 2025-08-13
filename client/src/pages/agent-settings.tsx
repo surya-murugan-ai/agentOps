@@ -65,6 +65,30 @@ const AGENTS = [
     icon: Shield,
     color: "text-green-500", 
     defaultPrompt: "You are a risk assessment expert for financial infrastructure. Be conservative with high-risk operations and provide detailed compliance analysis for all remediation actions."
+  },
+  {
+    id: "telemetry-collector-001",
+    name: "Telemetry Collector Agent",
+    description: "Gathers server metrics every 30 seconds",
+    icon: Cpu,
+    color: "text-cyan-500",
+    defaultPrompt: "You are a telemetry collection specialist. Focus on accurate data gathering, validation of metrics integrity, and ensuring comprehensive monitoring coverage of all system components."
+  },
+  {
+    id: "remediation-executor-001",
+    name: "Remediation Executor Agent", 
+    description: "Executes approved automated fixes",
+    icon: Zap,
+    color: "text-orange-500",
+    defaultPrompt: "You are an automation execution expert for financial infrastructure. Execute approved remediation actions with precision, monitoring for safety conditions and rollback capabilities."
+  },
+  {
+    id: "audit-reporting-001",
+    name: "Audit & Reporting Agent",
+    description: "Maintains compliance logs and generates reports",
+    icon: FileText,
+    color: "text-yellow-500",
+    defaultPrompt: "You are a compliance and audit specialist for financial systems. Maintain detailed audit trails, generate comprehensive reports, and ensure all activities meet regulatory requirements."
   }
 ];
 
