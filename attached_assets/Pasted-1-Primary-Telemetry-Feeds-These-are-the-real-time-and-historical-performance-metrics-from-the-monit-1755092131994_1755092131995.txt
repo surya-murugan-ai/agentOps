@@ -1,0 +1,33 @@
+1. Primary Telemetry Feeds
+These are the real-time and historical performance metrics from the monitored servers.
+Source: OS agents, server monitoring tools (Prometheus, Datadog, Splunk, Elastic, Nagios, etc.)
+
+Input	Description	Example Granularity
+CPU Usage (%)	Percentage utilization per core or aggregate.	60s interval, per host
+Memory Utilization	Used, available, percentage usage.	60s interval, per host
+Disk Space Utilization	Percentage full, available GB.	60s interval, per mount point
+Disk I/O Performance	Read/write IOPS, latency.	60s interval
+Process Information	Running processes, orphaned/stale processes, zombie processes.	On change or 5 min
+Network Metrics	Throughput, error rates, packet drops, latency.	60s interval
+System Events & Logs	OS/system errors, warnings, alerts.	Event-driven
+Application Performance Metrics (optional)	p95 latency, error rates for services.	1–5 min
+Service Availability	Uptime/heartbeat checks.	30–60s
+
+2. Reference / Metadata Inputs
+These give business and operational context to telemetry data.
+
+Input	Description	Example
+Host Inventory (dim_host)	Mapping of host IDs to environment (prod/staging/dev), service/application, region, owner.	host123 → prod, trading-core, APAC
+SLO/SLAs	Target thresholds for metrics per service (e.g., CPU ≤ 80%, p95 latency ≤ 200ms).	latency_slo = 200ms
+Remediation Playbook	Pre-approved corrective actions for given anomaly types, with rules.	CPU high → optimize scheduler
+Approval Policies	Rules defining when an action requires human approval.	Prod env + high-risk action → require approval
+Business Impact Mapping	Service criticality and dependency chain info.	trading-core → high impact
+
+3. Optional Contextual / Secondary Inputs
+These can enhance prioritization and decision-making.
+
+Input	Description	Example
+IT Ops Alerts	Manual incident reports from NOC/IT.	Email, PagerDuty
+Application Owner Feedback	Validation or override of remediation.	Approve/deny actions
+Change Management Data	Planned maintenance windows.	No auto-remediation allowed during deploys
+Historical Incident Records	Past resolution effectiveness.	ML model training data
