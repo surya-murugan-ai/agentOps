@@ -419,6 +419,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Data management endpoints
+  app.delete("/api/servers/:id", async (req, res) => {
+    try {
+      await storage.deleteServer(req.params.id);
+      res.json({ success: true, message: "Server deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting server:", error);
+      res.status(500).json({ error: "Failed to delete server" });
+    }
+  });
+
+  app.post("/api/metrics/clear", async (req, res) => {
+    try {
+      await storage.clearAllMetrics();
+      res.json({ success: true, message: "All metrics cleared successfully" });
+    } catch (error) {
+      console.error("Error clearing metrics:", error);
+      res.status(500).json({ error: "Failed to clear metrics" });
+    }
+  });
+
+  app.get("/api/export/:dataType", async (req, res) => {
+    try {
+      const { dataType } = req.params;
+      let data: any;
+
+      switch (dataType) {
+        case 'servers':
+          data = await storage.getAllServers();
+          break;
+        case 'metrics':
+          data = await storage.getLatestMetrics();
+          break;
+        case 'alerts':
+          data = await storage.getAllAlerts();
+          break;
+        case 'agents':
+          data = await storage.getAllAgents();
+          break;
+        default:
+          return res.status(400).json({ error: "Invalid data type" });
+      }
+
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename=${dataType}_export_${new Date().toISOString().split('T')[0]}.json`);
+      res.json(data);
+    } catch (error) {
+      console.error("Error exporting data:", error);
+      res.status(500).json({ error: "Failed to export data" });
+    }
+  });
+
   // Start the agent manager
   agentManager.start();
 

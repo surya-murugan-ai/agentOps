@@ -1,4 +1,4 @@
-import { Brain, BarChart3, Server, Users, AlertTriangle, Settings, ClipboardList, Activity, Upload } from 'lucide-react';
+import { Brain, BarChart3, Server, Users, AlertTriangle, Settings, ClipboardList, Activity, Upload, Database } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 
 export default function Sidebar() {
@@ -70,6 +70,11 @@ export default function Sidebar() {
           <Link href="/data-upload" className={getNavItemClass("/data-upload")} data-testid="nav-data-upload">
             <Upload size={20} />
             <span>Data Upload</span>
+          </Link>
+          
+          <Link href="/data-management" className={getNavItemClass("/data-management")} data-testid="nav-data-management">
+            <Database size={20} />
+            <span>Data Management</span>
           </Link>
         </div>
       </nav>

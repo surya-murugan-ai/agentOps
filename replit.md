@@ -12,6 +12,8 @@ AgentOps is an AI-powered server health monitoring and automated remediation pla
 - **Demo Data Populated**: 5 servers with realistic metrics, alerts, and remediation actions for demonstration
 - **AI Agent System Operational**: All 7 agents running successfully with proper approval workflows
 - **Real-time Updates**: WebSocket integration providing live dashboard updates and notifications
+- **Live Data Integration**: Complete data upload system for testing agents with real infrastructure data
+- **Data Management Console**: Comprehensive table-based interface for viewing and managing all system data
 
 ## User Preferences
 

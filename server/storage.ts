@@ -118,6 +118,14 @@ export class DatabaseStorage implements IStorage {
     await db.update(servers).set({ status, updatedAt: new Date() }).where(eq(servers.id, id));
   }
 
+  async deleteServer(id: string): Promise<void> {
+    await db.delete(servers).where(eq(servers.id, id));
+  }
+
+  async clearAllMetrics(): Promise<void> {
+    await db.delete(serverMetrics);
+  }
+
   // Server Metrics
   async getServerMetrics(serverId: string, limit = 100): Promise<ServerMetrics[]> {
     return await db
