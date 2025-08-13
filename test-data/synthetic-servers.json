@@ -1,0 +1,66 @@
+[
+  {
+    "hostname": "prod-web-01.nyc.company.com",
+    "ipAddress": "10.1.1.15",
+    "environment": "production",
+    "location": "NYC Data Center",
+    "tags": ["web", "frontend", "critical"],
+    "status": "healthy"
+  },
+  {
+    "hostname": "prod-db-master.nyc.company.com", 
+    "ipAddress": "10.1.2.10",
+    "environment": "production",
+    "location": "NYC Data Center",
+    "tags": ["database", "mysql", "master", "critical"],
+    "status": "healthy"
+  },
+  {
+    "hostname": "prod-db-slave.nyc.company.com",
+    "ipAddress": "10.1.2.11", 
+    "environment": "production",
+    "location": "NYC Data Center",
+    "tags": ["database", "mysql", "slave"],
+    "status": "warning"
+  },
+  {
+    "hostname": "prod-api-01.aws.company.com",
+    "ipAddress": "172.16.1.20",
+    "environment": "production", 
+    "location": "AWS US-East-1",
+    "tags": ["api", "microservice", "high-traffic"],
+    "status": "healthy"
+  },
+  {
+    "hostname": "prod-cache-redis.aws.company.com",
+    "ipAddress": "172.16.2.30",
+    "environment": "production",
+    "location": "AWS US-East-1", 
+    "tags": ["cache", "redis", "memory"],
+    "status": "critical"
+  },
+  {
+    "hostname": "staging-web-01.dev.company.com",
+    "ipAddress": "192.168.1.100",
+    "environment": "staging",
+    "location": "Dev Environment",
+    "tags": ["web", "testing", "staging"],
+    "status": "healthy"
+  },
+  {
+    "hostname": "prod-worker-01.nyc.company.com",
+    "ipAddress": "10.1.3.40",
+    "environment": "production",
+    "location": "NYC Data Center",
+    "tags": ["worker", "background-jobs", "queue"],
+    "status": "warning"
+  },
+  {
+    "hostname": "prod-lb-01.nyc.company.com",
+    "ipAddress": "10.1.0.5",
+    "environment": "production",
+    "location": "NYC Data Center",
+    "tags": ["load-balancer", "nginx", "traffic"],
+    "status": "healthy"
+  }
+]

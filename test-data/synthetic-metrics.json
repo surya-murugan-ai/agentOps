@@ -1,0 +1,66 @@
+[
+  {
+    "hostname": "prod-web-01.nyc.company.com",
+    "cpuUsage": 75.2,
+    "memoryUsage": 68.5,
+    "diskUsage": 45.3,
+    "networkLatency": 12.4,
+    "timestamp": "2025-01-13T18:00:00Z"
+  },
+  {
+    "hostname": "prod-db-master.nyc.company.com",
+    "cpuUsage": 89.7,
+    "memoryUsage": 92.1,
+    "diskUsage": 78.9,
+    "networkLatency": 8.2,
+    "timestamp": "2025-01-13T18:00:00Z"
+  },
+  {
+    "hostname": "prod-db-slave.nyc.company.com",
+    "cpuUsage": 65.4,
+    "memoryUsage": 71.8,
+    "diskUsage": 82.3,
+    "networkLatency": 15.7,
+    "timestamp": "2025-01-13T18:00:00Z"
+  },
+  {
+    "hostname": "prod-api-01.aws.company.com",
+    "cpuUsage": 58.9,
+    "memoryUsage": 55.2,
+    "diskUsage": 32.1,
+    "networkLatency": 25.6,
+    "timestamp": "2025-01-13T18:00:00Z"
+  },
+  {
+    "hostname": "prod-cache-redis.aws.company.com",
+    "cpuUsage": 95.8,
+    "memoryUsage": 98.7,
+    "diskUsage": 15.4,
+    "networkLatency": 45.9,
+    "timestamp": "2025-01-13T18:00:00Z"
+  },
+  {
+    "hostname": "staging-web-01.dev.company.com",
+    "cpuUsage": 23.1,
+    "memoryUsage": 34.7,
+    "diskUsage": 28.9,
+    "networkLatency": 18.3,
+    "timestamp": "2025-01-13T18:00:00Z"
+  },
+  {
+    "hostname": "prod-worker-01.nyc.company.com",
+    "cpuUsage": 88.2,
+    "memoryUsage": 67.4,
+    "diskUsage": 91.7,
+    "networkLatency": 11.8,
+    "timestamp": "2025-01-13T18:00:00Z"
+  },
+  {
+    "hostname": "prod-lb-01.nyc.company.com",
+    "cpuUsage": 42.6,
+    "memoryUsage": 38.9,
+    "diskUsage": 25.7,
+    "networkLatency": 6.4,
+    "timestamp": "2025-01-13T18:00:00Z"
+  }
+]

@@ -1,0 +1,106 @@
+[
+  {
+    "title": "Critical Memory Usage on Redis Cache Server",
+    "description": "Memory utilization has exceeded 95% threshold on prod-cache-redis.aws.company.com. Immediate attention required to prevent service degradation.",
+    "severity": "critical",
+    "status": "active",
+    "serverId": null,
+    "source": "Automated Monitoring",
+    "metadata": {
+      "threshold": "95%",
+      "currentValue": "98.7%",
+      "affectedServices": ["user-sessions", "api-cache", "real-time-data"]
+    }
+  },
+  {
+    "title": "High CPU Usage Alert - Database Master",
+    "description": "CPU utilization on prod-db-master.nyc.company.com has been consistently above 85% for the past 15 minutes.",
+    "severity": "high", 
+    "status": "acknowledged",
+    "serverId": null,
+    "source": "Performance Monitor",
+    "metadata": {
+      "duration": "15 minutes",
+      "peakCPU": "92.1%",
+      "queries": ["slow query detected", "connection pool exhaustion"]
+    }
+  },
+  {
+    "title": "Disk Space Warning - Worker Server",
+    "description": "Disk usage on prod-worker-01.nyc.company.com has reached 91.7%. Log rotation and cleanup recommended.",
+    "severity": "medium",
+    "status": "active", 
+    "serverId": null,
+    "source": "Disk Monitor",
+    "metadata": {
+      "partition": "/var/log",
+      "availableSpace": "2.1GB",
+      "growthRate": "150MB/hour"
+    }
+  },
+  {
+    "title": "Network Latency Spike - API Server",
+    "description": "Unusual network latency detected on prod-api-01.aws.company.com. Response times increased by 200%.",
+    "severity": "medium",
+    "status": "resolved",
+    "serverId": null,
+    "source": "Network Monitor", 
+    "metadata": {
+      "baselineLatency": "8ms",
+      "currentLatency": "25.6ms",
+      "affectedEndpoints": ["/api/v1/users", "/api/v1/transactions"]
+    }
+  },
+  {
+    "title": "Database Replication Lag",
+    "description": "Slave database prod-db-slave.nyc.company.com is experiencing replication lag of 45 seconds.",
+    "severity": "medium",
+    "status": "active",
+    "serverId": null,
+    "source": "Database Monitor",
+    "metadata": {
+      "lagTime": "45 seconds",
+      "binlogPosition": "mysql-bin.000142:98765432",
+      "impact": "read queries may return stale data"
+    }
+  },
+  {
+    "title": "SSL Certificate Expiration Warning", 
+    "description": "SSL certificate for prod-web-01.nyc.company.com expires in 14 days. Renewal required.",
+    "severity": "low",
+    "status": "active",
+    "serverId": null,
+    "source": "Certificate Monitor",
+    "metadata": {
+      "expirationDate": "2025-01-27",
+      "domain": "api.company.com",
+      "issuer": "Let's Encrypt"
+    }
+  },
+  {
+    "title": "Load Balancer Health Check Failure",
+    "description": "Health check failure detected on one backend server in load balancer configuration.",
+    "severity": "high",
+    "status": "acknowledged", 
+    "serverId": null,
+    "source": "Load Balancer",
+    "metadata": {
+      "failedBackend": "10.1.1.15:8080",
+      "healthCheckUrl": "/health",
+      "responseCode": "503"
+    }
+  },
+  {
+    "title": "Backup Process Failure",
+    "description": "Automated backup process failed for prod-db-master.nyc.company.com. Manual intervention required.",
+    "severity": "high",
+    "status": "active",
+    "serverId": null, 
+    "source": "Backup System",
+    "metadata": {
+      "backupType": "full",
+      "lastSuccessful": "2025-01-12T02:00:00Z",
+      "errorCode": "DISK_FULL"
+    }
+  }
+]

@@ -1,0 +1,6 @@
+hostname,ipAddress,environment,location,tags,status
+prod-mail-01.company.com,10.1.4.50,production,NYC Data Center,"mail,smtp,critical",healthy
+prod-dns-01.company.com,10.1.0.10,production,NYC Data Center,"dns,infrastructure,critical",healthy
+prod-monitoring.company.com,10.1.5.60,production,NYC Data Center,"monitoring,grafana,prometheus",warning
+dev-api-test.company.com,192.168.2.200,development,Dev Environment,"api,testing,development",healthy
+prod-backup-01.company.com,10.1.6.70,production,NYC Data Center,"backup,storage,archive",healthy
