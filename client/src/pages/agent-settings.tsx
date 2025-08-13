@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Settings, Brain, Cpu, Target, Shield, Zap, FileText, Activity, Save, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import Sidebar from '@/components/dashboard/Sidebar';
 
 interface AgentConfig {
   id: string;
@@ -186,14 +187,18 @@ export default function AgentSettings() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <Settings className="h-8 w-8 text-blue-600" />
-        <div>
-          <h1 className="text-3xl font-bold">AI Agent Settings</h1>
-          <p className="text-muted-foreground">Configure AI models, prompts, and fine-tuning rules for each agent</p>
-        </div>
-      </div>
+    <div className="bg-dark-bg text-slate-50 font-inter min-h-screen">
+      <Sidebar />
+      
+      <div className="ml-64 min-h-screen">
+        <div className="container mx-auto p-6 space-y-6">
+          <div className="flex items-center gap-3">
+            <Settings className="h-8 w-8 text-primary" />
+            <div>
+              <h1 className="text-3xl font-bold text-white">AI Agent Settings</h1>
+              <p className="text-slate-400">Configure AI models, prompts, and fine-tuning rules for each agent</p>
+            </div>
+          </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Agent Selection Sidebar */}
@@ -523,6 +528,8 @@ export default function AgentSettings() {
             </div>
           </CardContent>
         </Card>
+        </div>
+      </div>
       </div>
     </div>
   );
