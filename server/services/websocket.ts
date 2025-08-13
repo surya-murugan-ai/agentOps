@@ -4,6 +4,7 @@ import { storage } from "../storage";
 interface WebSocketMessage {
   type: string;
   data?: any;
+  message?: string;
 }
 
 class WebSocketManager {

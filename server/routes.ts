@@ -289,7 +289,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ...serverData,
             id: nanoid(),
             status: serverData.status || "healthy",
-            lastHeartbeat: new Date(),
+            environment: serverData.environment || "production",
+            location: serverData.location || "unknown",
+            tags: serverData.tags || [],
             createdAt: new Date(),
             updatedAt: new Date()
           });
@@ -366,9 +368,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await storage.createAlert({
               ...alertData,
               id: nanoid(),
-              status: alertData.status || "open",
-              createdAt: new Date(),
-              updatedAt: new Date()
+              status: alertData.status || "active",
+              metricType: alertData.metricType || "system",
+              severity: alertData.severity || "warning",
+              createdAt: new Date()
             });
             count++;
           }
