@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Bot, Activity, Cpu, MemoryStick } from 'lucide-react';
+import Sidebar from '@/components/dashboard/Sidebar';
 
 export default function AgentsPage() {
   const { data: agents, isLoading } = useQuery({
@@ -49,13 +50,15 @@ export default function AgentsPage() {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-white">AI Agent Management</h1>
-        <div className="text-sm text-slate-400">
-          {agents?.filter((a: any) => a.status === 'active').length || 0} active agents
+    <div className="min-h-screen bg-dark-background">
+      <Sidebar />
+      <div className="ml-64 p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-white">AI Agent Management</h1>
+          <div className="text-sm text-slate-400">
+            {agents?.filter((a: any) => a.status === 'active').length || 0} active agents
+          </div>
         </div>
-      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {agents?.map((agent: any) => (
@@ -125,6 +128,7 @@ export default function AgentsPage() {
             </CardContent>
           </Card>
         ))}
+        </div>
       </div>
     </div>
   );

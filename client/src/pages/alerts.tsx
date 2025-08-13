@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, AlertTriangle, Info, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import Sidebar from '@/components/dashboard/Sidebar';
 
 export default function AlertsPage() {
   const { toast } = useToast();
@@ -92,13 +93,15 @@ export default function AlertsPage() {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-white">Alert Management</h1>
-        <div className="text-sm text-slate-400">
-          {alerts?.filter((a: any) => a.status === 'active').length || 0} active alerts
+    <div className="min-h-screen bg-dark-background">
+      <Sidebar />
+      <div className="ml-64 p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-white">Alert Management</h1>
+          <div className="text-sm text-slate-400">
+            {alerts?.filter((a: any) => a.status === 'active').length || 0} active alerts
+          </div>
         </div>
-      </div>
 
       <div className="space-y-4">
         {alerts?.map((alert: any) => (
@@ -174,6 +177,7 @@ export default function AlertsPage() {
             </CardContent>
           </Card>
         ))}
+        </div>
       </div>
     </div>
   );
