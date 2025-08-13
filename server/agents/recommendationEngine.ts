@@ -1,6 +1,7 @@
 import { Agent } from "./index";
 import { storage } from "../storage";
 import { wsManager } from "../services/websocket";
+import { aiService } from "../services/aiService";
 
 export class RecommendationEngineAgent implements Agent {
   public readonly id = "recommendation-engine-001";
@@ -88,54 +89,105 @@ export class RecommendationEngineAgent implements Agent {
 
   private async generateRemediationRecommendation(alert: any) {
     const { serverId, metricType, metricValue, severity } = alert;
-    const value = parseFloat(metricValue);
-
-    let recommendation = null;
-
-    switch (metricType) {
-      case "cpu":
-        recommendation = this.generateCpuRecommendation(alert, value);
-        break;
-      case "memory":
-        recommendation = this.generateMemoryRecommendation(alert, value);
-        break;
-      case "disk":
-        recommendation = this.generateDiskRecommendation(alert, value);
-        break;
-      case "network":
-        recommendation = this.generateNetworkRecommendation(alert, value);
-        break;
-    }
-
-    if (recommendation) {
-      const action = await storage.createRemediationAction({
-        alertId: alert.id,
-        serverId,
-        agentId: this.id,
-        title: recommendation.title,
-        description: recommendation.description,
-        actionType: recommendation.actionType,
-        confidence: recommendation.confidence.toString(),
-        estimatedDowntime: recommendation.estimatedDowntime,
-        requiresApproval: recommendation.requiresApproval,
-        command: recommendation.command,
-        parameters: recommendation.parameters,
-      });
-
-      // Log the recommendation
-      await storage.createAuditLog({
-        agentId: this.id,
-        serverId,
-        action: "Generate Recommendation",
-        details: `Generated ${recommendation.actionType} recommendation for ${metricType} alert`,
-        status: "success",
-        metadata: { alertId: alert.id, actionId: action.id },
-      });
-
-      wsManager.broadcastRemediationUpdate(action);
-      this.recommendationsGenerated++;
+    
+    try {
+      // Get server context for AI analysis
+      const server = await storage.getServer(serverId);
+      const historicalMetrics = await storage.getServerMetrics(serverId, 20);
       
-      console.log(`${this.name}: Generated recommendation for ${metricType} alert on server ${serverId}`);
+      // Use AI to generate intelligent recommendations
+      const aiRecommendations = await aiService.generateRecommendations(alert, server, historicalMetrics);
+      
+      // Process AI recommendations
+      for (const aiRec of aiRecommendations.recommendations) {
+        const action = await storage.createRemediationAction({
+          alertId: alert.id,
+          serverId,
+          agentId: this.id,
+          title: aiRec.title,
+          description: `${aiRec.description}\n\nAI Reasoning: ${aiRec.reasoning}`,
+          actionType: aiRec.actionType,
+          confidence: aiRec.confidence.toString(),
+          estimatedDowntime: aiRec.estimatedDowntime,
+          requiresApproval: aiRec.requiresApproval,
+          command: aiRec.command,
+          parameters: aiRec.parameters,
+        });
+
+        // Log the AI recommendation
+        await storage.createAuditLog({
+          agentId: this.id,
+          serverId,
+          action: "AI Generate Recommendation",
+          details: `AI generated ${aiRec.actionType} recommendation: ${aiRec.reasoning}`,
+          status: "success",
+          metadata: { 
+            alertId: alert.id, 
+            actionId: action.id,
+            aiConfidence: aiRec.confidence,
+            rootCause: aiRecommendations.rootCauseAnalysis,
+            riskAssessment: aiRec.riskAssessment
+          },
+        });
+
+        wsManager.broadcastRemediationUpdate(action);
+        this.recommendationsGenerated++;
+        
+        console.log(`${this.name}: AI generated ${aiRec.actionType} recommendation for ${metricType} alert on server ${serverId} (confidence: ${aiRec.confidence}%)`);
+      }
+
+      // Log root cause analysis
+      if (aiRecommendations.rootCauseAnalysis) {
+        await storage.createAuditLog({
+          agentId: this.id,
+          serverId,
+          action: "AI Root Cause Analysis",
+          details: aiRecommendations.rootCauseAnalysis,
+          status: "success",
+          metadata: { alertId: alert.id, analysisType: "claude_analysis" },
+        });
+      }
+
+    } catch (error) {
+      console.error(`${this.name}: AI recommendation failed, falling back to rule-based:`, error);
+      
+      // Fallback to rule-based recommendations
+      const value = parseFloat(metricValue);
+      let recommendation = null;
+
+      switch (metricType) {
+        case "cpu":
+          recommendation = this.generateCpuRecommendation(alert, value);
+          break;
+        case "memory":
+          recommendation = this.generateMemoryRecommendation(alert, value);
+          break;
+        case "disk":
+          recommendation = this.generateDiskRecommendation(alert, value);
+          break;
+        case "network":
+          recommendation = this.generateNetworkRecommendation(alert, value);
+          break;
+      }
+
+      if (recommendation) {
+        const action = await storage.createRemediationAction({
+          alertId: alert.id,
+          serverId,
+          agentId: this.id,
+          title: recommendation.title,
+          description: recommendation.description,
+          actionType: recommendation.actionType,
+          confidence: recommendation.confidence.toString(),
+          estimatedDowntime: recommendation.estimatedDowntime,
+          requiresApproval: recommendation.requiresApproval,
+          command: recommendation.command,
+          parameters: recommendation.parameters,
+        });
+
+        wsManager.broadcastRemediationUpdate(action);
+        this.recommendationsGenerated++;
+      }
     }
   }
 

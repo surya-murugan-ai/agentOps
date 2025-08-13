@@ -1,6 +1,7 @@
 import { Agent } from "./index";
 import { storage } from "../storage";
 import { wsManager } from "../services/websocket";
+import { aiService } from "../services/aiService";
 
 export class ApprovalComplianceAgent implements Agent {
   public readonly id = "approval-compliance-001";

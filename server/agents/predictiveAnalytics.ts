@@ -1,6 +1,7 @@
 import { Agent } from "./index";
 import { storage } from "../storage";
 import { wsManager } from "../services/websocket";
+import { aiService } from "../services/aiService";
 
 export class PredictiveAnalyticsAgent implements Agent {
   public readonly id = "predictive-analytics-001";
@@ -65,17 +66,59 @@ export class PredictiveAnalyticsAgent implements Agent {
       const servers = await storage.getAllServers();
       
       for (const server of servers) {
-        // Get historical data for trend analysis
+        // Get historical data for AI analysis
         const historicalMetrics = await storage.getServerMetrics(server.id, 100);
         
         if (historicalMetrics.length < 20) {
           continue; // Need enough historical data
         }
 
-        // Generate predictions for different metrics
-        await this.predictCpuUsage(server.id, historicalMetrics);
-        await this.predictMemoryUsage(server.id, historicalMetrics);
-        await this.predictDiskUsage(server.id, historicalMetrics);
+        try {
+          // Use AI for intelligent predictions
+          const aiPredictions = await aiService.generatePredictions(server.id, historicalMetrics);
+          
+          // Process AI predictions
+          for (const prediction of aiPredictions.predictions) {
+            await this.createAIPrediction(server.id, prediction);
+            
+            // Create predictive alerts for high-risk predictions
+            if (prediction.riskLevel === 'critical' || prediction.riskLevel === 'high') {
+              await this.createPredictiveAlert(
+                server.id,
+                prediction.metricType,
+                prediction.currentValue,
+                prediction.predictedValue,
+                prediction.riskLevel === 'critical' ? 'critical' : 'warning',
+                `AI predicts ${prediction.metricType} will reach ${prediction.predictedValue.toFixed(1)}% in ${prediction.timeframe} (confidence: ${prediction.confidence}%)`
+              );
+            }
+          }
+
+          // Log AI insights
+          if (aiPredictions.recommendedActions.length > 0) {
+            await storage.createAuditLog({
+              agentId: this.id,
+              serverId: server.id,
+              action: "AI Predictive Recommendations",
+              details: `AI recommends: ${aiPredictions.recommendedActions.join(', ')}`,
+              status: "success",
+              metadata: { 
+                aiMethod: "openai_prediction",
+                predictionCount: aiPredictions.predictions.length
+              },
+            });
+          }
+
+          console.log(`${this.name}: AI generated ${aiPredictions.predictions.length} predictions for server ${server.id}`);
+          
+        } catch (aiError) {
+          console.error(`${this.name}: AI prediction failed for server ${server.id}, using fallback:`, aiError);
+          
+          // Fallback to traditional prediction methods
+          await this.predictCpuUsage(server.id, historicalMetrics);
+          await this.predictMemoryUsage(server.id, historicalMetrics);
+          await this.predictDiskUsage(server.id, historicalMetrics);
+        }
         
         this.processedCount++;
       }
@@ -301,6 +344,39 @@ export class PredictiveAnalyticsAgent implements Agent {
       wsManager.broadcastAlert(alert);
       console.log(`${this.name}: Created predictive ${severity} alert for ${metricType} on server ${serverId}`);
     }
+  }
+
+  private async createAIPrediction(serverId: string, prediction: any) {
+    try {
+      await storage.createPrediction({
+        serverId,
+        agentId: this.id,
+        metricType: prediction.metricType,
+        currentValue: prediction.currentValue.toString(),
+        predictedValue: prediction.predictedValue.toString(),
+        predictionTime: new Date(Date.now() + this.parseTimeframe(prediction.timeframe)),
+        confidence: prediction.confidence.toString(),
+        algorithm: "ai_analysis",
+      });
+
+      this.predictionsGenerated++;
+      
+      console.log(`${this.name}: AI predicted ${prediction.metricType} for server ${serverId}: ${prediction.currentValue}% → ${prediction.predictedValue.toFixed(1)}% (${prediction.timeframe}, confidence: ${prediction.confidence}%)`);
+    } catch (error) {
+      console.error(`${this.name}: Error creating AI prediction:`, error);
+    }
+  }
+
+  private parseTimeframe(timeframe: string): number {
+    // Convert timeframe string to milliseconds
+    if (timeframe.includes('hour')) {
+      const hours = parseInt(timeframe);
+      return hours * 3600000;
+    } else if (timeframe.includes('day')) {
+      const days = parseInt(timeframe);
+      return days * 86400000;
+    }
+    return 3600000; // Default to 1 hour
   }
 
   private getRandomBetween(min: number, max: number): string {

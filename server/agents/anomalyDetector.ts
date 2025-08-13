@@ -1,6 +1,7 @@
 import { Agent } from "./index";
 import { storage } from "../storage";
 import { wsManager } from "../services/websocket";
+import { aiService } from "../services/aiService";
 
 export class AnomalyDetectorAgent implements Agent {
   public readonly id = "anomaly-detector-001";
@@ -64,15 +65,28 @@ export class AnomalyDetectorAgent implements Agent {
       // Get recent metrics for all servers
       const latestMetrics = await storage.getLatestMetrics();
       
+      // Get historical data for AI analysis
+      const historicalData = await storage.getAllMetrics(200); // Last 200 readings
+      
+      // Use AI for intelligent anomaly detection
+      const aiAnalysis = await aiService.analyzeAnomalies(latestMetrics, historicalData);
+      
+      // Process AI-detected anomalies
+      for (const anomaly of aiAnalysis.anomalies) {
+        await this.createAIAnomaly(anomaly);
+        this.anomaliesDetected++;
+      }
+
+      // Also run traditional threshold detection as backup
       for (const metric of latestMetrics) {
-        // Apply different detection methods
         await this.applyThresholdDetection(metric);
-        await this.applyStatisticalDetection(metric);
-        
         this.processedCount++;
       }
 
-      console.log(`${this.name}: Analyzed ${latestMetrics.length} metric records`);
+      console.log(`${this.name}: AI analyzed ${latestMetrics.length} metrics, found ${aiAnalysis.anomalies.length} anomalies`);
+      if (aiAnalysis.insights) {
+        console.log(`${this.name}: AI Insights: ${aiAnalysis.insights}`);
+      }
     } catch (error) {
       console.error(`${this.name}: Error detecting anomalies:`, error);
       this.errorCount++;
@@ -240,6 +254,50 @@ export class AnomalyDetectorAgent implements Agent {
     });
 
     this.anomaliesDetected++;
+  }
+
+  private async createAIAnomaly(anomaly: any) {
+    try {
+      // Create anomaly record
+      await storage.createAnomaly({
+        serverId: anomaly.serverId,
+        metricType: anomaly.metricType,
+        metricValue: "AI-detected",
+        baseline: "AI-determined",
+        deviationScore: anomaly.confidence.toString(),
+        severity: anomaly.severity,
+        detectionMethod: "ai_analysis",
+      });
+
+      // Create corresponding alert
+      await storage.createAlert({
+        serverId: anomaly.serverId,
+        agentId: this.id,
+        title: `AI Detected ${anomaly.metricType.toUpperCase()} Anomaly`,
+        message: anomaly.description,
+        severity: anomaly.severity,
+        metricType: anomaly.metricType,
+        metricValue: anomaly.confidence.toString(),
+        threshold: "AI-determined",
+      });
+
+      // Log the AI detection
+      await storage.createAuditLog({
+        agentId: this.id,
+        serverId: anomaly.serverId,
+        action: "AI Anomaly Detection",
+        details: `${anomaly.reasoning}`,
+        status: "success",
+        metadata: { 
+          confidence: anomaly.confidence,
+          aiMethod: "openai_analysis"
+        },
+      });
+
+      console.log(`${this.name}: AI detected ${anomaly.severity} anomaly on server ${anomaly.serverId}: ${anomaly.description}`);
+    } catch (error) {
+      console.error(`${this.name}: Error creating AI anomaly:`, error);
+    }
   }
 
   private getRandomBetween(min: number, max: number): string {
