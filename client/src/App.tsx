@@ -16,7 +16,7 @@ import DataUploadPage from "@/pages/data-upload";
 import DataViewPage from "@/pages/data-view";
 import DataManagementPage from "@/pages/data-management";
 import SettingsPage from "@/pages/Settings";
-import WorkflowPage from "@/pages/workflows";
+import WorkflowPage from "@/pages/workflows-simple";
 import NotFound from "@/pages/not-found";
 
 function Router() {
