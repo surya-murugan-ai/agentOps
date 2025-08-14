@@ -1,8 +1,30 @@
 import { Brain, BarChart3, Server, Users, AlertTriangle, Settings, ClipboardList, Activity, Upload, Database, Wrench } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
+import { useQuery } from '@tanstack/react-query';
 
 export default function Sidebar() {
   const [location] = useLocation();
+
+  // Fetch real data for badge counts
+  const { data: servers } = useQuery({
+    queryKey: ['/api/servers'],
+    refetchInterval: 30000,
+  });
+
+  const { data: alerts } = useQuery({
+    queryKey: ['/api/alerts'],
+    refetchInterval: 30000,
+  });
+
+  const { data: agents } = useQuery({
+    queryKey: ['/api/agents'],
+    refetchInterval: 30000,
+  });
+
+  // Calculate real counts with defaults
+  const serverCount = (servers as any[])?.length || 0;
+  const alertCount = (alerts as any[])?.length || 0;
+  const agentCount = (agents as any[])?.length || 0;
 
   const getNavItemClass = (path: string) => {
     const isActive = location === path;
@@ -48,7 +70,9 @@ export default function Sidebar() {
           <Link href="/servers" className={getNavItemClass("/servers")} data-testid="nav-servers">
             <Server size={20} />
             <span>Servers</span>
-            <span className="ml-auto bg-slate-600 text-xs px-2 py-1 rounded-full">5</span>
+            {serverCount > 0 && (
+              <span className="ml-auto bg-slate-600 text-xs px-2 py-1 rounded-full">{serverCount}</span>
+            )}
           </Link>
         </div>
         
@@ -61,7 +85,9 @@ export default function Sidebar() {
           <Link href="/alerts" className={getNavItemClass("/alerts")} data-testid="nav-alerts">
             <AlertTriangle size={20} />
             <span>Alerts</span>
-            <span className="ml-auto bg-error text-xs px-2 py-1 rounded-full">3</span>
+            {alertCount > 0 && (
+              <span className="ml-auto bg-error text-xs px-2 py-1 rounded-full">{alertCount}</span>
+            )}
           </Link>
           
           <Link href="/remediations" className={getNavItemClass("/remediations")} data-testid="nav-remediations">
@@ -106,7 +132,9 @@ export default function Sidebar() {
           <Link href="/agents" className={getNavItemClass("/agents")} data-testid="nav-agents">
             <Users size={20} />
             <span>Agents</span>
-            <span className="ml-auto bg-success text-xs px-2 py-1 rounded-full">7</span>
+            {agentCount > 0 && (
+              <span className="ml-auto bg-success text-xs px-2 py-1 rounded-full">{agentCount}</span>
+            )}
           </Link>
           
           <Link href="/agent-settings" className={getNavItemClass("/agent-settings")} data-testid="nav-agent-settings">
