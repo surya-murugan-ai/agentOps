@@ -75,24 +75,6 @@ export default function Sidebar() {
           </Link>
         </div>
         
-        {/* AI Agents Section */}
-        <div className="pt-3">
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-3">
-            AI Agents
-          </div>
-          
-          <Link href="/agents" className={getNavItemClass("/agents")} data-testid="nav-agents">
-            <Users size={20} />
-            <span>Agents</span>
-            <span className="ml-auto bg-success text-xs px-2 py-1 rounded-full">7</span>
-          </Link>
-          
-          <Link href="/agent-settings" className={getNavItemClass("/agent-settings")} data-testid="nav-agent-settings">
-            <Settings size={20} />
-            <span>Settings</span>
-          </Link>
-        </div>
-        
         {/* Data Management Section */}
         <div className="pt-3">
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-3">
@@ -114,18 +96,43 @@ export default function Sidebar() {
             <span>Manage Data</span>
           </Link>
         </div>
+
+        {/* AI Agents Section */}
+        <div className="pt-3">
+          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-3">
+            AI Agents
+          </div>
+          
+          <Link href="/agents" className={getNavItemClass("/agents")} data-testid="nav-agents">
+            <Users size={20} />
+            <span>Agents</span>
+            <span className="ml-auto bg-success text-xs px-2 py-1 rounded-full">7</span>
+          </Link>
+          
+          <Link href="/agent-settings" className={getNavItemClass("/agent-settings")} data-testid="nav-agent-settings">
+            <Settings size={20} />
+            <span>Settings</span>
+          </Link>
+        </div>
+        
+        {/* System Status Section */}
+        <div className="pt-3">
+          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-3">
+            System Status
+          </div>
+          
+          <div className="mx-3 bg-slate-700/50 rounded-lg p-3 border border-slate-600/30" data-testid="system-status">
+            <div className="flex items-center space-x-2 mb-2">
+              <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
+              <span className="text-xs font-medium text-slate-300">All Systems Operational</span>
+            </div>
+            <p className="text-xs text-slate-400">7 agents running</p>
+            <p className="text-xs text-slate-500">Uptime: 99.98%</p>
+          </div>
+        </div>
       </nav>
 
-      <div className="absolute bottom-4 left-4 right-4 z-10">
-        <div className="bg-slate-700/90 backdrop-blur-sm rounded-lg p-3 border border-slate-600/30" data-testid="system-status">
-          <div className="flex items-center space-x-2 mb-2">
-            <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
-            <span className="text-xs font-medium text-slate-300">System Status</span>
-          </div>
-          <p className="text-xs text-slate-400">All agents operational</p>
-          <p className="text-xs text-slate-500">Uptime: 99.98%</p>
-        </div>
-      </div>
+
     </div>
   );
 }
