@@ -1,9 +1,9 @@
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Expand } from 'lucide-react';
-import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -15,7 +15,7 @@ import {
   Legend,
   Filler,
 } from 'chart.js';
-import { useEffect, useState } from 'react';
+import { Line } from 'react-chartjs-2';
 
 ChartJS.register(
   CategoryScale,
@@ -47,6 +47,28 @@ export default function SystemMetrics() {
     queryKey: ['/api/dashboard/metrics'],
     refetchInterval: 30000,
   });
+
+  // Calculate average metrics from current data
+  const avgMetrics = useMemo(() => {
+    if (!metricsData || metricsData.length === 0) {
+      return { cpu: 0, memory: 0, disk: 0, network: 0 };
+    }
+
+    const totals = metricsData.reduce((acc, metric) => ({
+      cpu: acc.cpu + parseFloat(metric.cpuUsage || 0),
+      memory: acc.memory + parseFloat(metric.memoryUsage || 0),
+      disk: acc.disk + parseFloat(metric.diskUsage || 0),
+      network: acc.network + parseFloat(metric.networkLatency || 0)
+    }), { cpu: 0, memory: 0, disk: 0, network: 0 });
+
+    const count = metricsData.length;
+    return {
+      cpu: totals.cpu / count,
+      memory: totals.memory / count,
+      disk: totals.disk / count,
+      network: totals.network / count
+    };
+  }, [metricsData]);
 
   useEffect(() => {
     if (metricsData && metricsData.length > 0) {
@@ -111,6 +133,9 @@ export default function SystemMetrics() {
           },
         ],
       });
+    } else {
+      // Reset chart data when no metrics available
+      setChartData(null);
     }
   }, [metricsData]);
 
@@ -199,25 +224,25 @@ export default function SystemMetrics() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="text-center">
             <div className="text-2xl font-bold text-white" data-testid="avg-cpu">
-              {dashboardMetrics ? '67.2%' : '0%'}
+              {avgMetrics.cpu.toFixed(1)}%
             </div>
             <div className="text-xs text-slate-400">Avg CPU</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-white" data-testid="avg-memory">
-              {dashboardMetrics ? '78.5%' : '0%'}
+              {avgMetrics.memory.toFixed(1)}%
             </div>
             <div className="text-xs text-slate-400">Avg Memory</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-white" data-testid="avg-disk">
-              {dashboardMetrics ? '45.2%' : '0%'}
+              {avgMetrics.disk.toFixed(1)}%
             </div>
             <div className="text-xs text-slate-400">Avg Disk</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-white" data-testid="network-latency">
-              12ms
+              {avgMetrics.network.toFixed(0)}ms
             </div>
             <div className="text-xs text-slate-400">Network Latency</div>
           </div>
@@ -227,7 +252,9 @@ export default function SystemMetrics() {
           {chartData ? (
             <Line data={chartData} options={chartOptions} />
           ) : (
-            <div className="text-slate-400">Loading chart data...</div>
+            <div className="text-slate-400">
+              {metricsData && metricsData.length === 0 ? 'No metrics data available' : 'Loading chart data...'}
+            </div>
           )}
         </div>
       </CardContent>
