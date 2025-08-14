@@ -24,6 +24,15 @@ export default function DataManagementPage() {
 
   const { data: metrics, isLoading: metricsLoading } = useQuery({
     queryKey: ['/api/metrics/range'],
+    queryFn: async () => {
+      const endTime = new Date();
+      const startTime = new Date(endTime.getTime() - 7 * 24 * 60 * 60 * 1000); // Last 7 days
+      const response = await fetch(`/api/metrics/range?start=${startTime.toISOString()}&end=${endTime.toISOString()}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch metrics');
+      }
+      return response.json();
+    },
     refetchInterval: 30000,
   });
 
