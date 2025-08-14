@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Settings2, TestTube, Trash2, Eye, EyeOff, Key, Shield, Check, X } from "lucide-react";
+import { Plus, Settings2, TestTube, Trash2, Eye, EyeOff, Key, Shield, Check, X, Database, Brain, Bell, Server, Lock } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 interface SystemSetting {
@@ -41,6 +41,7 @@ interface Integration {
 export default function Settings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [activeSection, setActiveSection] = useState("api-keys");
   const [newSetting, setNewSetting] = useState({
     category: "api_keys",
     key: "",
@@ -69,11 +70,7 @@ export default function Settings() {
 
   // Create setting mutation
   const createSettingMutation = useMutation({
-    mutationFn: (setting: typeof newSetting) => apiRequest('/api/settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(setting)
-    }),
+    mutationFn: (setting: typeof newSetting) => apiRequest('/api/settings', 'POST', setting),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/settings'] });
       setNewSetting({ category: "api_keys", key: "", value: "", description: "", isSecure: true });
@@ -87,11 +84,7 @@ export default function Settings() {
   // Update setting mutation
   const updateSettingMutation = useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: Partial<SystemSetting> }) => 
-      apiRequest(`/api/settings/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
-      }),
+      apiRequest(`/api/settings/${id}`, 'PUT', updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/settings'] });
       toast({ description: "Setting updated successfully" });
@@ -103,7 +96,7 @@ export default function Settings() {
 
   // Delete setting mutation
   const deleteSettingMutation = useMutation({
-    mutationFn: (id: string) => apiRequest(`/api/settings/${id}`, { method: 'DELETE' }),
+    mutationFn: (id: string) => apiRequest(`/api/settings/${id}`, 'DELETE'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/settings'] });
       toast({ description: "Setting deleted successfully" });
@@ -115,11 +108,7 @@ export default function Settings() {
 
   // Create integration mutation
   const createIntegrationMutation = useMutation({
-    mutationFn: (integration: typeof newIntegration) => apiRequest('/api/integrations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(integration)
-    }),
+    mutationFn: (integration: typeof newIntegration) => apiRequest('/api/integrations', 'POST', integration),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
       setNewIntegration({ name: "", type: "ai_provider", config: {} });
@@ -133,11 +122,7 @@ export default function Settings() {
   // Update integration mutation
   const updateIntegrationMutation = useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: Partial<Integration> }) => 
-      apiRequest(`/api/integrations/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
-      }),
+      apiRequest(`/api/integrations/${id}`, 'PUT', updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
       toast({ description: "Integration updated successfully" });
@@ -149,7 +134,7 @@ export default function Settings() {
 
   // Test integration mutation
   const testIntegrationMutation = useMutation({
-    mutationFn: (id: string) => apiRequest(`/api/integrations/${id}/test`, { method: 'POST' }),
+    mutationFn: (id: string) => apiRequest(`/api/integrations/${id}/test`, 'POST'),
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
       toast({ 
@@ -164,7 +149,7 @@ export default function Settings() {
 
   // Delete integration mutation
   const deleteIntegrationMutation = useMutation({
-    mutationFn: (id: string) => apiRequest(`/api/integrations/${id}`, { method: 'DELETE' }),
+    mutationFn: (id: string) => apiRequest(`/api/integrations/${id}`, 'DELETE'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
       toast({ description: "Integration deleted successfully" });
@@ -203,31 +188,117 @@ export default function Settings() {
     return acc;
   }, {} as Record<string, SystemSetting[]>);
 
+  const navigationItems = [
+    {
+      id: "api-keys",
+      label: "API Keys",
+      icon: Key,
+      description: "Manage API keys for external services"
+    },
+    {
+      id: "integrations", 
+      label: "Integrations",
+      icon: Brain,
+      description: "Configure external service integrations"
+    },
+    {
+      id: "notifications",
+      label: "Notifications",
+      icon: Bell,
+      description: "Alert and notification settings"
+    },
+    {
+      id: "database",
+      label: "Database",
+      icon: Database,
+      description: "Database configuration and backup"
+    },
+    {
+      id: "security",
+      label: "Security",
+      icon: Lock,
+      description: "Security and access control settings"
+    },
+    {
+      id: "system",
+      label: "System",
+      icon: Server,
+      description: "System-wide configuration options"
+    }
+  ];
+
   return (
-    <div className="space-y-6" data-testid="settings-page">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight" data-testid="page-title">Settings</h1>
-          <p className="text-muted-foreground">Manage API keys, integrations, and system configuration</p>
+    <div className="flex h-screen" data-testid="settings-page">
+      {/* Left Navigation Sidebar */}
+      <div className="w-80 border-r border-dark-border bg-dark-surface/50">
+        <div className="p-6 border-b border-dark-border">
+          <div className="flex items-center gap-3">
+            <Settings2 className="h-8 w-8 text-primary" />
+            <div>
+              <h1 className="text-2xl font-bold" data-testid="page-title">Settings</h1>
+              <p className="text-sm text-muted-foreground">System configuration</p>
+            </div>
+          </div>
         </div>
-        <Settings2 className="h-8 w-8 text-muted-foreground" />
+        
+        <ScrollArea className="h-[calc(100vh-120px)]">
+          <div className="p-4 space-y-2">
+            {navigationItems.map((item) => {
+              const IconComponent = item.icon;
+              const isActive = activeSection === item.id;
+              
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveSection(item.id)}
+                  className={`w-full text-left p-4 rounded-lg transition-all duration-200 group ${
+                    isActive 
+                      ? "bg-primary/20 text-primary border border-primary/30" 
+                      : "text-slate-300 hover:bg-slate-700/50 hover:text-white"
+                  }`}
+                  data-testid={`nav-${item.id}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <IconComponent className={`h-5 w-5 mt-0.5 flex-shrink-0 ${
+                      isActive ? "text-primary" : "text-slate-400 group-hover:text-slate-300"
+                    }`} />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium">{item.label}</div>
+                      <div className={`text-xs mt-1 ${
+                        isActive ? "text-primary/80" : "text-slate-500 group-hover:text-slate-400"
+                      }`}>
+                        {item.description}
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </ScrollArea>
       </div>
 
-      <Tabs defaultValue="api-keys" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="api-keys" data-testid="tab-api-keys">API Keys & Settings</TabsTrigger>
-          <TabsTrigger value="integrations" data-testid="tab-integrations">Integrations</TabsTrigger>
-        </TabsList>
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-hidden">
+        <ScrollArea className="h-full">
+          <div className="p-8 space-y-6">
 
-        <TabsContent value="api-keys" className="space-y-6">
-          {/* Add New Setting */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Plus className="h-5 w-5" />
-                Add New Setting
-              </CardTitle>
-            </CardHeader>
+            {/* API Keys Section */}
+            {activeSection === "api-keys" && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-2xl font-bold mb-2">API Keys & Settings</h2>
+                  <p className="text-muted-foreground">Manage API keys for external services and system configuration.</p>
+                </div>
+
+                {/* Add New Setting */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Plus className="h-5 w-5" />
+                      Add New Setting
+                    </CardTitle>
+                  </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -360,17 +431,25 @@ export default function Settings() {
               </CardContent>
             </Card>
           ))}
-        </TabsContent>
+                </div>
+              )}
 
-        <TabsContent value="integrations" className="space-y-6">
-          {/* Add New Integration */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Plus className="h-5 w-5" />
-                Add New Integration
-              </CardTitle>
-            </CardHeader>
+            {/* Integrations Section */}
+            {activeSection === "integrations" && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-2xl font-bold mb-2">Integrations</h2>
+                  <p className="text-muted-foreground">Configure external service integrations and test connections.</p>
+                </div>
+
+                {/* Add New Integration */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Plus className="h-5 w-5" />
+                      Add New Integration
+                    </CardTitle>
+                  </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -476,8 +555,88 @@ export default function Settings() {
               </Card>
             ))}
           </div>
-        </TabsContent>
-      </Tabs>
+                </div>
+              )}
+
+            {/* Notifications Section */}
+            {activeSection === "notifications" && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-2xl font-bold mb-2">Notifications</h2>
+                  <p className="text-muted-foreground">Configure alert and notification settings.</p>
+                </div>
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="text-center py-12">
+                      <Bell className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-medium mb-2">Notification Settings</h3>
+                      <p className="text-muted-foreground">Configure how you receive alerts and notifications.</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Database Section */}
+            {activeSection === "database" && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-2xl font-bold mb-2">Database</h2>
+                  <p className="text-muted-foreground">Database configuration and backup settings.</p>
+                </div>
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="text-center py-12">
+                      <Database className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-medium mb-2">Database Configuration</h3>
+                      <p className="text-muted-foreground">Manage database connections and backup settings.</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Security Section */}
+            {activeSection === "security" && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-2xl font-bold mb-2">Security</h2>
+                  <p className="text-muted-foreground">Security and access control settings.</p>
+                </div>
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="text-center py-12">
+                      <Lock className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-medium mb-2">Security Settings</h3>
+                      <p className="text-muted-foreground">Configure security policies and access controls.</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* System Section */}
+            {activeSection === "system" && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-2xl font-bold mb-2">System</h2>
+                  <p className="text-muted-foreground">System-wide configuration options.</p>
+                </div>
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="text-center py-12">
+                      <Server className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-medium mb-2">System Configuration</h3>
+                      <p className="text-muted-foreground">Configure system-wide settings and preferences.</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+          </div>
+        </ScrollArea>
+      </div>
     </div>
   );
 }
