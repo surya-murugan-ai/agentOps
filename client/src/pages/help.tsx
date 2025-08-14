@@ -181,6 +181,43 @@ export default function HelpPage() {
 • **Success Rate**: Percentage of successful executions
 • **Performance Metrics**: Execution time and resource usage
 • **Error Logs**: Detailed error information for troubleshooting`
+        },
+        {
+          title: 'How AI Agents Work Together',
+          content: `The 8 AI agents work in a coordinated workflow to monitor and remediate issues:
+
+**1. Telemetry Collector** (Every 30 seconds)
+• Gathers real-time metrics: CPU, memory, disk, network
+• Stores data in time-series database
+• Triggers alerts when thresholds are exceeded
+
+**2. Anomaly Detector** (Every 2 minutes)
+• Analyzes collected metrics using AI pattern recognition
+• Identifies unusual behavior that may not trigger standard alerts
+• Creates anomaly records for investigation
+
+**3. Predictive Analytics** (Every 2 minutes)
+• Uses historical data and machine learning models
+• Forecasts potential issues 1-24 hours in advance
+• Generates predictive alerts for proactive action
+
+**4. Recommendation Engine** (Every 2 minutes)
+• Processes alerts from other agents
+• Uses OpenAI GPT-4o to generate specific remediation actions
+• Creates detailed action plans with commands and confidence scores
+
+**5. Approval & Compliance** (Real-time)
+• Routes high-risk actions through approval workflows
+• Ensures compliance with organizational policies
+• Logs all decisions for audit purposes
+
+**6. Remediation Executor** (Real-time)
+• Executes approved actions on target servers
+• Monitors execution progress and results
+• Reports success/failure back to the system
+
+**Example Workflow:**
+Telemetry Collector detects 85% memory usage → Anomaly Detector confirms unusual pattern → Recommendation Engine suggests cache clearing → Approval system routes to manager → Remediation Executor runs command → Audit logs the action`
         }
       ]
     },
@@ -226,6 +263,48 @@ export default function HelpPage() {
 • **Webhook**: Send alerts to custom endpoints
 • **SMS**: Send critical alerts via text message
 • **Dashboard**: Real-time alerts in the web interface`
+        },
+        {
+          title: 'From Alert to Action - Complete Process',
+          content: `See how alerts trigger automated remediation actions:
+
+**Step 1: Alert Detection**
+• Telemetry Collector monitors server metrics every 30 seconds
+• When CPU > 80%, Memory > 75%, or Disk > 90%, alert is created
+• Alert includes: hostname, metric type, current value, threshold exceeded
+
+**Step 2: AI Analysis** 
+• Recommendation Engine processes the alert within 2 minutes
+• AI analyzes server history, environment, and current state
+• System determines root cause and evaluates solution options
+
+**Step 3: Solution Generation**
+• AI generates specific remediation commands based on issue type:
+  - **High Memory**: \`sync && echo 3 > /proc/sys/vm/drop_caches\`
+  - **Stuck Service**: \`systemctl restart [service-name]\`
+  - **Full Disk**: \`find /tmp -type f -atime +7 -delete\`
+  - **High CPU**: \`renice -n 10 -p [process-id]\`
+
+**Step 4: Risk Assessment**
+• System calculates risk score (0-100) based on:
+  - Command safety level
+  - Server criticality (production vs development)
+  - Potential downtime duration
+  - Historical success rate
+
+**Step 5: Approval Routing**
+• Low risk (0-30): Auto-approved and executed
+• Medium risk (31-70): Single approval required
+• High risk (71-100): Dual approval required
+• Creates remediation card with all details for approval
+
+**Step 6: Execution & Monitoring**
+• Once approved, Remediation Executor runs the command
+• Real-time monitoring of execution progress
+• Success/failure results logged in audit trail
+• Follow-up monitoring to verify issue resolution
+
+This entire process typically takes 2-5 minutes from alert detection to problem resolution.`
         }
       ]
     },
@@ -246,6 +325,41 @@ export default function HelpPage() {
 • **Disk Cleanup**: Remove temporary files and logs`
         },
         {
+          title: 'How Commands Are Generated',
+          content: `The AI system uses a sophisticated process to generate remediation commands:
+
+**1. Alert Analysis**
+When an alert is triggered (like high memory usage), the Recommendation Engine AI agent analyzes:
+• Current server metrics and thresholds
+• Historical patterns and trends
+• Server environment and criticality
+• Previous successful remediation actions
+
+**2. AI Processing**
+The system uses OpenAI GPT-4o to:
+• Understand the root cause of the issue
+• Consider multiple possible solutions
+• Evaluate the safety and effectiveness of each option
+• Generate specific commands tailored to the problem
+
+**3. Command Selection**
+For each issue type, the AI knows proven solutions:
+• **Memory Issues**: \`sync && echo 3 > /proc/sys/vm/drop_caches\` (clear caches)
+• **Service Problems**: \`systemctl restart [service-name]\` (restart services)
+• **Disk Space**: \`find /tmp -type f -atime +7 -delete\` (cleanup old files)
+• **High CPU**: \`renice -n 10 -p [process-id]\` (reduce process priority)
+
+**4. Confidence Scoring**
+Each recommendation includes a confidence score (0-100%) based on:
+• Success rate of this solution for similar issues
+• Relevance to current server metrics
+• Risk assessment and potential side effects
+• Historical effectiveness on this specific server
+
+**Example Process:**
+Server host-002 shows 85% memory usage → Alert triggered → AI analyzes pattern → Recommends cache clearing with 80% confidence → Command generated: \`sync && echo 3 > /proc/sys/vm/drop_caches\` → Routed to approval workflow`
+        },
+        {
           title: 'Approval Process',
           content: `Remediation actions follow approval workflows:
 1. **Risk Assessment**: AI calculates risk score (0-100)
@@ -262,6 +376,39 @@ export default function HelpPage() {
 • **Medium Risk (31-70)**: Require single approval
 • **High Risk (71-100)**: Require dual approval
 • **Critical Risk**: Manual execution only`
+        },
+        {
+          title: 'Understanding Remediation Cards',
+          content: `When viewing remediation actions, each card provides complete information:
+
+**Card Header:**
+• **Action Title**: Clear description of what will be done (e.g., "Clear System Cache and Buffers")
+• **Server**: Target server hostname (e.g., "host-002")
+• **Action Type**: Category of remediation (optimize_memory, restart_service, etc.)
+• **Status Badge**: Current state (pending, approved, executing, completed)
+
+**Problem Description:**
+• **Issue Details**: What problem was detected and why action is needed
+• **AI Reasoning**: How the AI determined this solution would help
+• **Impact Assessment**: What improvement to expect after remediation
+
+**Technical Information:**
+• **Confidence Score**: AI's confidence in solution effectiveness (0-100%)
+• **Estimated Downtime**: How long the action will take to complete
+• **Approval Required**: Whether manual approval is needed before execution
+
+**Command Details:**
+• **Exact Command**: The specific command that will be executed
+• **Command Explanation**: What each part of the command does
+• **Safety Information**: Why this command is safe to run
+
+**Action Buttons:**
+• **Approve**: Authorize the action to proceed (if you have permission)
+• **Reject**: Decline the action with optional reason
+• **View Details**: See complete technical information and logs
+
+**Example Card Interpretation:**
+"Clear System Cache and Buffers" on host-002 with 80% confidence means the AI detected high memory usage and wants to run 'sync && echo 3 > /proc/sys/vm/drop_caches' to free up cached memory, which should take about 5 seconds and requires approval.`
         }
       ]
     },

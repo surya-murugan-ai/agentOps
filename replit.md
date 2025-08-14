@@ -6,6 +6,12 @@ AgentOps is an AI-powered server health monitoring and automated remediation pla
 
 ## Recent Changes (January 14, 2025)
 
+- **AI Command Generation Documentation Complete**: Significantly expanded help system with comprehensive explanations of how AI agents generate automated remediation commands
+- **Detailed Agent Workflow Documentation**: Added complete process documentation showing how the 8 AI agents work together from alert detection to command execution
+- **Remediation Card Explanations**: Created detailed breakdowns of remediation cards including confidence scoring, downtime estimates, technical command details, and approval workflows
+- **Step-by-Step Process Documentation**: Documented complete "Alert to Action" workflow showing 6-step process from detection to resolution with specific command examples
+- **Technical Command Examples**: Added real command examples for different issue types (memory: sync && echo 3, services: systemctl restart, disk: find/delete, CPU: renice)
+- **Risk Assessment Documentation**: Explained how the system calculates confidence scores and routes approvals based on risk levels
 - **Comprehensive Help System Complete**: Created extensive help documentation system as explicitly requested by user
 - **Help Center Implementation**: Built complete help page with structured documentation covering platform usage, features, configuration steps, and processes
 - **Multi-Section Help Organization**: Organized help into three main tabs - Overview, Features, and User Guides with collapsible sections
