@@ -22,6 +22,7 @@ export interface IStorage {
   createServer(server: InsertServer): Promise<Server>;
   updateServerStatus(id: string, status: string): Promise<void>;
   deleteServer(id: string): Promise<void>;
+  updateServer(id: string, updates: Partial<InsertServer>): Promise<void>;
 
   // Server Metrics
   getServerMetrics(serverId: string, limit?: number): Promise<ServerMetrics[]>;
@@ -30,6 +31,8 @@ export interface IStorage {
   getMetricsInTimeRange(startTime: Date, endTime: Date): Promise<ServerMetrics[]>;
   clearAllMetrics(): Promise<void>;
   deleteMetric(id: string): Promise<void>;
+  updateMetric(id: string, updates: Partial<InsertServerMetrics>): Promise<void>;
+  getAllMetrics(): Promise<ServerMetrics[]>;
   deleteAlert(id: string): Promise<void>;
   deleteRemediationAction(id: string): Promise<void>;
   deleteAuditLog(id: string): Promise<void>;
@@ -48,6 +51,7 @@ export interface IStorage {
   createAlert(alert: InsertAlert): Promise<Alert>;
   acknowledgeAlert(id: string, userId: string): Promise<void>;
   resolveAlert(id: string): Promise<void>;
+  updateAlert(id: string, updates: Partial<InsertAlert>): Promise<void>;
 
   // Remediation Actions
   getPendingRemediationActions(): Promise<(RemediationAction & { server: Server; alert?: Alert })[]>;
@@ -145,6 +149,10 @@ export class DatabaseStorage implements IStorage {
     await db.update(servers).set({ status, updatedAt: new Date() }).where(eq(servers.id, id));
   }
 
+  async updateServer(id: string, updates: Partial<InsertServer>): Promise<void> {
+    await db.update(servers).set(updates).where(eq(servers.id, id));
+  }
+
   async deleteServer(id: string): Promise<void> {
     // Delete all related data first to avoid foreign key constraints
     // Order matters - delete child records before parent records
@@ -182,6 +190,14 @@ export class DatabaseStorage implements IStorage {
 
   async deleteMetric(id: string): Promise<void> {
     await db.delete(serverMetrics).where(eq(serverMetrics.id, id));
+  }
+
+  async updateMetric(id: string, updates: Partial<InsertServerMetrics>): Promise<void> {
+    await db.update(serverMetrics).set(updates).where(eq(serverMetrics.id, id));
+  }
+
+  async getAllMetrics(): Promise<ServerMetrics[]> {
+    return await db.select().from(serverMetrics).orderBy(desc(serverMetrics.timestamp));
   }
 
   async deleteAlert(id: string): Promise<void> {
@@ -352,6 +368,10 @@ export class DatabaseStorage implements IStorage {
       .update(alerts)
       .set({ status: "resolved", resolvedAt: new Date() })
       .where(eq(alerts.id, id));
+  }
+
+  async updateAlert(id: string, updates: Partial<InsertAlert>): Promise<void> {
+    await db.update(alerts).set(updates).where(eq(alerts.id, id));
   }
 
   // Remediation Actions

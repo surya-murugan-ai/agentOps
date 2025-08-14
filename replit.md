@@ -6,6 +6,11 @@ AgentOps is an AI-powered server health monitoring and automated remediation pla
 
 ## Recent Changes (January 14, 2025)
 
+- **Data Agent Enhancement Complete**: Successfully implemented comprehensive data normalization and cleaning features including duplicate removal, missing value handling, and data quality validation as requested by the user
+- **Storage Layer Expansion**: Added missing database methods (updateServer, deleteServers, updateMetric, deleteMetrics, updateAlert) to support advanced data cleaning operations
+- **API Infrastructure**: Created dedicated dataCleaningRoutes.ts with REST endpoints for data normalization, duplicate detection, and cleaning functionality  
+- **Data Cleaning Implementation**: Built advanced dataAgent.ts with sophisticated algorithms for data normalization, duplicate detection, missing value handling, and data quality validation
+- **Technical Debt Resolution**: Fixed TypeScript errors and database method inconsistencies across the storage layer
 - **Template-Based Data Tables Complete**: Updated all data table structures to match user-provided Excel templates
 - **Alert Table Structure**: Columns now display hostname, title, description, severity, metricType, metricValue, threshold per template
 - **Remediation Actions Table**: Updated to show hostname, title, description, actionType, confidence, estimatedDowntime, status structure
@@ -80,8 +85,16 @@ A microservices-inspired agent architecture handles different aspects of monitor
 5. **Approval & Compliance** - Manages approval workflows for sensitive operations
 6. **Remediation Executor** - Executes approved automated fixes
 7. **Audit & Reporting** - Maintains compliance logs and generates reports
+8. **Data Agent** - Provides comprehensive data cleaning, normalization, and quality validation capabilities
 
 Each agent runs independently with configurable intervals and maintains its own status and metrics.
+
+**Data Agent Features:**
+- **Duplicate Detection and Removal** - Identifies and removes duplicate servers, metrics, and alerts based on key fields
+- **Missing Value Handling** - Automatically fills in missing data with appropriate defaults or calculated values
+- **Outlier Detection** - Identifies and corrects data outliers (e.g., CPU usage > 100%)
+- **Data Quality Scoring** - Calculates quality scores for different data types to track improvement
+- **Comprehensive Cleaning** - Performs full data cleaning across all data types with detailed reporting
 
 ### Real-Time Communication
 WebSocket integration provides live updates for:

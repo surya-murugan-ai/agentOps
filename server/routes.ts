@@ -864,5 +864,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Analytics routes
   app.use("/api/analytics", (await import("./routes/analytics")).default);
 
+  // Data cleaning routes
+  app.use("/api/data-cleaning", (await import("./routes/dataCleaningRoutes")).default);
+
   return httpServer;
 }
