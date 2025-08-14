@@ -29,7 +29,7 @@ import {
   Download,
   ExternalLink
 } from "lucide-react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 
 export default function HelpPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -844,25 +844,30 @@ Server host-002 shows 85% memory usage → Alert triggered → AI analyzes patte
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {[
-                        { name: "Dashboard", icon: BarChart3, desc: "System overview and metrics" },
-                        { name: "Servers", icon: Server, desc: "Server inventory and status" },
-                        { name: "Agents", icon: Bot, desc: "AI agent management" },
-                        { name: "Alerts", icon: AlertTriangle, desc: "Alert monitoring" },
-                        { name: "Remediations", icon: Wrench, desc: "Automated actions" },
-                        { name: "Workflows", icon: GitBranch, desc: "Approval processes" },
-                        { name: "Analytics", icon: BarChart3, desc: "Reports and insights" },
-                        { name: "Data Management", icon: Database, desc: "Data import/export" },
-                        { name: "Settings", icon: Settings, desc: "Platform configuration" }
+                        { name: "Dashboard", icon: BarChart3, desc: "System overview and metrics", path: "/" },
+                        { name: "Servers", icon: Server, desc: "Server inventory and status", path: "/servers" },
+                        { name: "Agents", icon: Bot, desc: "AI agent management", path: "/agents" },
+                        { name: "Alerts", icon: AlertTriangle, desc: "Alert monitoring", path: "/alerts" },
+                        { name: "Remediations", icon: Wrench, desc: "Automated actions", path: "/remediations" },
+                        { name: "Workflows", icon: GitBranch, desc: "Approval processes", path: "/workflows" },
+                        { name: "Analytics", icon: BarChart3, desc: "Reports and insights", path: "/analytics" },
+                        { name: "Data Management", icon: Database, desc: "Data import/export", path: "/data-management" },
+                        { name: "Settings", icon: Settings, desc: "Platform configuration", path: "/configuration" }
                       ].map((item) => {
                         const Icon = item.icon;
                         return (
-                          <div key={item.name} className="p-3 border border-dark-border rounded-lg">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <Icon className="w-4 h-4 text-primary" />
-                              <span className="font-medium text-white text-sm">{item.name}</span>
+                          <Link key={item.name} href={item.path}>
+                            <div className="p-3 border border-dark-border rounded-lg hover:border-primary/50 hover:bg-dark-accent/20 transition-all cursor-pointer group">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center space-x-2">
+                                  <Icon className="w-4 h-4 text-primary group-hover:text-primary/80" />
+                                  <span className="font-medium text-white text-sm group-hover:text-primary/90">{item.name}</span>
+                                </div>
+                                <ExternalLink className="w-3 h-3 text-muted-foreground/50 group-hover:text-primary/60 opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </div>
+                              <p className="text-xs text-muted-foreground group-hover:text-muted-foreground/80">{item.desc}</p>
                             </div>
-                            <p className="text-xs text-muted-foreground">{item.desc}</p>
-                          </div>
+                          </Link>
                         );
                       })}
                     </div>
