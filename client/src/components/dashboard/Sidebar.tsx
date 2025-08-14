@@ -34,8 +34,8 @@ export default function Sidebar() {
   };
 
   return (
-    <div className="fixed left-0 top-0 h-full w-64 bg-dark-surface border-r border-dark-border z-30">
-      <div className="p-6 border-b border-dark-border">
+    <div className="fixed left-0 top-0 h-full w-64 bg-dark-surface border-r border-dark-border z-30 flex flex-col">
+      <div className="p-6 border-b border-dark-border flex-shrink-0">
         <Link href="/">
           <div className="flex items-center space-x-3 cursor-pointer">
             <div className="w-10 h-10 bg-gradient-to-br from-primary to-blue-600 rounded-lg flex items-center justify-center">
@@ -49,7 +49,7 @@ export default function Sidebar() {
         </Link>
       </div>
       
-      <nav className="p-4 space-y-1 pb-32 overflow-y-auto">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-800">
         {/* Overview Section */}
         <Link href="/" className={getNavItemClass("/")} data-testid="nav-dashboard">
           <BarChart3 size={20} />
