@@ -861,5 +861,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Analytics routes
+  app.use("/api/analytics", (await import("./routes/analytics")).default);
+
   return httpServer;
 }

@@ -1,4 +1,4 @@
-import { Brain, BarChart3, Server, Users, AlertTriangle, Settings, ClipboardList, Activity, Upload, Database, Wrench, Key } from 'lucide-react';
+import { Brain, BarChart3, Server, Users, AlertTriangle, Settings, ClipboardList, Activity, Upload, Database, Wrench, Key, TrendingUp } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 
@@ -59,6 +59,11 @@ export default function Sidebar() {
         <Link href="/analytics" className={getNavItemClass("/analytics")} data-testid="nav-analytics">
           <Activity size={20} />
           <span>Analytics</span>
+        </Link>
+        
+        <Link href="/analytics-advanced" className={getNavItemClass("/analytics-advanced")} data-testid="nav-analytics-advanced">
+          <TrendingUp size={20} />
+          <span>Advanced Analytics</span>
         </Link>
         
         {/* Infrastructure Section */}
