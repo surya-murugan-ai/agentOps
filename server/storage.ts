@@ -126,6 +126,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteServer(id: string): Promise<void> {
+    // Delete all related data first to avoid foreign key constraints
+    await db.delete(serverMetrics).where(eq(serverMetrics.serverId, id));
+    await db.delete(alerts).where(eq(alerts.serverId, id));
+    await db.delete(remediationActions).where(eq(remediationActions.serverId, id));
+    await db.delete(anomalies).where(eq(anomalies.serverId, id));
+    await db.delete(predictions).where(eq(predictions.serverId, id));
+    // Finally delete the server
     await db.delete(servers).where(eq(servers.id, id));
   }
 

@@ -442,8 +442,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 cpuUsage: (parseFloat(item.cpuUsage) || 0).toString(),
                 memoryUsage: (parseFloat(item.memoryUsage) || 0).toString(),
                 diskUsage: (parseFloat(item.diskUsage) || 0).toString(),
-                networkIn: parseFloat(item.networkIn) || 0,
-                networkOut: parseFloat(item.networkOut) || 0,
+                memoryTotal: parseInt(item.memoryTotal) || 1024,
+                diskTotal: parseInt(item.diskTotal) || 1024,
+                processCount: parseInt(item.processCount) || 10,
+                networkLatency: item.networkLatency || null,
+                networkThroughput: item.networkThroughput || null,
                 timestamp: item.timestamp ? new Date(item.timestamp) : new Date()
               });
               count++;
