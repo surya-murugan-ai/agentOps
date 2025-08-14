@@ -221,18 +221,23 @@ Map original column names to target schema fields. Use intelligent matching for 
     const hasTitle = columns.some(col => col.includes('title') || col.includes('message'));
     const hasDescription = columns.some(col => col.includes('description'));
     const hasSeverity = columns.some(col => col.includes('severity') || col.includes('level') || col.includes('priority'));
-    const hasMetricType = columns.some(col => col.includes('metrictype') || col.includes('metric_type') || col.includes('type'));
+    const hasMetricType = columns.some(col => col.includes('metrictype') || col.includes('metric_type') || col.includes('type') || col.includes('metric'));
     const hasThreshold = columns.some(col => col.includes('threshold') || col.includes('limit'));
+    const hasAlertId = columns.some(col => col.includes('alertid') || col.includes('alert_id'));
+    const hasServerId = columns.some(col => col.includes('serverid') || col.includes('server_id'));
+    const hasTimestamp = columns.some(col => col.includes('timestamp') || col.includes('time'));
+    const hasValue = columns.some(col => col.includes('value'));
     
     console.log('Detection flags:', { hasHostname, hasCpu, hasMemory, hasIpAddress, hasTitle, hasDescription, hasSeverity, hasMetricType, hasThreshold });
     
     let dataType: 'servers' | 'metrics' | 'alerts' | 'unknown' = 'unknown';
     let confidence = 0.5;
     
-    if ((hasSeverity && (hasDescription || hasTitle || hasMetricType)) || hasThreshold) {
+    // Improved alert detection - prioritize alert-specific fields
+    if (hasAlertId || (hasSeverity && (hasDescription || hasTitle || hasMetricType)) || hasThreshold || (hasServerId && hasMetricType && hasValue)) {
       dataType = 'alerts';
-      confidence = 0.9;
-      console.log('Detected as alerts based on severity/description/metricType/threshold');
+      confidence = 0.95;
+      console.log('Detected as alerts based on AlertID/severity/description/metricType/threshold/ServerID+Metric+Value combination');
     } else if (hasHostname && (hasCpu || hasMemory)) {
       dataType = 'metrics';
       confidence = 0.7;

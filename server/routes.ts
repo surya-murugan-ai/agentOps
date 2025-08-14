@@ -453,48 +453,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
               errors.push(`Metrics for ${item.hostname || 'unknown host'}: Server not found`);
             }
           } else if (extractionResult.dataType === 'alerts') {
+            // Handle different serverId field names (ServerID, serverId, server_id)
+            let serverId = item.serverId || item.ServerID || item.server_id;
+            
             // Find server by hostname if serverId not provided
-            if (!item.serverId && item.hostname) {
+            if (!serverId && item.hostname) {
               const server = await storage.getServerByHostname(item.hostname);
               if (server) {
-                item.serverId = server.id;
-              } else {
-                // Auto-create server if it doesn't exist
-                const newServer = await storage.createServer({
-                  hostname: item.hostname,
-                  ipAddress: '192.168.1.1', // Default IP
-                  environment: 'production',
-                  status: 'healthy',
-                  location: 'Auto-generated'
-                });
-                item.serverId = newServer.id;
+                serverId = server.id;
               }
             }
 
-            if (item.serverId || item.hostname) {
-              // If still no serverId, create a default server
-              if (!item.serverId) {
-                const defaultServer = await storage.createServer({
-                  hostname: 'server-001',
-                  ipAddress: '192.168.1.1',
-                  environment: 'production', 
-                  status: 'healthy',
-                  location: 'Auto-generated'
-                });
-                item.serverId = defaultServer.id;
+            if (serverId) {
+              // Check if server exists (in case ServerID from data doesn't match actual server IDs)
+              const serverExists = await storage.getServer(serverId);
+              if (!serverExists) {
+                // Try to find server by the ServerID as hostname
+                const serverByHostname = await storage.getServerByHostname(serverId);
+                if (serverByHostname) {
+                  serverId = serverByHostname.id;
+                } else {
+                  // ServerID doesn't exist - skip this alert or we could create a server
+                  errors.push(`Alert: ServerID '${serverId}' not found in system. Please ensure servers are created before uploading alerts.`);
+                  continue;
+                }
               }
 
               await storage.createAlert({
-                serverId: item.serverId,
-                title: item.title || 'System Alert',
-                description: item.description || 'Alert generated from uploaded data',
-                severity: item.severity === 'critical' ? 'critical' : item.severity === 'warning' ? 'warning' : 'info',
-                status: item.status === 'resolved' ? 'resolved' : item.status === 'acknowledged' ? 'acknowledged' : 'active',
-                metricType: item.metricType || 'system'
+                serverId: serverId,
+                title: item.title || item.Description || item.description || 'System Alert',
+                description: item.Description || item.description || 'Alert from uploaded data',
+                severity: (item.Severity || item.severity || 'warning').toLowerCase(),
+                status: 'active',
+                metricType: item.Metric || item.metricType || 'system',
+                metricValue: item.Value || item.metricValue || null,
+                threshold: item.Threshold || item.threshold || null
               });
               count++;
             } else {
-              errors.push(`Alert '${item.title}': Unable to create or find server`);
+              errors.push(`Alert: Unable to determine server ID from data`);
             }
           }
         } catch (error) {
