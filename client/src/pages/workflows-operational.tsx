@@ -110,6 +110,15 @@ export default function WorkflowPage() {
             <Home className="w-4 h-4 mr-2" />
             Dashboard
           </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setActiveSection('settings')}
+            data-testid="button-configure-workflows"
+          >
+            <Settings className="w-4 h-4 mr-2" />
+            Configure Workflows
+          </Button>
           <Button variant="outline" size="sm">
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
