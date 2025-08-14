@@ -57,7 +57,7 @@ SERVERS: hostname, ipAddress, environment, status, location, operatingSystem
 METRICS: serverId/hostname, cpuUsage, memoryUsage, diskUsage, networkIn, networkOut, timestamp
 ALERTS: title, description, severity, status, serverId/hostname, timestamp
 
-Respond with JSON format:
+Respond with ONLY JSON format (no markdown code blocks or explanations):
 {
   "dataType": "servers|metrics|alerts",
   "confidence": 0.0-1.0,
@@ -67,7 +67,7 @@ Respond with JSON format:
   "issues": ["list of potential data quality issues"]
 }
 
-Map original column names to target schema fields. Use intelligent matching for variations (e.g., "host" -> "hostname", "cpu_percent" -> "cpuUsage").
+Map original column names to target schema fields. Use intelligent matching for variations (e.g., "host" -> "hostname", "cpu_percent" -> "cpuUsage"). Return only the JSON object, no other text.
 `;
 
       const response = await anthropic.messages.create({
@@ -80,7 +80,16 @@ Map original column names to target schema fields. Use intelligent matching for 
       if (content.type !== 'text') {
         throw new Error('Unexpected response type from Anthropic');
       }
-      const analysisResult = JSON.parse(content.text);
+      
+      // Extract JSON from response, handling markdown code blocks
+      let jsonText = content.text.trim();
+      if (jsonText.startsWith('```json')) {
+        jsonText = jsonText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (jsonText.startsWith('```')) {
+        jsonText = jsonText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      const analysisResult = JSON.parse(jsonText);
       
       // Extract and transform data based on mappings
       const extractedData = this.transformData(rawData, analysisResult.mappings, analysisResult.dataType);
