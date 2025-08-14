@@ -27,43 +27,11 @@ export default function Sidebar() {
         </Link>
       </div>
       
-      <nav className="p-4 space-y-2">
+      <nav className="p-4 space-y-1">
+        {/* Overview Section */}
         <Link href="/" className={getNavItemClass("/")} data-testid="nav-dashboard">
           <BarChart3 size={20} />
           <span className="font-medium">Dashboard</span>
-        </Link>
-        
-        <Link href="/servers" className={getNavItemClass("/servers")} data-testid="nav-servers">
-          <Server size={20} />
-          <span>Servers</span>
-          <span className="ml-auto bg-slate-600 text-xs px-2 py-1 rounded-full">5</span>
-        </Link>
-        
-        <Link href="/agents" className={getNavItemClass("/agents")} data-testid="nav-agents">
-          <Users size={20} />
-          <span>Agents</span>
-          <span className="ml-auto bg-success text-xs px-2 py-1 rounded-full">7</span>
-        </Link>
-        
-        <Link href="/agent-settings" className={getNavItemClass("/agent-settings")} data-testid="nav-agent-settings">
-          <Settings size={20} />
-          <span>Agent Settings</span>
-        </Link>
-        
-        <Link href="/alerts" className={getNavItemClass("/alerts")} data-testid="nav-alerts">
-          <AlertTriangle size={20} />
-          <span>Alerts</span>
-          <span className="ml-auto bg-error text-xs px-2 py-1 rounded-full">3</span>
-        </Link>
-        
-        <Link href="/remediations" className={getNavItemClass("/remediations")} data-testid="nav-remediations">
-          <Wrench size={20} />
-          <span>Remediations</span>
-        </Link>
-        
-        <Link href="/audit" className={getNavItemClass("/audit")} data-testid="nav-audit">
-          <ClipboardList size={20} />
-          <span>Audit Logs</span>
         </Link>
         
         <Link href="/analytics" className={getNavItemClass("/analytics")} data-testid="nav-analytics">
@@ -71,15 +39,74 @@ export default function Sidebar() {
           <span>Analytics</span>
         </Link>
         
-        <div className="border-t border-slate-600 pt-2 mt-2">
+        {/* Infrastructure Section */}
+        <div className="pt-3">
+          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-3">
+            Infrastructure
+          </div>
+          
+          <Link href="/servers" className={getNavItemClass("/servers")} data-testid="nav-servers">
+            <Server size={20} />
+            <span>Servers</span>
+            <span className="ml-auto bg-slate-600 text-xs px-2 py-1 rounded-full">5</span>
+          </Link>
+        </div>
+        
+        {/* Monitoring & Alerts Section */}
+        <div className="pt-3">
+          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-3">
+            Monitoring
+          </div>
+          
+          <Link href="/alerts" className={getNavItemClass("/alerts")} data-testid="nav-alerts">
+            <AlertTriangle size={20} />
+            <span>Alerts</span>
+            <span className="ml-auto bg-error text-xs px-2 py-1 rounded-full">3</span>
+          </Link>
+          
+          <Link href="/remediations" className={getNavItemClass("/remediations")} data-testid="nav-remediations">
+            <Wrench size={20} />
+            <span>Remediations</span>
+          </Link>
+          
+          <Link href="/audit" className={getNavItemClass("/audit")} data-testid="nav-audit">
+            <ClipboardList size={20} />
+            <span>Audit Trail</span>
+          </Link>
+        </div>
+        
+        {/* AI Agents Section */}
+        <div className="pt-3">
+          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-3">
+            AI Agents
+          </div>
+          
+          <Link href="/agents" className={getNavItemClass("/agents")} data-testid="nav-agents">
+            <Users size={20} />
+            <span>Agents</span>
+            <span className="ml-auto bg-success text-xs px-2 py-1 rounded-full">7</span>
+          </Link>
+          
+          <Link href="/agent-settings" className={getNavItemClass("/agent-settings")} data-testid="nav-agent-settings">
+            <Settings size={20} />
+            <span>Settings</span>
+          </Link>
+        </div>
+        
+        {/* Data Management Section */}
+        <div className="pt-3">
+          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-3">
+            Data Management
+          </div>
+          
           <Link href="/data-upload" className={getNavItemClass("/data-upload")} data-testid="nav-data-upload">
             <Upload size={20} />
-            <span>Data Upload</span>
+            <span>Upload Data</span>
           </Link>
           
           <Link href="/data-management" className={getNavItemClass("/data-management")} data-testid="nav-data-management">
             <Database size={20} />
-            <span>Data Management</span>
+            <span>Manage Data</span>
           </Link>
         </div>
       </nav>
