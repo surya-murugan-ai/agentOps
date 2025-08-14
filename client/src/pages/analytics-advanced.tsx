@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, TrendingUp, BarChart3, PieChart, LineChart, Settings, Download, Plus, Eye } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Calendar, TrendingUp, BarChart3, PieChart, LineChart, Settings, Download, Plus, Eye, Filter, X } from 'lucide-react';
 import Sidebar from "@/components/dashboard/Sidebar";
 import { Line, Bar, Doughnut, Scatter } from 'react-chartjs-2';
 import {
@@ -61,6 +63,13 @@ export default function AdvancedAnalytics() {
   const [selectedDashboard, setSelectedDashboard] = useState<string>('default');
   const [selectedTimeRange, setSelectedTimeRange] = useState('24h');
   const [isEditing, setIsEditing] = useState(false);
+  
+  // Filter states
+  const [selectedServers, setSelectedServers] = useState<string[]>([]);
+  const [selectedEnvironment, setSelectedEnvironment] = useState('all');
+  const [selectedSeverity, setSelectedSeverity] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
+  
   const [dashboards, setDashboards] = useState<CustomDashboard[]>([
     {
       id: 'default',
@@ -109,14 +118,47 @@ export default function AdvancedAnalytics() {
   const safePredictions = (predictions as any[]) || [];
   const safeServers = (servers as any[]) || [];
 
-  // Chart configurations
-  // Data processing helpers removed - using real data directly in components
+  // Chart options
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+        labels: {
+          color: '#e2e8f0'
+        }
+      },
+      title: {
+        display: false,
+        color: '#e2e8f0'
+      }
+    },
+    scales: {
+      x: {
+        grid: {
+          color: '#334155'
+        },
+        ticks: {
+          color: '#94a3b8'
+        }
+      },
+      y: {
+        grid: {
+          color: '#334155'
+        },
+        ticks: {
+          color: '#94a3b8'
+        }
+      }
+    }
+  };
 
   const handleCreateDashboard = () => {
     const newDashboard: CustomDashboard = {
       id: `dashboard-${Date.now()}`,
       name: `Custom Dashboard ${dashboards.length}`,
-      description: 'New custom dashboard',
+      description: 'Custom analytics dashboard',
       widgets: [],
       isDefault: false,
       createdAt: new Date(),
@@ -124,25 +166,24 @@ export default function AdvancedAnalytics() {
     };
     setDashboards([...dashboards, newDashboard]);
     setSelectedDashboard(newDashboard.id);
-    setIsEditing(true);
   };
 
-  const handleExportReport = async () => {
-    // Generate and download report
+  const handleExportReport = () => {
     const reportData = {
-      dashboard: selectedDashboard,
       timeRange: selectedTimeRange,
-      generatedAt: new Date().toISOString(),
       metrics: metricsData,
       trends: trendsData,
       alerts: alertsAnalytics,
+      performance: performanceData,
+      predictions: safePredictions,
+      exportedAt: new Date().toISOString()
     };
     
     const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `agentops-report-${selectedTimeRange}-${Date.now()}.json`;
+    a.download = `analytics-report-${selectedTimeRange}-${Date.now()}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -150,594 +191,565 @@ export default function AdvancedAnalytics() {
   };
 
   return (
-    <div className="min-h-screen bg-dark-bg text-white">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <Sidebar />
       <div className="ml-64 p-8">
-        <div className="max-w-7xl mx-auto space-y-6" data-testid="advanced-analytics-page">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-white" data-testid="page-title">Advanced Analytics</h1>
-          <p className="text-slate-400 mt-1">Custom dashboards and advanced reporting</p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <Select value={selectedTimeRange} onValueChange={setSelectedTimeRange}>
-            <SelectTrigger className="w-32" data-testid="time-range-selector">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1h">1 Hour</SelectItem>
-              <SelectItem value="24h">24 Hours</SelectItem>
-              <SelectItem value="7d">7 Days</SelectItem>
-              <SelectItem value="30d">30 Days</SelectItem>
-              <SelectItem value="90d">90 Days</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="outline" onClick={handleExportReport} data-testid="export-report-btn">
-            <Download size={16} className="mr-2" />
-            Export Report
-          </Button>
-        </div>
-      </div>
-
-      {/* Dashboard Management */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center">
-                <BarChart3 className="mr-2" size={20} />
-                Dashboard Management
-              </CardTitle>
-              <CardDescription>Create and manage custom analytics dashboards</CardDescription>
-            </div>
-            <Button onClick={handleCreateDashboard} data-testid="create-dashboard-btn">
-              <Plus size={16} className="mr-2" />
-              Create Dashboard
-            </Button>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-white" data-testid="page-title">Advanced Analytics</h1>
+            <p className="text-slate-400 mt-1">Custom dashboards and advanced reporting</p>
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center space-x-4 mb-4">
-            <Select value={selectedDashboard} onValueChange={setSelectedDashboard}>
-              <SelectTrigger className="w-64" data-testid="dashboard-selector">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {dashboards.map((dashboard) => (
-                  <SelectItem key={dashboard.id} value={dashboard.id}>
-                    {dashboard.name} {dashboard.isDefault && <Badge variant="secondary">Default</Badge>}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              variant="outline"
-              onClick={() => setIsEditing(!isEditing)}
-              data-testid="edit-dashboard-btn"
-            >
-              <Settings size={16} className="mr-2" />
-              {isEditing ? 'View Mode' : 'Edit Mode'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-3">
+              <Select value={selectedTimeRange} onValueChange={setSelectedTimeRange}>
+                <SelectTrigger className="w-32" data-testid="time-range-selector">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1h">1 Hour</SelectItem>
+                  <SelectItem value="24h">24 Hours</SelectItem>
+                  <SelectItem value="7d">7 Days</SelectItem>
+                  <SelectItem value="30d">30 Days</SelectItem>
+                  <SelectItem value="90d">90 Days</SelectItem>
+                </SelectContent>
+              </Select>
 
-      {/* Analytics Tabs */}
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
-          <TabsTrigger value="trends" data-testid="tab-trends">Historical Trends</TabsTrigger>
-          <TabsTrigger value="performance" data-testid="tab-performance">Performance</TabsTrigger>
-          <TabsTrigger value="predictive" data-testid="tab-predictive">Predictive</TabsTrigger>
-          <TabsTrigger value="reports" data-testid="tab-reports">Reports</TabsTrigger>
-        </TabsList>
+              <Select value={selectedEnvironment} onValueChange={setSelectedEnvironment}>
+                <SelectTrigger className="w-40" data-testid="environment-filter">
+                  <SelectValue placeholder="Environment" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Environments</SelectItem>
+                  <SelectItem value="production">Production</SelectItem>
+                  <SelectItem value="staging">Staging</SelectItem>
+                  <SelectItem value="development">Development</SelectItem>
+                </SelectContent>
+              </Select>
 
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* System Health Overview */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">System Health Trends</CardTitle>
-                <CardDescription>Resource usage over time</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Line
-                  data={{
-                    labels: metricsData?.timestamps || [],
-                    datasets: [
-                      {
-                        label: 'CPU Usage %',
-                        data: metricsData?.cpu || [],
-                        borderColor: 'rgb(59, 130, 246)',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        tension: 0.4,
-                      },
-                      {
-                        label: 'Memory Usage %',
-                        data: metricsData?.memory || [],
-                        borderColor: 'rgb(16, 185, 129)',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        tension: 0.4,
-                      },
-                      {
-                        label: 'Disk Usage %',
-                        data: metricsData?.disk || [],
-                        borderColor: 'rgb(245, 158, 11)',
-                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                        tension: 0.4,
-                      }
-                    ],
-                  }}
-                  options={{
-                    responsive: true,
-                    plugins: { 
-                      legend: { position: 'top' as const },
-                      title: { display: true, text: 'Resource Usage Over Time' }
-                    },
-                    scales: { 
-                      y: { beginAtZero: true, max: 100 }
-                    },
-                  }}
-                />
-              </CardContent>
-            </Card>
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger className="w-32" data-testid="status-filter">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="healthy">Healthy</SelectItem>
+                  <SelectItem value="warning">Warning</SelectItem>
+                  <SelectItem value="critical">Critical</SelectItem>
+                </SelectContent>
+              </Select>
 
-            {/* Alert Distribution */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Alert Distribution</CardTitle>
-                <CardDescription>Alert severity breakdown</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Doughnut
-                  data={{
-                    labels: alertsAnalytics?.labels || ['Critical', 'Warning', 'Info'],
-                    datasets: [
-                      {
-                        data: alertsAnalytics?.values || [0, 0, 0],
-                        backgroundColor: [
-                          'rgba(239, 68, 68, 0.8)',
-                          'rgba(245, 158, 11, 0.8)',
-                          'rgba(59, 130, 246, 0.8)',
-                        ],
-                        borderWidth: 2,
-                      },
-                    ],
-                  }}
-                  options={{
-                    responsive: true,
-                    plugins: { 
-                      legend: { position: 'right' as const },
-                      title: { display: true, text: 'Alert Severity Breakdown' }
-                    },
-                  }}
-                />
-              </CardContent>
-            </Card>
+              <Select value={selectedSeverity} onValueChange={setSelectedSeverity}>
+                <SelectTrigger className="w-32" data-testid="severity-filter">
+                  <SelectValue placeholder="Severity" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Severity</SelectItem>
+                  <SelectItem value="info">Info</SelectItem>
+                  <SelectItem value="warning">Warning</SelectItem>
+                  <SelectItem value="critical">Critical</SelectItem>
+                </SelectContent>
+              </Select>
 
-            {/* Server Performance */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Server Alert Comparison</CardTitle>
-                <CardDescription>Alerts by server</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Bar
-                  data={{
-                    labels: alertsAnalytics?.servers || [],
-                    datasets: [
-                      {
-                        label: 'Critical Alerts',
-                        data: alertsAnalytics?.critical || [],
-                        backgroundColor: 'rgba(239, 68, 68, 0.8)',
-                      },
-                      {
-                        label: 'Warning Alerts',
-                        data: alertsAnalytics?.warning || [],
-                        backgroundColor: 'rgba(245, 158, 11, 0.8)',
-                      },
-                      {
-                        label: 'Info Alerts',
-                        data: alertsAnalytics?.info || [],
-                        backgroundColor: 'rgba(59, 130, 246, 0.8)',
-                      }
-                    ],
-                  }}
-                  options={{
-                    responsive: true,
-                    plugins: { 
-                      legend: { position: 'top' as const },
-                      title: { display: true, text: 'Alerts by Server' }
-                    },
-                    scales: { y: { beginAtZero: true } },
-                  }}
-                />
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="trends" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Historical CPU Trends</CardTitle>
-                <CardDescription>CPU usage patterns over selected time period</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Line
-                  data={{
-                    labels: trendsData?.timestamps || [],
-                    datasets: [
-                      {
-                        label: 'Average CPU',
-                        data: trendsData?.avgCpu || [],
-                        borderColor: 'rgb(59, 130, 246)',
-                        tension: 0.4,
-                      },
-                      {
-                        label: 'Peak CPU',
-                        data: trendsData?.peakCpu || [],
-                        borderColor: 'rgb(239, 68, 68)',
-                        tension: 0.4,
-                      }
-                    ],
-                  }}
-                  options={{
-                    responsive: true,
-                    plugins: { legend: { position: 'top' } },
-                    scales: {
-                      x: { type: 'time' },
-                      y: { beginAtZero: true, max: 100 },
-                    },
-                  }}
-                />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Memory Usage Patterns</CardTitle>
-                <CardDescription>Memory consumption trends and peak usage</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Line
-                  data={{
-                    labels: trendsData?.timestamps || [],
-                    datasets: [
-                      {
-                        label: 'Average Memory',
-                        data: trendsData?.avgMemory || [],
-                        borderColor: 'rgb(16, 185, 129)',
-                        tension: 0.4,
-                      },
-                      {
-                        label: 'Peak Memory',
-                        data: trendsData?.peakMemory || [],
-                        borderColor: 'rgb(245, 158, 11)',
-                        tension: 0.4,
-                      }
-                    ],
-                  }}
-                  options={{
-                    responsive: true,
-                    plugins: { legend: { position: 'top' } },
-                    scales: {
-                      x: { type: 'time' },
-                      y: { beginAtZero: true, max: 100 },
-                    },
-                  }}
-                />
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="performance" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Performance Correlation</CardTitle>
-                <CardDescription>CPU vs Memory usage correlation analysis</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Scatter
-                  data={{
-                    datasets: [
-                      {
-                        label: 'CPU vs Memory',
-                        data: performanceData?.correlation || [],
-                        backgroundColor: 'rgba(59, 130, 246, 0.6)',
-                        borderColor: 'rgba(59, 130, 246, 1)',
-                      }
-                    ],
-                  }}
-                  options={{
-                    responsive: true,
-                    plugins: { 
-                      legend: { position: 'top' as const },
-                      title: { display: true, text: 'CPU vs Memory Performance Correlation' }
-                    },
-                    scales: {
-                      x: { 
-                        title: { display: true, text: 'CPU Usage %' },
-                        beginAtZero: true,
-                        max: 100
-                      },
-                      y: { 
-                        title: { display: true, text: 'Memory Usage %' },
-                        beginAtZero: true,
-                        max: 100
-                      },
-                    },
-                  }}
-                />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Server Status Overview</CardTitle>
-                <CardDescription>Real-time server health from uploaded data</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {safeServers && safeServers.length > 0 ? (
-                    safeServers.map((server: any) => (
-                      <div key={server.id} className="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
-                        <div>
-                          <div className="font-medium">{server.hostname}</div>
-                          <div className="text-sm text-slate-400">{server.ipAddress} • {server.environment}</div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-40" data-testid="server-filter">
+                    <Filter size={16} className="mr-2" />
+                    {selectedServers.length === 0 ? 'All Servers' : `${selectedServers.length} Selected`}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-3">
+                  <div className="space-y-3">
+                    <div className="font-medium text-sm">Select Servers</div>
+                    <div className="flex items-center justify-between">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedServers(safeServers.map((s: any) => s.id))}
+                        className="text-xs h-6"
+                      >
+                        Select All
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedServers([])}
+                        className="text-xs h-6"
+                      >
+                        Clear All
+                      </Button>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto space-y-2">
+                      {safeServers.map((server: any) => (
+                        <div key={server.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={server.id}
+                            checked={selectedServers.includes(server.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedServers([...selectedServers, server.id]);
+                              } else {
+                                setSelectedServers(selectedServers.filter(id => id !== server.id));
+                              }
+                            }}
+                          />
+                          <label htmlFor={server.id} className="text-sm cursor-pointer flex-1">
+                            <div className="font-medium">{server.hostname}</div>
+                            <div className="text-xs text-slate-400">{server.environment}</div>
+                          </label>
                         </div>
-                        <div className="flex items-center space-x-3">
-                          <Badge 
-                            variant={server.status === 'healthy' ? 'default' : 
-                                    server.status === 'warning' ? 'secondary' : 'destructive'}
-                            className="capitalize"
-                          >
-                            {server.status}
-                          </Badge>
-                          <div className="text-xs text-slate-400">
-                            {server.location}
+                      ))}
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={() => {
+                  setSelectedServers([]);
+                  setSelectedEnvironment('all');
+                  setSelectedStatus('all');
+                  setSelectedSeverity('all');
+                }}
+                data-testid="clear-filters-btn"
+              >
+                <X size={16} />
+                Clear Filters
+              </Button>
+            </div>
+            <Button variant="outline" onClick={handleExportReport} data-testid="export-report-btn">
+              <Download size={16} className="mr-2" />
+              Export Report
+            </Button>
+          </div>
+        </div>
+
+        {/* Dashboard Management */}
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center">
+                  <BarChart3 className="mr-2" size={20} />
+                  Dashboard Management
+                </CardTitle>
+                <CardDescription>Create and manage custom analytics dashboards</CardDescription>
+              </div>
+              <Button onClick={handleCreateDashboard} data-testid="create-dashboard-btn">
+                <Plus size={16} className="mr-2" />
+                Create Dashboard
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center space-x-4 mb-4">
+              <Select value={selectedDashboard} onValueChange={setSelectedDashboard}>
+                <SelectTrigger className="w-64" data-testid="dashboard-selector">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {dashboards.map((dashboard) => (
+                    <SelectItem key={dashboard.id} value={dashboard.id}>
+                      {dashboard.name} {dashboard.isDefault && <Badge variant="secondary">Default</Badge>}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                onClick={() => setIsEditing(!isEditing)}
+                data-testid="edit-dashboard-btn"
+              >
+                <Settings size={16} className="mr-2" />
+                {isEditing ? 'View Mode' : 'Edit Mode'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Filter Summary */}
+        {(selectedServers.length > 0 || selectedEnvironment !== 'all' || selectedStatus !== 'all' || selectedSeverity !== 'all') && (
+          <Card className="bg-slate-800 border-slate-700 mb-6">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-slate-300">
+                  <Filter size={16} />
+                  Active Filters:
+                  {selectedEnvironment !== 'all' && (
+                    <Badge variant="secondary" className="capitalize">{selectedEnvironment}</Badge>
+                  )}
+                  {selectedStatus !== 'all' && (
+                    <Badge variant="secondary" className="capitalize">{selectedStatus}</Badge>
+                  )}
+                  {selectedSeverity !== 'all' && (
+                    <Badge variant="secondary" className="capitalize">{selectedSeverity}</Badge>
+                  )}
+                  {selectedServers.length > 0 && (
+                    <Badge variant="secondary">{selectedServers.length} Server(s)</Badge>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Analytics Tabs */}
+        <Tabs defaultValue="overview" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
+            <TabsTrigger value="trends" data-testid="tab-trends">Historical Trends</TabsTrigger>
+            <TabsTrigger value="performance" data-testid="tab-performance">Performance</TabsTrigger>
+            <TabsTrigger value="predictive" data-testid="tab-predictive">Predictive</TabsTrigger>
+            <TabsTrigger value="reports" data-testid="tab-reports">Reports</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* System Health Overview */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">System Health Trends</CardTitle>
+                  <CardDescription>Resource usage over time</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Line
+                    data={{
+                      labels: metricsData.timestamps || [],
+                      datasets: [
+                        {
+                          label: 'CPU Usage',
+                          data: metricsData.cpuUsage || [],
+                          borderColor: 'rgb(59, 130, 246)',
+                          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                          tension: 0.4,
+                        },
+                        {
+                          label: 'Memory Usage',
+                          data: metricsData.memoryUsage || [],
+                          borderColor: 'rgb(16, 185, 129)',
+                          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                          tension: 0.4,
+                        }
+                      ],
+                    }}
+                    options={chartOptions}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Alert Distribution */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Alert Distribution</CardTitle>
+                  <CardDescription>Alerts by severity level</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Doughnut
+                    data={{
+                      labels: alertsAnalytics.labels || ['Info', 'Warning', 'Critical'],
+                      datasets: [
+                        {
+                          data: alertsAnalytics.data || [0, 0, 0],
+                          backgroundColor: [
+                            'rgba(59, 130, 246, 0.8)',
+                            'rgba(251, 191, 36, 0.8)',
+                            'rgba(239, 68, 68, 0.8)',
+                          ],
+                          borderColor: [
+                            'rgb(59, 130, 246)',
+                            'rgb(251, 191, 36)',
+                            'rgb(239, 68, 68)',
+                          ],
+                          borderWidth: 2,
+                        },
+                      ],
+                    }}
+                    options={{
+                      ...chartOptions,
+                      plugins: {
+                        ...chartOptions.plugins,
+                        legend: {
+                          position: 'bottom' as const,
+                          labels: {
+                            color: '#e2e8f0'
+                          }
+                        }
+                      }
+                    }}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Performance Correlation */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Performance Correlation</CardTitle>
+                  <CardDescription>CPU vs Response Time</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Scatter
+                    data={{
+                      datasets: [
+                        {
+                          label: 'Server Performance',
+                          data: performanceData.correlation || [],
+                          backgroundColor: 'rgba(139, 92, 246, 0.6)',
+                          borderColor: 'rgb(139, 92, 246)',
+                        },
+                      ],
+                    }}
+                    options={{
+                      ...chartOptions,
+                      scales: {
+                        ...chartOptions.scales,
+                        x: {
+                          ...chartOptions.scales.x,
+                          title: {
+                            display: true,
+                            text: 'CPU Usage (%)',
+                            color: '#94a3b8'
+                          }
+                        },
+                        y: {
+                          ...chartOptions.scales.y,
+                          title: {
+                            display: true,
+                            text: 'Response Time (ms)',
+                            color: '#94a3b8'
+                          }
+                        }
+                      }
+                    }}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="trends" className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Historical CPU Trends */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">CPU Usage Trends</CardTitle>
+                  <CardDescription>Historical CPU utilization patterns</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Line
+                    data={{
+                      labels: trendsData.timestamps || [],
+                      datasets: [
+                        {
+                          label: 'Average CPU',
+                          data: trendsData.cpuTrend || [],
+                          borderColor: 'rgb(59, 130, 246)',
+                          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                          tension: 0.4,
+                        },
+                        {
+                          label: 'Peak CPU',
+                          data: trendsData.cpuPeak || [],
+                          borderColor: 'rgb(239, 68, 68)',
+                          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                          tension: 0.4,
+                        }
+                      ],
+                    }}
+                    options={chartOptions}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Memory Usage Trends */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Memory Usage Trends</CardTitle>
+                  <CardDescription>Historical memory utilization patterns</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Line
+                    data={{
+                      labels: trendsData.timestamps || [],
+                      datasets: [
+                        {
+                          label: 'Average Memory',
+                          data: trendsData.memoryTrend || [],
+                          borderColor: 'rgb(16, 185, 129)',
+                          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                          tension: 0.4,
+                        },
+                        {
+                          label: 'Peak Memory',
+                          data: trendsData.memoryPeak || [],
+                          borderColor: 'rgb(251, 191, 36)',
+                          backgroundColor: 'rgba(251, 191, 36, 0.1)',
+                          tension: 0.4,
+                        }
+                      ],
+                    }}
+                    options={chartOptions}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="performance" className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Response Time Analysis */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Response Time Analysis</CardTitle>
+                  <CardDescription>Application response time metrics</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Bar
+                    data={{
+                      labels: performanceData.serverLabels || [],
+                      datasets: [
+                        {
+                          label: 'Avg Response Time (ms)',
+                          data: performanceData.responseTimes || [],
+                          backgroundColor: 'rgba(139, 92, 246, 0.8)',
+                          borderColor: 'rgb(139, 92, 246)',
+                          borderWidth: 1,
+                        }
+                      ],
+                    }}
+                    options={{
+                      ...chartOptions,
+                      scales: {
+                        ...chartOptions.scales,
+                        y: {
+                          ...chartOptions.scales.y,
+                          beginAtZero: true,
+                          title: {
+                            display: true,
+                            text: 'Response Time (ms)',
+                            color: '#94a3b8'
+                          }
+                        }
+                      }
+                    }}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Throughput Analysis */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Throughput Analysis</CardTitle>
+                  <CardDescription>Requests per minute by server</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Bar
+                    data={{
+                      labels: performanceData.serverLabels || [],
+                      datasets: [
+                        {
+                          label: 'Requests/min',
+                          data: performanceData.throughput || [],
+                          backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                          borderColor: 'rgb(34, 197, 94)',
+                          borderWidth: 1,
+                        }
+                      ],
+                    }}
+                    options={{
+                      ...chartOptions,
+                      scales: {
+                        ...chartOptions.scales,
+                        y: {
+                          ...chartOptions.scales.y,
+                          beginAtZero: true,
+                          title: {
+                            display: true,
+                            text: 'Requests per Minute',
+                            color: '#94a3b8'
+                          }
+                        }
+                      }
+                    }}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="predictive" className="space-y-4">
+            <div className="grid grid-cols-1 gap-6">
+              {/* Predictive Insights */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Predictive Analytics</CardTitle>
+                  <CardDescription>AI-powered predictions and recommendations</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {safePredictions.length > 0 ? (
+                      safePredictions.slice(0, 5).map((prediction: any, index: number) => (
+                        <div key={index} className="p-4 bg-slate-800 rounded-lg border border-slate-700">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="font-medium text-white">{prediction.hostname}</div>
+                            <Badge variant={prediction.confidence > 0.8 ? "default" : "secondary"}>
+                              {Math.round(prediction.confidence * 100)}% confidence
+                            </Badge>
+                          </div>
+                          <p className="text-slate-300 text-sm">{prediction.prediction}</p>
+                          <div className="flex items-center gap-2 mt-2 text-xs text-slate-400">
+                            <span>Impact: {prediction.impact}</span>
+                            <span>•</span>
+                            <span>Timeframe: {prediction.timeframe}</span>
                           </div>
                         </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-slate-400">
+                        <PieChart size={48} className="mx-auto mb-4 opacity-50" />
+                        <p>No predictive data available</p>
+                        <p className="text-sm">Predictions will appear as the AI agents analyze your server data</p>
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-center text-slate-400 py-8">
-                      <BarChart3 size={48} className="mx-auto mb-4 opacity-50" />
-                      <p>Server performance data will appear here</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="predictive" className="space-y-4">
-          <div className="grid grid-cols-1 gap-6">
-            {/* AI Predictions Table */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp size={20} />
-                  AI Server Predictions
-                </CardTitle>
-                <CardDescription>Real-time AI forecasts from predictive analytics agent</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {safePredictions && safePredictions.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-slate-700">
-                            <th className="text-left p-3 font-medium">Server</th>
-                            <th className="text-left p-3 font-medium">Metric</th>
-                            <th className="text-left p-3 font-medium">Current</th>
-                            <th className="text-left p-3 font-medium">Predicted</th>
-                            <th className="text-left p-3 font-medium">Confidence</th>
-                            <th className="text-left p-3 font-medium">Time Frame</th>
-                            <th className="text-left p-3 font-medium">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {safePredictions.slice(0, 10).map((prediction: any, index: number) => {
-                            const server = safeServers.find((s: any) => s.id === prediction.serverId);
-                            const currentVal = parseFloat(prediction.currentValue);
-                            const predictedVal = parseFloat(prediction.predictedValue);
-                            const confidence = parseFloat(prediction.confidence);
-                            const timeUntil = new Date(prediction.predictionTime).getTime() - Date.now();
-                            const hoursUntil = Math.max(0, Math.round(timeUntil / (1000 * 60 * 60)));
-                            
-                            const riskLevel = predictedVal > 90 ? 'critical' : 
-                                            predictedVal > 75 ? 'high' : 
-                                            predictedVal > 60 ? 'medium' : 'low';
-                            
-                            return (
-                              <tr key={prediction.id} className="border-b border-slate-800 hover:bg-slate-800/50">
-                                <td className="p-3">
-                                  <div>
-                                    <div className="font-medium">{server?.hostname || prediction.serverId}</div>
-                                    <div className="text-xs text-slate-400">{server?.ipAddr}</div>
-                                  </div>
-                                </td>
-                                <td className="p-3">
-                                  <Badge variant="outline" className="capitalize">
-                                    {prediction.metricType}
-                                  </Badge>
-                                </td>
-                                <td className="p-3">
-                                  <span className="font-mono">{currentVal.toFixed(1)}%</span>
-                                </td>
-                                <td className="p-3">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-mono">{predictedVal.toFixed(1)}%</span>
-                                    <div className={`w-2 h-2 rounded-full ${
-                                      predictedVal > currentVal ? 'bg-red-500' : 
-                                      predictedVal < currentVal ? 'bg-green-500' : 'bg-yellow-500'
-                                    }`} />
-                                  </div>
-                                </td>
-                                <td className="p-3">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-mono">{confidence.toFixed(0)}%</span>
-                                    <div className={`h-1.5 w-12 rounded-full overflow-hidden bg-slate-700`}>
-                                      <div 
-                                        className={`h-full ${confidence > 80 ? 'bg-green-500' : confidence > 60 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                                        style={{ width: `${confidence}%` }}
-                                      />
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="p-3">
-                                  <span className="text-slate-300">{hoursUntil}h</span>
-                                </td>
-                                <td className="p-3">
-                                  <Badge 
-                                    variant={riskLevel === 'critical' ? 'destructive' : 
-                                            riskLevel === 'high' ? 'secondary' : 'default'}
-                                    className="capitalize"
-                                  >
-                                    {riskLevel}
-                                  </Badge>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="text-center text-slate-400 py-12">
-                      <TrendingUp size={48} className="mx-auto mb-4 opacity-50" />
-                      <p className="text-lg font-medium mb-2">No Predictions Available</p>
-                      <p className="text-sm">The AI predictive analytics agent is generating forecasts.</p>
-                      <p className="text-xs mt-2">Predictions require at least 20 historical data points per server.</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Prediction Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">High Risk Predictions</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-red-500">
-                    {safePredictions.filter((p: any) => parseFloat(p.predictedValue) > 75).length}
+                    )}
                   </div>
-                  <p className="text-xs text-slate-400 mt-1">Servers predicted to exceed 75%</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Average Confidence</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-blue-500">
-                    {safePredictions.length > 0 ? 
-                      (safePredictions.reduce((acc: number, p: any) => acc + parseFloat(p.confidence), 0) / safePredictions.length).toFixed(0) : 0}%
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1">AI prediction accuracy</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Total Predictions</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-green-500">
-                    {safePredictions.length}
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1">Active forecasts</p>
                 </CardContent>
               </Card>
             </div>
-          </div>
-        </TabsContent>
+          </TabsContent>
 
-        <TabsContent value="reports" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Scheduled Reports</CardTitle>
-                <CardDescription>Automated report generation and delivery</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <Button className="w-full justify-start" variant="outline" data-testid="schedule-daily-report">
-                    <Calendar size={16} className="mr-2" />
-                    Daily System Summary
-                  </Button>
-                  <Button className="w-full justify-start" variant="outline" data-testid="schedule-weekly-report">
-                    <Calendar size={16} className="mr-2" />
-                    Weekly Performance Report
-                  </Button>
-                  <Button className="w-full justify-start" variant="outline" data-testid="schedule-monthly-report">
-                    <Calendar size={16} className="mr-2" />
-                    Monthly Compliance Report
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Report Templates</CardTitle>
-                <CardDescription>Pre-configured report formats</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <Button className="w-full justify-start" variant="outline" data-testid="executive-template">
-                    <Eye size={16} className="mr-2" />
-                    Executive Summary
-                  </Button>
-                  <Button className="w-full justify-start" variant="outline" data-testid="technical-template">
-                    <BarChart3 size={16} className="mr-2" />
-                    Technical Deep Dive
-                  </Button>
-                  <Button className="w-full justify-start" variant="outline" data-testid="compliance-template">
-                    <PieChart size={16} className="mr-2" />
-                    Compliance Audit
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Export Options</CardTitle>
-                <CardDescription>Download reports in various formats</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <Button className="w-full justify-start" variant="outline" onClick={handleExportReport} data-testid="export-json">
-                    <Download size={16} className="mr-2" />
-                    Export as JSON
-                  </Button>
-                  <Button className="w-full justify-start" variant="outline" data-testid="export-pdf">
-                    <Download size={16} className="mr-2" />
-                    Export as PDF
-                  </Button>
-                  <Button className="w-full justify-start" variant="outline" data-testid="export-excel">
-                    <Download size={16} className="mr-2" />
-                    Export as Excel
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
-        </div>
+          <TabsContent value="reports" className="space-y-4">
+            <div className="grid grid-cols-1 gap-6">
+              {/* Report Generation */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Generate Reports</CardTitle>
+                  <CardDescription>Create comprehensive analytics reports</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <Card className="p-4">
+                        <h4 className="font-medium mb-2">Performance Report</h4>
+                        <p className="text-sm text-slate-400 mb-4">CPU, memory, and response time analysis</p>
+                        <Button size="sm" className="w-full">Generate</Button>
+                      </Card>
+                      <Card className="p-4">
+                        <h4 className="font-medium mb-2">Security Report</h4>
+                        <p className="text-sm text-slate-400 mb-4">Security alerts and compliance status</p>
+                        <Button size="sm" className="w-full">Generate</Button>
+                      </Card>
+                      <Card className="p-4">
+                        <h4 className="font-medium mb-2">Trend Analysis</h4>
+                        <p className="text-sm text-slate-400 mb-4">Historical trends and forecasting</p>
+                        <Button size="sm" className="w-full">Generate</Button>
+                      </Card>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
