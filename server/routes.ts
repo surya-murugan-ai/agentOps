@@ -567,6 +567,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Individual delete endpoints
+  app.delete("/api/metrics/:id", async (req, res) => {
+    try {
+      await storage.deleteMetric(req.params.id);
+      res.json({ success: true, message: "Metric deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting metric:", error);
+      res.status(500).json({ error: "Failed to delete metric" });
+    }
+  });
+
+  app.delete("/api/alerts/:id", async (req, res) => {
+    try {
+      await storage.deleteAlert(req.params.id);
+      res.json({ success: true, message: "Alert deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting alert:", error);
+      res.status(500).json({ error: "Failed to delete alert" });
+    }
+  });
+
+  app.delete("/api/remediation-actions/:id", async (req, res) => {
+    try {
+      await storage.deleteRemediationAction(req.params.id);
+      res.json({ success: true, message: "Remediation action deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting remediation action:", error);
+      res.status(500).json({ error: "Failed to delete remediation action" });
+    }
+  });
+
+  app.delete("/api/audit-logs/:id", async (req, res) => {
+    try {
+      await storage.deleteAuditLog(req.params.id);
+      res.json({ success: true, message: "Audit log deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting audit log:", error);
+      res.status(500).json({ error: "Failed to delete audit log" });
+    }
+  });
+
   app.get("/api/export/:dataType", async (req, res) => {
     try {
       const { dataType } = req.params;

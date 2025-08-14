@@ -52,11 +52,25 @@ export default function DataManagementPage() {
       const response = await fetch(`/api/servers/${serverId}`, {
         method: 'DELETE',
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete server');
+      }
+      
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/servers'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/metrics'] });
       toast({ title: "Server deleted successfully" });
+    },
+    onError: (error) => {
+      toast({ 
+        title: "Delete Failed", 
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive" 
+      });
     },
   });
 
@@ -65,17 +79,36 @@ export default function DataManagementPage() {
       const response = await fetch('/api/metrics/clear', {
         method: 'POST',
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to clear metrics');
+      }
+      
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/metrics/range'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/metrics'] });
       toast({ title: "Metrics data cleared successfully" });
+    },
+    onError: (error) => {
+      toast({ 
+        title: "Clear Failed", 
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive" 
+      });
     },
   });
 
   const exportDataMutation = useMutation({
     mutationFn: async (dataType: string) => {
       const response = await fetch(`/api/export/${dataType}`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to export ${dataType} data`);
+      }
+      
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -87,22 +120,137 @@ export default function DataManagementPage() {
     onSuccess: (_, dataType) => {
       toast({ title: `${dataType} data exported successfully` });
     },
+    onError: (error) => {
+      toast({ 
+        title: "Export Failed", 
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive" 
+      });
+    },
   });
 
-  const filteredServers = servers?.filter((server: any) =>
+  // Add delete mutations for other data types
+  const deleteMetricMutation = useMutation({
+    mutationFn: async (metricId: string) => {
+      const response = await fetch(`/api/metrics/${metricId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete metric');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/metrics/range'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/metrics'] });
+      toast({ title: "Metric deleted successfully" });
+    },
+    onError: (error) => {
+      toast({ 
+        title: "Delete Failed", 
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const deleteAlertMutation = useMutation({
+    mutationFn: async (alertId: string) => {
+      const response = await fetch(`/api/alerts/${alertId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete alert');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/alerts', {}] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/metrics'] });
+      toast({ title: "Alert deleted successfully" });
+    },
+    onError: (error) => {
+      toast({ 
+        title: "Delete Failed", 
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const deleteRemediationMutation = useMutation({
+    mutationFn: async (remediationId: string) => {
+      const response = await fetch(`/api/remediation-actions/${remediationId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete remediation action');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/remediation-actions', {}] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/metrics'] });
+      toast({ title: "Remediation action deleted successfully" });
+    },
+    onError: (error) => {
+      toast({ 
+        title: "Delete Failed", 
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const deleteAuditLogMutation = useMutation({
+    mutationFn: async (auditLogId: string) => {
+      const response = await fetch(`/api/audit-logs/${auditLogId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete audit log');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/audit-logs', {}] });
+      toast({ title: "Audit log deleted successfully" });
+    },
+    onError: (error) => {
+      toast({ 
+        title: "Delete Failed", 
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const filteredServers = Array.isArray(servers) ? servers.filter((server: any) =>
     server.hostname.toLowerCase().includes(searchTerm.toLowerCase()) ||
     server.ipAddress.includes(searchTerm) ||
     server.environment.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ) : [];
 
-  const filteredMetrics = metrics?.filter((metric: any) =>
+  const filteredMetrics = Array.isArray(metrics) ? metrics.filter((metric: any) =>
     metric.server?.hostname.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ) : [];
 
-  const filteredAlerts = alerts?.filter((alert: any) =>
+  const filteredAlerts = Array.isArray(alerts) ? alerts.filter((alert: any) =>
     alert.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     alert.server?.hostname.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ) : [];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -180,12 +328,12 @@ export default function DataManagementPage() {
 
         <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
           <TabsList className="bg-dark-surface border-dark-border">
-            <TabsTrigger value="servers">Servers ({servers?.length || 0})</TabsTrigger>
-            <TabsTrigger value="metrics">Metrics ({metrics?.length || 0})</TabsTrigger>
-            <TabsTrigger value="alerts">Alerts ({alerts?.length || 0})</TabsTrigger>
-            <TabsTrigger value="agents">Agents ({agents?.length || 0})</TabsTrigger>
-            <TabsTrigger value="remediations">Remediations ({remediations?.length || 0})</TabsTrigger>
-            <TabsTrigger value="audit">Audit Logs ({auditLogs?.length || 0})</TabsTrigger>
+            <TabsTrigger value="servers">Servers ({Array.isArray(servers) ? servers.length : 0})</TabsTrigger>
+            <TabsTrigger value="metrics">Metrics ({Array.isArray(metrics) ? metrics.length : 0})</TabsTrigger>
+            <TabsTrigger value="alerts">Alerts ({Array.isArray(alerts) ? alerts.length : 0})</TabsTrigger>
+            <TabsTrigger value="agents">Agents ({Array.isArray(agents) ? agents.length : 0})</TabsTrigger>
+            <TabsTrigger value="remediations">Remediations ({Array.isArray(remediations) ? remediations.length : 0})</TabsTrigger>
+            <TabsTrigger value="audit">Audit Logs ({Array.isArray(auditLogs) ? auditLogs.length : 0})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="servers" className="space-y-4">
@@ -226,7 +374,7 @@ export default function DataManagementPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredServers?.map((server: any) => (
+                      {Array.isArray(filteredServers) && filteredServers.map((server: any) => (
                         <TableRow key={server.id}>
                           <TableCell className="text-white font-medium">{server.hostname}</TableCell>
                           <TableCell className="text-slate-300">{server.ipAddress}</TableCell>
@@ -322,10 +470,11 @@ export default function DataManagementPage() {
                         <TableHead className="text-slate-300">Network Latency</TableHead>
                         <TableHead className="text-slate-300">Process Count</TableHead>
                         <TableHead className="text-slate-300">Timestamp</TableHead>
+                        <TableHead className="text-slate-300">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredMetrics?.slice(0, 50).map((metric: any) => (
+                      {Array.isArray(filteredMetrics) && filteredMetrics.slice(0, 50).map((metric: any) => (
                         <TableRow key={metric.id}>
                           <TableCell className="text-white font-medium">
                             {metric.server?.hostname || 'Unknown'}
@@ -341,6 +490,22 @@ export default function DataManagementPage() {
                           <TableCell className="text-slate-300">{metric.processCount}</TableCell>
                           <TableCell className="text-slate-300">
                             {new Date(metric.timestamp).toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-error hover:text-error"
+                              onClick={() => {
+                                if (confirm("Are you sure you want to delete this metric?")) {
+                                  deleteMetricMutation.mutate(metric.id);
+                                }
+                              }}
+                              disabled={deleteMetricMutation.isPending}
+                              data-testid={`button-delete-metric-${metric.id}`}
+                            >
+                              <Trash2 size={16} />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -386,10 +551,11 @@ export default function DataManagementPage() {
                         <TableHead className="text-slate-300">Metric</TableHead>
                         <TableHead className="text-slate-300">Value</TableHead>
                         <TableHead className="text-slate-300">Created</TableHead>
+                        <TableHead className="text-slate-300">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredAlerts?.map((alert: any) => (
+                      {Array.isArray(filteredAlerts) && filteredAlerts.map((alert: any) => (
                         <TableRow key={alert.id}>
                           <TableCell className="text-white font-medium">{alert.title}</TableCell>
                           <TableCell className="text-slate-300">
@@ -411,6 +577,22 @@ export default function DataManagementPage() {
                           </TableCell>
                           <TableCell className="text-slate-300">
                             {new Date(alert.createdAt).toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-error hover:text-error"
+                              onClick={() => {
+                                if (confirm("Are you sure you want to delete this alert?")) {
+                                  deleteAlertMutation.mutate(alert.id);
+                                }
+                              }}
+                              disabled={deleteAlertMutation.isPending}
+                              data-testid={`button-delete-alert-${alert.id}`}
+                            >
+                              <Trash2 size={16} />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -450,7 +632,7 @@ export default function DataManagementPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {agents?.map((agent: any) => (
+                      {Array.isArray(agents) && agents.map((agent: any) => (
                         <TableRow key={agent.id}>
                           <TableCell className="text-white font-medium">{agent.name}</TableCell>
                           <TableCell className="text-slate-300">{agent.type}</TableCell>
@@ -498,10 +680,11 @@ export default function DataManagementPage() {
                         <TableHead className="text-slate-300">Confidence</TableHead>
                         <TableHead className="text-slate-300">Downtime Est.</TableHead>
                         <TableHead className="text-slate-300">Created</TableHead>
+                        <TableHead className="text-slate-300">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {remediations?.map((remediation: any) => (
+                      {Array.isArray(remediations) && remediations.map((remediation: any) => (
                         <TableRow key={remediation.id}>
                           <TableCell className="text-white font-medium">{remediation.title}</TableCell>
                           <TableCell className="text-slate-300">
@@ -517,6 +700,22 @@ export default function DataManagementPage() {
                           <TableCell className="text-slate-300">{remediation.estimatedDowntime}s</TableCell>
                           <TableCell className="text-slate-300">
                             {new Date(remediation.createdAt).toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-error hover:text-error"
+                              onClick={() => {
+                                if (confirm("Are you sure you want to delete this remediation action?")) {
+                                  deleteRemediationMutation.mutate(remediation.id);
+                                }
+                              }}
+                              disabled={deleteRemediationMutation.isPending}
+                              data-testid={`button-delete-remediation-${remediation.id}`}
+                            >
+                              <Trash2 size={16} />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -552,10 +751,11 @@ export default function DataManagementPage() {
                         <TableHead className="text-slate-300">Details</TableHead>
                         <TableHead className="text-slate-300">Impact</TableHead>
                         <TableHead className="text-slate-300">Timestamp</TableHead>
+                        <TableHead className="text-slate-300">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {auditLogs?.slice(0, 50).map((log: any) => (
+                      {Array.isArray(auditLogs) && auditLogs.slice(0, 50).map((log: any) => (
                         <TableRow key={log.id}>
                           <TableCell className="text-white font-medium">{log.action}</TableCell>
                           <TableCell className="text-slate-300">{log.userId || 'System'}</TableCell>
@@ -568,6 +768,22 @@ export default function DataManagementPage() {
                           <TableCell className="text-slate-300 max-w-xs truncate">{log.impact}</TableCell>
                           <TableCell className="text-slate-300">
                             {new Date(log.timestamp).toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-error hover:text-error"
+                              onClick={() => {
+                                if (confirm("Are you sure you want to delete this audit log?")) {
+                                  deleteAuditLogMutation.mutate(log.id);
+                                }
+                              }}
+                              disabled={deleteAuditLogMutation.isPending}
+                              data-testid={`button-delete-audit-${log.id}`}
+                            >
+                              <Trash2 size={16} />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}

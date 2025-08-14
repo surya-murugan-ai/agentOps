@@ -1,8 +1,9 @@
 import {
-  users, servers, serverMetrics, agents, alerts, remediationActions, auditLogs, anomalies, predictions,
+  users, servers, serverMetrics, agents, alerts, remediationActions, auditLogs, anomalies, predictions, agentSettings,
   type User, type InsertUser, type Server, type InsertServer, type ServerMetrics, type InsertServerMetrics,
   type Agent, type InsertAgent, type Alert, type InsertAlert, type RemediationAction, type InsertRemediationAction,
-  type AuditLog, type InsertAuditLog, type Anomaly, type InsertAnomaly, type Prediction, type InsertPrediction
+  type AuditLog, type InsertAuditLog, type Anomaly, type InsertAnomaly, type Prediction, type InsertPrediction,
+  type AgentSettings, type InsertAgentSettings
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, count, sql } from "drizzle-orm";
@@ -26,6 +27,10 @@ export interface IStorage {
   getLatestMetrics(): Promise<(ServerMetrics & { server: Server })[]>;
   getMetricsInTimeRange(startTime: Date, endTime: Date): Promise<ServerMetrics[]>;
   clearAllMetrics(): Promise<void>;
+  deleteMetric(id: string): Promise<void>;
+  deleteAlert(id: string): Promise<void>;
+  deleteRemediationAction(id: string): Promise<void>;
+  deleteAuditLog(id: string): Promise<void>;
 
   // Agents
   getAllAgents(): Promise<Agent[]>;
@@ -126,6 +131,22 @@ export class DatabaseStorage implements IStorage {
 
   async clearAllMetrics(): Promise<void> {
     await db.delete(serverMetrics);
+  }
+
+  async deleteMetric(id: string): Promise<void> {
+    await db.delete(serverMetrics).where(eq(serverMetrics.id, id));
+  }
+
+  async deleteAlert(id: string): Promise<void> {
+    await db.delete(alerts).where(eq(alerts.id, id));
+  }
+
+  async deleteRemediationAction(id: string): Promise<void> {
+    await db.delete(remediationActions).where(eq(remediationActions.id, id));
+  }
+
+  async deleteAuditLog(id: string): Promise<void> {
+    await db.delete(auditLogs).where(eq(auditLogs.id, id));
   }
 
   // Server Metrics
