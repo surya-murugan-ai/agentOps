@@ -94,6 +94,21 @@ export default function AdvancedAnalytics() {
     refetchInterval: 30000,
   });
 
+  // Fetch real predictions data
+  const { data: predictions = [] } = useQuery({
+    queryKey: ['/api/predictions'],
+    refetchInterval: 60000,
+  });
+
+  const { data: servers = [] } = useQuery({
+    queryKey: ['/api/servers'],
+    refetchInterval: 60000,
+  });
+
+  // Type-safe predictions data
+  const safePredictions = (predictions as any[]) || [];
+  const safeServers = (servers as any[]) || [];
+
   // Chart configurations
   const createLineChart = (data: any, title: string) => ({
     type: 'line' as const,
@@ -511,53 +526,150 @@ export default function AdvancedAnalytics() {
         </TabsContent>
 
         <TabsContent value="predictive" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6">
+            {/* AI Predictions Table */}
             <Card>
               <CardHeader>
-                <CardTitle>Predictive Maintenance</CardTitle>
-                <CardDescription>AI-powered failure prediction and maintenance scheduling</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Line
-                  data={predictiveMaintenanceData}
-                  options={{
-                    responsive: true,
-                    plugins: { legend: { position: 'top' } },
-                    scales: { y: { beginAtZero: true } },
-                  }}
-                />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Risk Assessment</CardTitle>
-                <CardDescription>Server failure risk analysis</CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp size={20} />
+                  AI Server Predictions
+                </CardTitle>
+                <CardDescription>Real-time AI forecasts from predictive analytics agent</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {performanceData?.riskAssessment?.map((server: any, index: number) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
-                      <div>
-                        <div className="font-medium">{server.hostname}</div>
-                        <div className="text-sm text-slate-400">{server.riskFactors?.join(', ')}</div>
-                      </div>
-                      <Badge 
-                        variant={server.riskLevel === 'high' ? 'destructive' : 
-                                server.riskLevel === 'medium' ? 'secondary' : 'default'}
-                      >
-                        {server.riskLevel} risk
-                      </Badge>
+                  {safePredictions && safePredictions.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-slate-700">
+                            <th className="text-left p-3 font-medium">Server</th>
+                            <th className="text-left p-3 font-medium">Metric</th>
+                            <th className="text-left p-3 font-medium">Current</th>
+                            <th className="text-left p-3 font-medium">Predicted</th>
+                            <th className="text-left p-3 font-medium">Confidence</th>
+                            <th className="text-left p-3 font-medium">Time Frame</th>
+                            <th className="text-left p-3 font-medium">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {safePredictions.slice(0, 10).map((prediction: any, index: number) => {
+                            const server = safeServers.find((s: any) => s.id === prediction.serverId);
+                            const currentVal = parseFloat(prediction.currentValue);
+                            const predictedVal = parseFloat(prediction.predictedValue);
+                            const confidence = parseFloat(prediction.confidence);
+                            const timeUntil = new Date(prediction.predictionTime).getTime() - Date.now();
+                            const hoursUntil = Math.max(0, Math.round(timeUntil / (1000 * 60 * 60)));
+                            
+                            const riskLevel = predictedVal > 90 ? 'critical' : 
+                                            predictedVal > 75 ? 'high' : 
+                                            predictedVal > 60 ? 'medium' : 'low';
+                            
+                            return (
+                              <tr key={prediction.id} className="border-b border-slate-800 hover:bg-slate-800/50">
+                                <td className="p-3">
+                                  <div>
+                                    <div className="font-medium">{server?.hostname || prediction.serverId}</div>
+                                    <div className="text-xs text-slate-400">{server?.ipAddr}</div>
+                                  </div>
+                                </td>
+                                <td className="p-3">
+                                  <Badge variant="outline" className="capitalize">
+                                    {prediction.metricType}
+                                  </Badge>
+                                </td>
+                                <td className="p-3">
+                                  <span className="font-mono">{currentVal.toFixed(1)}%</span>
+                                </td>
+                                <td className="p-3">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono">{predictedVal.toFixed(1)}%</span>
+                                    <div className={`w-2 h-2 rounded-full ${
+                                      predictedVal > currentVal ? 'bg-red-500' : 
+                                      predictedVal < currentVal ? 'bg-green-500' : 'bg-yellow-500'
+                                    }`} />
+                                  </div>
+                                </td>
+                                <td className="p-3">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono">{confidence.toFixed(0)}%</span>
+                                    <div className={`h-1.5 w-12 rounded-full overflow-hidden bg-slate-700`}>
+                                      <div 
+                                        className={`h-full ${confidence > 80 ? 'bg-green-500' : confidence > 60 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                                        style={{ width: `${confidence}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="p-3">
+                                  <span className="text-slate-300">{hoursUntil}h</span>
+                                </td>
+                                <td className="p-3">
+                                  <Badge 
+                                    variant={riskLevel === 'critical' ? 'destructive' : 
+                                            riskLevel === 'high' ? 'secondary' : 'default'}
+                                    className="capitalize"
+                                  >
+                                    {riskLevel}
+                                  </Badge>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
-                  )) || (
-                    <div className="text-center text-slate-400 py-8">
+                  ) : (
+                    <div className="text-center text-slate-400 py-12">
                       <TrendingUp size={48} className="mx-auto mb-4 opacity-50" />
-                      <p>Risk assessment data will appear here</p>
+                      <p className="text-lg font-medium mb-2">No Predictions Available</p>
+                      <p className="text-sm">The AI predictive analytics agent is generating forecasts.</p>
+                      <p className="text-xs mt-2">Predictions require at least 20 historical data points per server.</p>
                     </div>
                   )}
                 </div>
               </CardContent>
             </Card>
+
+            {/* Prediction Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">High Risk Predictions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-red-500">
+                    {safePredictions.filter((p: any) => parseFloat(p.predictedValue) > 75).length}
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">Servers predicted to exceed 75%</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Average Confidence</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-blue-500">
+                    {safePredictions.length > 0 ? 
+                      (safePredictions.reduce((acc: number, p: any) => acc + parseFloat(p.confidence), 0) / safePredictions.length).toFixed(0) : 0}%
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">AI prediction accuracy</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Total Predictions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-500">
+                    {safePredictions.length}
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">Active forecasts</p>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </TabsContent>
 
