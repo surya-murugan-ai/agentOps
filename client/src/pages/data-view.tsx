@@ -392,18 +392,8 @@ export default function DataViewPage() {
                   }`}
                   onClick={() => {
                     setSelectedTable(source.key);
-                    // Navigate to appropriate detail page when clicking
-                    if (source.key === "alerts") {
-                      setLocation("/alerts");
-                    } else if (source.key === "remediations") {
-                      setLocation("/remediations");
-                    } else if (source.key === "audit") {
-                      setLocation("/audit-logs");
-                    } else if (source.key === "servers") {
-                      setLocation("/servers");
-                    } else if (source.key === "metrics") {
-                      setLocation("/analytics");
-                    }
+                    // Only navigate to other pages for non-data viewing items
+                    // Keep metrics, servers, alerts, remediations, and audit data in this view
                   }}
                   data-testid={`data-source-${source.key}`}
                 >
