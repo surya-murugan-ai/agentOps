@@ -99,6 +99,11 @@ export default function Sidebar() {
             Data Management
           </div>
           
+          <Link href="/data-view" className={getNavItemClass("/data-view")} data-testid="nav-data-view">
+            <BarChart3 size={20} />
+            <span>View Data</span>
+          </Link>
+          
           <Link href="/data-upload" className={getNavItemClass("/data-upload")} data-testid="nav-data-upload">
             <Upload size={20} />
             <span>Upload Data</span>

@@ -12,6 +12,7 @@ import RemediationsPage from "@/pages/remediations";
 import AuditPage from "@/pages/audit";
 import AnalyticsPage from "@/pages/analytics";
 import DataUploadPage from "@/pages/data-upload";
+import DataViewPage from "@/pages/data-view";
 import DataManagementPage from "@/pages/data-management";
 import NotFound from "@/pages/not-found";
 
@@ -27,6 +28,7 @@ function Router() {
       <Route path="/remediations" component={RemediationsPage} />
       <Route path="/audit" component={AuditPage} />
       <Route path="/analytics" component={AnalyticsPage} />
+      <Route path="/data-view" component={DataViewPage} />
       <Route path="/data-upload" component={DataUploadPage} />
       <Route path="/data-management" component={DataManagementPage} />
       <Route component={NotFound} />
