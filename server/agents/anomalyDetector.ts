@@ -301,7 +301,7 @@ export class AnomalyDetectorAgent implements Agent {
         severity: mappedSeverity,
         metricType: anomaly.metricType,
         metricValue: anomaly.confidence.toString(),
-        threshold: "AI-determined",
+        threshold: "0.0",
       });
 
       // Log the AI detection

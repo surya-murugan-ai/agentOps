@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import Sidebar from "@/components/dashboard/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -25,11 +26,11 @@ export default function DataViewPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedTable, setSelectedTable] = useState("servers");
+  const [_, setLocation] = useLocation();
 
-  // Fetch data for different tables
+  // Fetch data for different tables - always fetch counts for buttons
   const { data: servers, isLoading: serversLoading } = useQuery({
-    queryKey: ["/api/servers"],
-    enabled: selectedTable === "servers" || selectedTable === "metrics" || selectedTable === "alerts" || selectedTable === "remediations"
+    queryKey: ["/api/servers"]
   });
 
   const { data: metrics, isLoading: metricsLoading } = useQuery({
@@ -42,23 +43,19 @@ export default function DataViewPage() {
         throw new Error('Failed to fetch metrics');
       }
       return response.json();
-    },
-    enabled: selectedTable === "metrics"
+    }
   });
 
   const { data: alerts, isLoading: alertsLoading } = useQuery({
-    queryKey: ["/api/alerts", {}],
-    enabled: selectedTable === "alerts"
+    queryKey: ["/api/alerts"]
   });
 
   const { data: remediations, isLoading: remediationsLoading } = useQuery({
-    queryKey: ["/api/remediation-actions", {}],
-    enabled: selectedTable === "remediations"
+    queryKey: ["/api/remediation-actions"]
   });
 
   const { data: auditLogs, isLoading: auditLoading } = useQuery({
-    queryKey: ["/api/audit-logs", {}],
-    enabled: selectedTable === "audit"
+    queryKey: ["/api/audit-logs"]
   });
 
   const getStatusColor = (status: string) => {
@@ -393,7 +390,21 @@ export default function DataViewPage() {
                       ? "bg-primary/20 border-primary/50" 
                       : "bg-dark-surface border-dark-border hover:bg-slate-700/50"
                   }`}
-                  onClick={() => setSelectedTable(source.key)}
+                  onClick={() => {
+                    setSelectedTable(source.key);
+                    // Navigate to appropriate detail page when clicking
+                    if (source.key === "alerts") {
+                      setLocation("/alerts");
+                    } else if (source.key === "remediations") {
+                      setLocation("/remediations");
+                    } else if (source.key === "audit") {
+                      setLocation("/audit-logs");
+                    } else if (source.key === "servers") {
+                      setLocation("/servers");
+                    } else if (source.key === "metrics") {
+                      setLocation("/analytics");
+                    }
+                  }}
                   data-testid={`data-source-${source.key}`}
                 >
                   <CardContent className="p-4">
