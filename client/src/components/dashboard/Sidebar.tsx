@@ -27,7 +27,7 @@ export default function Sidebar() {
         </Link>
       </div>
       
-      <nav className="p-4 space-y-1">
+      <nav className="p-4 space-y-1 pb-32 overflow-y-auto">
         {/* Overview Section */}
         <Link href="/" className={getNavItemClass("/")} data-testid="nav-dashboard">
           <BarChart3 size={20} />
@@ -111,8 +111,8 @@ export default function Sidebar() {
         </div>
       </nav>
 
-      <div className="absolute bottom-4 left-4 right-4">
-        <div className="bg-slate-700/50 rounded-lg p-3" data-testid="system-status">
+      <div className="absolute bottom-4 left-4 right-4 z-10">
+        <div className="bg-slate-700/90 backdrop-blur-sm rounded-lg p-3 border border-slate-600/30" data-testid="system-status">
           <div className="flex items-center space-x-2 mb-2">
             <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
             <span className="text-xs font-medium text-slate-300">System Status</span>
