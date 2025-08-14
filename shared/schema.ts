@@ -63,63 +63,70 @@ export const agents = pgTable("agents", {
   config: jsonb("config").$type<Record<string, any>>().default({}),
 });
 
-// Alerts table - Updated to match required structure  
+// Alerts table - Updated to match template structure
 export const alerts = pgTable("alerts", {
-  // Primary structure matching the required format
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`), // AlertID (keeping original primary key)
-  serverId: varchar("server_id").notNull().references(() => servers.id), // ServerID  
-  timestamp: timestamp("timestamp").defaultNow(), // Timestamp
-  metricType: text("metric_type").notNull(), // Metric (renamed from existing field)
-  metricValue: decimal("metric_value", { precision: 10, scale: 3 }), // Value (renamed from existing field)
-  threshold: decimal("threshold", { precision: 10, scale: 3 }), // Threshold
-  severity: severityLevelEnum("severity").notNull(), // Severity
-  description: text("description"), // Description
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  hostname: text("hostname").notNull(), // Direct hostname field from template
+  title: text("title"), // Title field from template  
+  description: text("description"), // Description field from template
+  severity: text("severity").notNull(), // Severity (MEDIUM, HIGH, LOW from template)
+  metricType: text("metric_type"), // metricType from template
+  metricValue: decimal("metric_value", { precision: 10, scale: 3 }), // metricValue from template
+  threshold: decimal("threshold", { precision: 10, scale: 3 }), // threshold from template
   
-  // Keep existing fields for internal functionality
+  // Internal fields for system functionality
+  serverId: varchar("server_id").references(() => servers.id), // Derived from hostname lookup
   agentId: varchar("agent_id").references(() => agents.id),
-  title: text("title"),
   status: alertStatusEnum("status").notNull().default("active"),
+  timestamp: timestamp("timestamp").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
   acknowledgedAt: timestamp("acknowledged_at"),
   resolvedAt: timestamp("resolved_at"),
   acknowledgedBy: varchar("acknowledged_by").references(() => users.id),
 });
 
-// Remediation actions
+// Remediation actions - Updated to match template structure
 export const remediationActions = pgTable("remediation_actions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  hostname: text("hostname"), // hostname field from template
+  title: text("title"), // title field from template
+  description: text("description"), // description field from template  
+  actionType: text("action_type"), // actionType field from template
+  confidence: text("confidence"), // confidence field from template (used as remediation ID like REM-00001)
+  estimatedDowntime: text("estimated_downtime"), // estimatedDowntime field from template
+  status: text("status").notNull().default("pending"), // status field from template (Failed, Completed, etc.)
+  
+  // Internal fields for system functionality
   alertId: varchar("alert_id").references(() => alerts.id),
-  serverId: varchar("server_id").notNull().references(() => servers.id),
+  serverId: varchar("server_id").references(() => servers.id), // Derived from hostname lookup
   agentId: varchar("agent_id").references(() => agents.id),
-  title: text("title").notNull(),
-  description: text("description").notNull(),
-  actionType: text("action_type").notNull(), // restart_service, clear_cache, cleanup_files, optimize_memory
-  confidence: decimal("confidence", { precision: 5, scale: 2 }).notNull(),
-  estimatedDowntime: integer("estimated_downtime").default(0), // in seconds
-  requiresApproval: boolean("requires_approval").notNull().default(true),
-  status: remediationStatusEnum("status").notNull().default("pending"),
   command: text("command"),
+  requiresApproval: boolean("requires_approval").notNull().default(true),
+  approvedBy: varchar("approved_by").references(() => users.id),
   parameters: jsonb("parameters").$type<Record<string, any>>().default({}),
+  result: jsonb("result").$type<Record<string, any>>(),
   createdAt: timestamp("created_at").defaultNow(),
   approvedAt: timestamp("approved_at"),
-  approvedBy: varchar("approved_by").references(() => users.id),
   executedAt: timestamp("executed_at"),
   completedAt: timestamp("completed_at"),
-  result: jsonb("result").$type<Record<string, any>>(),
 });
 
-// Audit logs
+// Audit logs - Updated to match template structure
 export const auditLogs = pgTable("audit_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  hostname: text("hostname"), // hostname field from template
+  agentName: text("agent_name"), // agentName field from template
+  action: text("action").notNull(), // action field from template (AlertAcknowledged, ApprovalGranted, etc.)
+  details: text("details").notNull(), // details field from template
+  status: text("status").notNull(), // status field from template (Success, Failed, etc.)
+  impact: text("impact"), // impact field from template
+  timestamp: timestamp("timestamp").defaultNow(), // timestamp field from template
+  
+  // Internal fields for system functionality
   agentId: varchar("agent_id").references(() => agents.id),
-  serverId: varchar("server_id").references(() => servers.id),
+  serverId: varchar("server_id").references(() => servers.id), // Derived from hostname lookup
   userId: varchar("user_id").references(() => users.id),
-  action: text("action").notNull(),
-  details: text("details").notNull(),
-  status: text("status").notNull(), // success, failed, pending
-  impact: text("impact"),
   metadata: jsonb("metadata").$type<Record<string, any>>().default({}),
-  timestamp: timestamp("timestamp").defaultNow(),
 });
 
 // Anomaly detections

@@ -568,43 +568,39 @@ export default function DataManagementPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-slate-300">AlertID</TableHead>
-                        <TableHead className="text-slate-300">ServerID</TableHead>
-                        <TableHead className="text-slate-300">Timestamp</TableHead>
-                        <TableHead className="text-slate-300">Metric</TableHead>
-                        <TableHead className="text-slate-300">Value</TableHead>
-                        <TableHead className="text-slate-300">Threshold</TableHead>
-                        <TableHead className="text-slate-300">Severity</TableHead>
+                        <TableHead className="text-slate-300">Hostname</TableHead>
+                        <TableHead className="text-slate-300">Title</TableHead>
                         <TableHead className="text-slate-300">Description</TableHead>
+                        <TableHead className="text-slate-300">Severity</TableHead>
+                        <TableHead className="text-slate-300">Metric Type</TableHead>
+                        <TableHead className="text-slate-300">Metric Value</TableHead>
+                        <TableHead className="text-slate-300">Threshold</TableHead>
                         <TableHead className="text-slate-300">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {Array.isArray(filteredAlerts) && filteredAlerts.map((alert: any) => (
                         <TableRow key={alert.id}>
-                          <TableCell className="text-white font-medium font-mono text-xs">
-                            {alert.id?.slice(0, 8)}...
+                          <TableCell className="text-white font-medium">
+                            {alert.hostname || alert.server?.hostname || 'N/A'}
                           </TableCell>
-                          <TableCell className="text-slate-300 font-mono text-xs">
-                            {alert.serverId?.slice(0, 8)}...
+                          <TableCell className="text-slate-300">
+                            {alert.title || 'Alert'}
                           </TableCell>
-                          <TableCell className="text-slate-300 text-xs">
-                            {new Date(alert.timestamp || alert.createdAt).toLocaleString()}
+                          <TableCell className="text-slate-300 max-w-xs truncate">
+                            {alert.description || 'No description'}
                           </TableCell>
-                          <TableCell className="text-white font-medium">{alert.metricType}</TableCell>
+                          <TableCell>
+                            <Badge className={getSeverityColor(alert.severity)} variant="outline">
+                              {alert.severity || 'MEDIUM'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-white font-medium">{alert.metricType || 'N/A'}</TableCell>
                           <TableCell className="text-slate-300">
                             {alert.metricValue ? parseFloat(alert.metricValue).toFixed(2) : 'N/A'}
                           </TableCell>
                           <TableCell className="text-slate-300">
                             {alert.threshold ? parseFloat(alert.threshold).toFixed(2) : 'N/A'}
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={getSeverityColor(alert.severity)} variant="outline">
-                              {alert.severity}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-slate-300 max-w-xs truncate">
-                            {alert.description || alert.title || 'No description'}
                           </TableCell>
                           <TableCell>
                             <Button 
@@ -701,33 +697,35 @@ export default function DataManagementPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="text-slate-300">Hostname</TableHead>
                         <TableHead className="text-slate-300">Title</TableHead>
-                        <TableHead className="text-slate-300">Server</TableHead>
+                        <TableHead className="text-slate-300">Description</TableHead>
                         <TableHead className="text-slate-300">Action Type</TableHead>
-                        <TableHead className="text-slate-300">Status</TableHead>
                         <TableHead className="text-slate-300">Confidence</TableHead>
-                        <TableHead className="text-slate-300">Downtime Est.</TableHead>
-                        <TableHead className="text-slate-300">Created</TableHead>
+                        <TableHead className="text-slate-300">Estimated Downtime</TableHead>
+                        <TableHead className="text-slate-300">Status</TableHead>
                         <TableHead className="text-slate-300">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {Array.isArray(remediations) && remediations.map((remediation: any) => (
                         <TableRow key={remediation.id}>
-                          <TableCell className="text-white font-medium">{remediation.title}</TableCell>
-                          <TableCell className="text-slate-300">
-                            {remediation.server?.hostname || 'Unknown'}
+                          <TableCell className="text-white font-medium">
+                            {remediation.hostname || remediation.server?.hostname || 'N/A'}
                           </TableCell>
-                          <TableCell className="text-slate-300">{remediation.actionType}</TableCell>
+                          <TableCell className="text-slate-300">
+                            {remediation.title || 'Remediation Action'}
+                          </TableCell>
+                          <TableCell className="text-slate-300 max-w-xs truncate">
+                            {remediation.description || 'No description'}
+                          </TableCell>
+                          <TableCell className="text-slate-300">{remediation.actionType || 'N/A'}</TableCell>
+                          <TableCell className="text-slate-300">{remediation.confidence || 'N/A'}</TableCell>
+                          <TableCell className="text-slate-300">{remediation.estimatedDowntime || 'N/A'}</TableCell>
                           <TableCell>
                             <Badge className={getStatusColor(remediation.status)} variant="outline">
                               {remediation.status}
                             </Badge>
-                          </TableCell>
-                          <TableCell className="text-slate-300">{remediation.confidence}%</TableCell>
-                          <TableCell className="text-slate-300">{remediation.estimatedDowntime}s</TableCell>
-                          <TableCell className="text-slate-300">
-                            {new Date(remediation.createdAt).toLocaleString()}
                           </TableCell>
                           <TableCell>
                             <Button 
@@ -773,10 +771,11 @@ export default function DataManagementPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="text-slate-300">Hostname</TableHead>
+                        <TableHead className="text-slate-300">Agent Name</TableHead>
                         <TableHead className="text-slate-300">Action</TableHead>
-                        <TableHead className="text-slate-300">User</TableHead>
-                        <TableHead className="text-slate-300">Status</TableHead>
                         <TableHead className="text-slate-300">Details</TableHead>
+                        <TableHead className="text-slate-300">Status</TableHead>
                         <TableHead className="text-slate-300">Impact</TableHead>
                         <TableHead className="text-slate-300">Timestamp</TableHead>
                         <TableHead className="text-slate-300">Actions</TableHead>
@@ -785,15 +784,20 @@ export default function DataManagementPage() {
                     <TableBody>
                       {Array.isArray(auditLogs) && auditLogs.slice(0, 50).map((log: any) => (
                         <TableRow key={log.id}>
+                          <TableCell className="text-white font-medium">
+                            {log.hostname || log.server?.hostname || 'N/A'}
+                          </TableCell>
+                          <TableCell className="text-slate-300">
+                            {log.agentName || log.agent?.name || 'System'}
+                          </TableCell>
                           <TableCell className="text-white font-medium">{log.action}</TableCell>
-                          <TableCell className="text-slate-300">{log.userId || 'System'}</TableCell>
+                          <TableCell className="text-slate-300 max-w-xs truncate">{log.details}</TableCell>
                           <TableCell>
                             <Badge className={getStatusColor(log.status)} variant="outline">
                               {log.status}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-slate-300 max-w-xs truncate">{log.details}</TableCell>
-                          <TableCell className="text-slate-300 max-w-xs truncate">{log.impact}</TableCell>
+                          <TableCell className="text-slate-300 max-w-xs truncate">{log.impact || 'N/A'}</TableCell>
                           <TableCell className="text-slate-300">
                             {new Date(log.timestamp).toLocaleString()}
                           </TableCell>

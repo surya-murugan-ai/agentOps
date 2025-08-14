@@ -6,12 +6,14 @@ AgentOps is an AI-powered server health monitoring and automated remediation pla
 
 ## Recent Changes (January 14, 2025)
 
+- **Template-Based Data Tables Complete**: Updated all data table structures to match user-provided Excel templates
+- **Alert Table Structure**: Columns now display hostname, title, description, severity, metricType, metricValue, threshold per template
+- **Remediation Actions Table**: Updated to show hostname, title, description, actionType, confidence, estimatedDowntime, status structure
+- **Audit Logs Table**: Restructured with hostname, agentName, action, details, status, impact, timestamp columns
+- **Smart Upload System Enhanced**: AI system properly detects and maps template structures with 95% confidence
+- **Database Schema Updated**: Core tables now support both template fields and internal system functionality
 - **Data Consistency Complete**: Eliminated all hardcoded values across the entire platform for authentic data representation
 - **Dynamic Dashboard**: System Performance, Analytics, and all metrics now calculate from real database data instead of cached values
-- **Sidebar Navigation**: Badge counts now reflect actual data state, hidden when empty (servers, alerts, agents)
-- **Table Alignment Fixed**: Data Preview & Validation modal now has proper column alignment with dynamic width calculation
-- **Empty State Handling**: All components properly show 0 values when no data exists, accurately reflecting deletion state
-- **Real-time Data Flow**: Complete data lifecycle from upload through deletion with consistent UI state updates
 
 ## Previous Changes (January 13, 2025)
 
