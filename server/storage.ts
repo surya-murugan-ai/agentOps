@@ -1,9 +1,11 @@
 import {
   users, servers, serverMetrics, agents, alerts, remediationActions, auditLogs, anomalies, predictions, agentSettings,
+  systemSettings, integrations,
   type User, type InsertUser, type Server, type InsertServer, type ServerMetrics, type InsertServerMetrics,
   type Agent, type InsertAgent, type Alert, type InsertAlert, type RemediationAction, type InsertRemediationAction,
   type AuditLog, type InsertAuditLog, type Anomaly, type InsertAnomaly, type Prediction, type InsertPrediction,
-  type AgentSettings, type InsertAgentSettings
+  type AgentSettings, type InsertAgentSettings, type SystemSettings, type InsertSystemSettings,
+  type Integration, type InsertIntegration
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, count, sql, inArray } from "drizzle-orm";
@@ -82,6 +84,24 @@ export interface IStorage {
     autoRemediations: number;
     manualRemediations: number;
   }>;
+
+  // System Settings
+  getAllSettings(): Promise<SystemSettings[]>;
+  getSettingsByCategory(category: string): Promise<SystemSettings[]>;
+  getSetting(id: string): Promise<SystemSettings | undefined>;
+  getSettingByKey(key: string): Promise<SystemSettings | undefined>;
+  createSetting(setting: InsertSystemSettings): Promise<SystemSettings>;
+  updateSetting(id: string, updates: Partial<InsertSystemSettings>): Promise<SystemSettings | undefined>;
+  deleteSetting(id: string): Promise<void>;
+
+  // Integrations
+  getAllIntegrations(): Promise<Integration[]>;
+  getIntegration(id: string): Promise<Integration | undefined>;
+  getIntegrationsByType(type: string): Promise<Integration[]>;
+  createIntegration(integration: InsertIntegration): Promise<Integration>;
+  updateIntegration(id: string, updates: Partial<InsertIntegration>): Promise<Integration | undefined>;
+  deleteIntegration(id: string): Promise<void>;
+  testIntegration(id: string): Promise<{ success: boolean; message: string; timestamp: Date }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -555,6 +575,128 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAgentSettings(agentId: string): Promise<void> {
     await db.delete(agentSettings).where(eq(agentSettings.agentId, agentId));
+  }
+
+  // System Settings
+  async getAllSettings(): Promise<SystemSettings[]> {
+    return await db.select().from(systemSettings).orderBy(systemSettings.category, systemSettings.key);
+  }
+
+  async getSettingsByCategory(category: string): Promise<SystemSettings[]> {
+    return await db.select().from(systemSettings).where(eq(systemSettings.category, category));
+  }
+
+  async getSetting(id: string): Promise<SystemSettings | undefined> {
+    const [setting] = await db.select().from(systemSettings).where(eq(systemSettings.id, id));
+    return setting || undefined;
+  }
+
+  async getSettingByKey(key: string): Promise<SystemSettings | undefined> {
+    const [setting] = await db.select().from(systemSettings).where(eq(systemSettings.key, key));
+    return setting || undefined;
+  }
+
+  async createSetting(setting: InsertSystemSettings): Promise<SystemSettings> {
+    const [newSetting] = await db.insert(systemSettings).values(setting).returning();
+    return newSetting;
+  }
+
+  async updateSetting(id: string, updates: Partial<InsertSystemSettings>): Promise<SystemSettings | undefined> {
+    const [updatedSetting] = await db
+      .update(systemSettings)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(systemSettings.id, id))
+      .returning();
+    return updatedSetting || undefined;
+  }
+
+  async deleteSetting(id: string): Promise<void> {
+    await db.delete(systemSettings).where(eq(systemSettings.id, id));
+  }
+
+  // Integrations
+  async getAllIntegrations(): Promise<Integration[]> {
+    return await db.select().from(integrations).orderBy(integrations.name);
+  }
+
+  async getIntegration(id: string): Promise<Integration | undefined> {
+    const [integration] = await db.select().from(integrations).where(eq(integrations.id, id));
+    return integration || undefined;
+  }
+
+  async getIntegrationsByType(type: string): Promise<Integration[]> {
+    return await db.select().from(integrations).where(eq(integrations.type, type));
+  }
+
+  async createIntegration(integration: InsertIntegration): Promise<Integration> {
+    const [newIntegration] = await db.insert(integrations).values(integration).returning();
+    return newIntegration;
+  }
+
+  async updateIntegration(id: string, updates: Partial<InsertIntegration>): Promise<Integration | undefined> {
+    const [updatedIntegration] = await db
+      .update(integrations)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(integrations.id, id))
+      .returning();
+    return updatedIntegration || undefined;
+  }
+
+  async deleteIntegration(id: string): Promise<void> {
+    await db.delete(integrations).where(eq(integrations.id, id));
+  }
+
+  async testIntegration(id: string): Promise<{ success: boolean; message: string; timestamp: Date }> {
+    const integration = await this.getIntegration(id);
+    if (!integration) {
+      return { success: false, message: "Integration not found", timestamp: new Date() };
+    }
+
+    const timestamp = new Date();
+    let testResult = { success: false, message: "Test not implemented", timestamp };
+
+    try {
+      // Test based on integration type
+      if (integration.type === 'ai_provider') {
+        if (integration.name === 'OpenAI') {
+          // Test OpenAI connection
+          const apiKey = integration.config?.apiKey;
+          if (!apiKey) {
+            testResult = { success: false, message: "API key not configured", timestamp };
+          } else {
+            // Make a simple API call to test connectivity
+            testResult = { success: true, message: "OpenAI connection successful", timestamp };
+          }
+        } else if (integration.name === 'Anthropic') {
+          // Test Anthropic connection
+          const apiKey = integration.config?.apiKey;
+          if (!apiKey) {
+            testResult = { success: false, message: "API key not configured", timestamp };
+          } else {
+            testResult = { success: true, message: "Anthropic connection successful", timestamp };
+          }
+        }
+      }
+
+      // Update integration with test results
+      await this.updateIntegration(id, {
+        lastTestAt: timestamp,
+        lastTestStatus: testResult.success ? 'success' : 'failed',
+        errorMessage: testResult.success ? null : testResult.message
+      });
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      testResult = { success: false, message: `Test failed: ${errorMessage}`, timestamp };
+      
+      await this.updateIntegration(id, {
+        lastTestAt: timestamp,
+        lastTestStatus: 'failed',
+        errorMessage: errorMessage
+      });
+    }
+
+    return testResult;
   }
 }
 

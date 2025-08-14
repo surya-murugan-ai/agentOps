@@ -258,3 +258,50 @@ export const insertAgentSettingsSchema = createInsertSchema(agentSettings).omit(
 
 export type AgentSettings = typeof agentSettings.$inferSelect;
 export type InsertAgentSettings = z.infer<typeof insertAgentSettingsSchema>;
+
+// System settings and API keys table
+export const systemSettings = pgTable("system_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  category: text("category").notNull(), // 'api_keys', 'integrations', 'system'
+  key: text("key").notNull(), // 'openai_api_key', 'anthropic_api_key', etc.
+  value: text("value"), // encrypted value
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  isSecure: boolean("is_secure").notNull().default(false), // indicates if value should be masked
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Integration configurations table
+export const integrations = pgTable("integrations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(), // 'OpenAI', 'Anthropic', 'Slack', 'PagerDuty'
+  type: text("type").notNull(), // 'ai_provider', 'notification', 'monitoring'
+  isEnabled: boolean("is_enabled").notNull().default(false),
+  config: jsonb("config").$type<Record<string, any>>().default({}),
+  lastTestAt: timestamp("last_test_at"),
+  lastTestStatus: text("last_test_status"), // 'success', 'failed', 'pending'
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Insert schemas for new tables
+export const insertSystemSettingsSchema = createInsertSchema(systemSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertIntegrationsSchema = createInsertSchema(integrations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastTestAt: true,
+});
+
+// Types for new tables
+export type SystemSettings = typeof systemSettings.$inferSelect;
+export type InsertSystemSettings = z.infer<typeof insertSystemSettingsSchema>;
+export type Integration = typeof integrations.$inferSelect;
+export type InsertIntegration = z.infer<typeof insertIntegrationsSchema>;

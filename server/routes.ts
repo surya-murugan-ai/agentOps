@@ -707,5 +707,113 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Start the agent manager
   agentManager.start();
 
+  // System Settings endpoints
+  app.get("/api/settings", async (req, res) => {
+    try {
+      const settings = await storage.getAllSettings();
+      res.json(settings);
+    } catch (error) {
+      console.error("Error fetching settings:", error);
+      res.status(500).json({ error: "Failed to fetch settings" });
+    }
+  });
+
+  app.get("/api/settings/:category", async (req, res) => {
+    try {
+      const settings = await storage.getSettingsByCategory(req.params.category);
+      res.json(settings);
+    } catch (error) {
+      console.error("Error fetching settings by category:", error);
+      res.status(500).json({ error: "Failed to fetch settings" });
+    }
+  });
+
+  app.post("/api/settings", async (req, res) => {
+    try {
+      const newSetting = await storage.createSetting(req.body);
+      res.status(201).json(newSetting);
+    } catch (error) {
+      console.error("Error creating setting:", error);
+      res.status(500).json({ error: "Failed to create setting" });
+    }
+  });
+
+  app.put("/api/settings/:id", async (req, res) => {
+    try {
+      const updatedSetting = await storage.updateSetting(req.params.id, req.body);
+      if (!updatedSetting) {
+        return res.status(404).json({ error: "Setting not found" });
+      }
+      res.json(updatedSetting);
+    } catch (error) {
+      console.error("Error updating setting:", error);
+      res.status(500).json({ error: "Failed to update setting" });
+    }
+  });
+
+  app.delete("/api/settings/:id", async (req, res) => {
+    try {
+      await storage.deleteSetting(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting setting:", error);
+      res.status(500).json({ error: "Failed to delete setting" });
+    }
+  });
+
+  // Integrations endpoints
+  app.get("/api/integrations", async (req, res) => {
+    try {
+      const integrations = await storage.getAllIntegrations();
+      res.json(integrations);
+    } catch (error) {
+      console.error("Error fetching integrations:", error);
+      res.status(500).json({ error: "Failed to fetch integrations" });
+    }
+  });
+
+  app.post("/api/integrations", async (req, res) => {
+    try {
+      const newIntegration = await storage.createIntegration(req.body);
+      res.status(201).json(newIntegration);
+    } catch (error) {
+      console.error("Error creating integration:", error);
+      res.status(500).json({ error: "Failed to create integration" });
+    }
+  });
+
+  app.put("/api/integrations/:id", async (req, res) => {
+    try {
+      const updatedIntegration = await storage.updateIntegration(req.params.id, req.body);
+      if (!updatedIntegration) {
+        return res.status(404).json({ error: "Integration not found" });
+      }
+      res.json(updatedIntegration);
+    } catch (error) {
+      console.error("Error updating integration:", error);
+      res.status(500).json({ error: "Failed to update integration" });
+    }
+  });
+
+  app.post("/api/integrations/:id/test", async (req, res) => {
+    try {
+      const testResult = await storage.testIntegration(req.params.id);
+      res.json(testResult);
+    } catch (error) {
+      console.error("Error testing integration:", error);
+      res.status(500).json({ error: "Failed to test integration" });
+    }
+  });
+
+  app.delete("/api/integrations/:id", async (req, res) => {
+    try {
+      await storage.deleteIntegration(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting integration:", error);
+      res.status(500).json({ error: "Failed to delete integration" });
+    }
+  });
+
   return httpServer;
 }

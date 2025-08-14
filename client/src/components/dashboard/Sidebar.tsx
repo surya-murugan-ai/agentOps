@@ -139,7 +139,19 @@ export default function Sidebar() {
           
           <Link href="/agent-settings" className={getNavItemClass("/agent-settings")} data-testid="nav-agent-settings">
             <Settings size={20} />
-            <span>Settings</span>
+            <span>Agent Settings</span>
+          </Link>
+        </div>
+
+        {/* System Section */}
+        <div className="pt-3">
+          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-3">
+            System
+          </div>
+          
+          <Link href="/settings" className={getNavItemClass("/settings")} data-testid="nav-settings">
+            <Settings size={20} />
+            <span>API Keys & Config</span>
           </Link>
         </div>
         

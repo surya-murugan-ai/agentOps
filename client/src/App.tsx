@@ -14,6 +14,7 @@ import AnalyticsPage from "@/pages/analytics";
 import DataUploadPage from "@/pages/data-upload";
 import DataViewPage from "@/pages/data-view";
 import DataManagementPage from "@/pages/data-management";
+import SettingsPage from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -31,6 +32,7 @@ function Router() {
       <Route path="/data-view" component={DataViewPage} />
       <Route path="/data-upload" component={DataUploadPage} />
       <Route path="/data-management" component={DataManagementPage} />
+      <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>
   );
