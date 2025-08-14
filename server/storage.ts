@@ -6,7 +6,7 @@ import {
   type AgentSettings, type InsertAgentSettings
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, gte, lte, count, sql } from "drizzle-orm";
+import { eq, desc, and, gte, lte, count, sql, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -127,11 +127,28 @@ export class DatabaseStorage implements IStorage {
 
   async deleteServer(id: string): Promise<void> {
     // Delete all related data first to avoid foreign key constraints
-    await db.delete(serverMetrics).where(eq(serverMetrics.serverId, id));
-    await db.delete(alerts).where(eq(alerts.serverId, id));
+    // Order matters - delete child records before parent records
+    
+    // First, get all alerts for this server to find related remediation actions
+    const serverAlerts = await db.select({ id: alerts.id }).from(alerts).where(eq(alerts.serverId, id));
+    const alertIds = serverAlerts.map(alert => alert.id);
+    
+    // Delete remediation actions that reference these alerts
+    if (alertIds.length > 0) {
+      await db.delete(remediationActions).where(inArray(remediationActions.alertId, alertIds));
+    }
+    
+    // Delete remediation actions directly associated with the server
     await db.delete(remediationActions).where(eq(remediationActions.serverId, id));
+    
+    // Now safe to delete alerts
+    await db.delete(alerts).where(eq(alerts.serverId, id));
+    
+    // Delete other related data
+    await db.delete(serverMetrics).where(eq(serverMetrics.serverId, id));
     await db.delete(anomalies).where(eq(anomalies.serverId, id));
     await db.delete(predictions).where(eq(predictions.serverId, id));
+    
     // Finally delete the server
     await db.delete(servers).where(eq(servers.id, id));
   }
