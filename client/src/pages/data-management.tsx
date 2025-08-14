@@ -252,9 +252,12 @@ export default function DataManagementPage() {
     server.environment.toLowerCase().includes(searchTerm.toLowerCase())
   ) : [];
 
-  const filteredMetrics = Array.isArray(metrics) ? metrics.filter((metric: any) =>
-    metric.server?.hostname.toLowerCase().includes(searchTerm.toLowerCase())
-  ) : [];
+  const filteredMetrics = Array.isArray(metrics) ? metrics.filter((metric: any) => {
+    if (!searchTerm) return true;
+    const server = servers?.find((s: any) => s.id === metric.serverId);
+    return server?.hostname.toLowerCase().includes(searchTerm.toLowerCase()) || 
+           metric.serverId?.toLowerCase().includes(searchTerm.toLowerCase());
+  }) : [];
 
   const filteredAlerts = Array.isArray(alerts) ? alerts.filter((alert: any) =>
     alert.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -483,20 +486,23 @@ export default function DataManagementPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {Array.isArray(filteredMetrics) && filteredMetrics.slice(0, 50).map((metric: any) => (
+                      {Array.isArray(filteredMetrics) && filteredMetrics.length > 0 ? filteredMetrics.slice(0, 50).map((metric: any) => (
                         <TableRow key={metric.id}>
                           <TableCell className="text-white font-medium">
-                            {metric.server?.hostname || 'Unknown'}
+                            {(() => {
+                              const server = servers?.find((s: any) => s.id === metric.serverId);
+                              return server?.hostname || metric.serverId?.slice(0, 8) || 'Unknown';
+                            })()}
                           </TableCell>
-                          <TableCell className="text-slate-300">{parseFloat(metric.cpuUsage).toFixed(1)}%</TableCell>
+                          <TableCell className="text-slate-300">{parseFloat(metric.cpuUsage || metric.cpu_usage || 0).toFixed(1)}%</TableCell>
                           <TableCell className="text-slate-300">
-                            {((parseFloat(metric.memoryUsage) / metric.memoryTotal) * 100).toFixed(1)}%
+                            {metric.memoryUsage ? parseFloat(metric.memoryUsage).toFixed(1) : 'N/A'}%
                           </TableCell>
                           <TableCell className="text-slate-300">
-                            {((parseFloat(metric.diskUsage) / metric.diskTotal) * 100).toFixed(1)}%
+                            {metric.diskUsage ? parseFloat(metric.diskUsage).toFixed(1) : 'N/A'}%
                           </TableCell>
-                          <TableCell className="text-slate-300">{metric.networkLatency}ms</TableCell>
-                          <TableCell className="text-slate-300">{metric.processCount}</TableCell>
+                          <TableCell className="text-slate-300">{metric.networkLatency || metric.network_latency || 'N/A'}ms</TableCell>
+                          <TableCell className="text-slate-300">{metric.processCount || metric.process_count || 'N/A'}</TableCell>
                           <TableCell className="text-slate-300">
                             {new Date(metric.timestamp).toLocaleString()}
                           </TableCell>
@@ -517,7 +523,16 @@ export default function DataManagementPage() {
                             </Button>
                           </TableCell>
                         </TableRow>
-                      ))}
+                      )) : (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center text-slate-400 py-8">
+                            {Array.isArray(metrics) && metrics.length > 0 ? 
+                              'No metrics match your search criteria' : 
+                              'No metrics data available'
+                            }
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </TableBody>
                   </Table>
                 )}
