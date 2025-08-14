@@ -696,63 +696,47 @@ export default function DataUploadPage() {
 
                   {/* Data Preview Table */}
                   <div className="bg-slate-800 rounded-lg p-4 max-h-96 overflow-auto">
-                    <Table className="w-full table-fixed">
-                      <TableHeader>
-                        <TableRow>
-                          {uploadState.previewData && Object.keys(uploadState.previewData[0]).map((key, index) => {
-                            // Calculate dynamic column width based on content
-                            const maxLength = Math.max(
-                              key.length,
-                              ...uploadState.previewData.slice(0, 5).map(row => 
-                                String(row[key] || '').length
-                              )
-                            );
-                            const width = Math.min(Math.max(maxLength * 8 + 20, 100), 200);
-                            
-                            return (
-                              <TableHead 
-                                key={key} 
-                                className="text-slate-300 text-left px-3 py-2 border-b border-slate-600"
-                                style={{ width: `${width}px`, minWidth: `${width}px` }}
-                              >
-                                <div className="truncate" title={key}>{key}</div>
-                              </TableHead>
-                            );
-                          })}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {uploadState.previewData?.slice(0, 5).map((row, index) => (
-                          <TableRow key={index} className="border-b border-slate-700">
-                            {Object.entries(row).map(([key, value], cellIndex) => {
-                              // Match the column width calculation from header
-                              const maxLength = Math.max(
-                                key.length,
-                                ...uploadState.previewData.slice(0, 5).map(r => 
-                                  String(r[key] || '').length
-                                )
-                              );
-                              const width = Math.min(Math.max(maxLength * 8 + 20, 100), 200);
-                              
-                              return (
-                                <TableCell 
+                    {uploadState.previewData && uploadState.previewData.length > 0 && (
+                      <div className="w-full">
+                        {/* Table Header */}
+                        <div className="grid gap-2 p-3 bg-slate-700 rounded-t-lg border-b border-slate-600"
+                             style={{ 
+                               gridTemplateColumns: Object.keys(uploadState.previewData[0]).map(() => 'minmax(120px, 1fr)').join(' ')
+                             }}>
+                          {Object.keys(uploadState.previewData[0]).map((key) => (
+                            <div key={key} className="text-slate-300 font-semibold text-sm truncate" title={key}>
+                              {key}
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {/* Table Body */}
+                        <div className="space-y-1">
+                          {uploadState.previewData.slice(0, 5).map((row, index) => (
+                            <div 
+                              key={index} 
+                              className="grid gap-2 p-3 hover:bg-slate-700/50 border-b border-slate-700/30"
+                              style={{ 
+                                gridTemplateColumns: Object.keys(uploadState.previewData[0]).map(() => 'minmax(120px, 1fr)').join(' ')
+                              }}
+                            >
+                              {Object.values(row).map((value, cellIndex) => (
+                                <div 
                                   key={cellIndex} 
-                                  className="text-slate-300 px-3 py-2"
-                                  style={{ width: `${width}px`, minWidth: `${width}px` }}
+                                  className="text-slate-300 text-sm truncate" 
+                                  title={String(value)}
                                 >
-                                  <div className="truncate" title={String(value)}>
-                                    {String(value).length > 30 
-                                      ? String(value).substring(0, 30) + '...' 
-                                      : String(value)
-                                    }
-                                  </div>
-                                </TableCell>
-                              );
-                            })}
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                                  {String(value).length > 25 
+                                    ? String(value).substring(0, 25) + '...' 
+                                    : String(value)
+                                  }
+                                </div>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     {uploadState.previewData && uploadState.previewData.length > 5 && (
                       <p className="text-slate-400 text-sm mt-2 text-center">
                         Showing 5 of {uploadState.previewData.length} rows
