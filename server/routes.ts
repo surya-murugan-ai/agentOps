@@ -446,8 +446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 diskTotal: parseInt(item.diskTotal) || 1024,
                 processCount: parseInt(item.processCount) || 10,
                 networkLatency: item.networkLatency || null,
-                networkThroughput: item.networkThroughput || null,
-                timestamp: item.timestamp ? new Date(item.timestamp) : new Date()
+                networkThroughput: item.networkThroughput || null
               });
               count++;
             } else {

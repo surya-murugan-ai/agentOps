@@ -55,7 +55,7 @@ Sample Rows: ${JSON.stringify(sampleData, null, 2)}
 Expected Schema Fields:
 SERVERS: hostname, ipAddress, environment, status, location, operatingSystem
 METRICS: serverId/hostname, cpuUsage, memoryUsage, diskUsage, networkIn, networkOut, timestamp
-ALERTS: title, description, severity, status, serverId/hostname, timestamp
+ALERTS: title, description, severity, status, serverId/hostname, metricType, metricValue, threshold, timestamp
 
 Respond with ONLY JSON format (no markdown code blocks or explanations):
 {
@@ -106,6 +106,7 @@ Map original column names to target schema fields. Use intelligent matching for 
       console.error('LLM data analysis failed:', error);
       
       // Fallback to rule-based detection
+      console.log('Using fallback detection with columns:', columns);
       return this.fallbackDetection(rawData);
     }
   }
@@ -210,27 +211,39 @@ Map original column names to target schema fields. Use intelligent matching for 
     const firstRow = rawData[0];
     const columns = Object.keys(firstRow).map(col => col.toLowerCase());
     
+    console.log('Fallback detection analyzing columns:', columns);
+    
     // Simple rule-based detection as fallback
     const hasHostname = columns.some(col => col.includes('hostname') || col.includes('host') || col.includes('server'));
     const hasCpu = columns.some(col => col.includes('cpu') || col.includes('processor'));
     const hasMemory = columns.some(col => col.includes('memory') || col.includes('mem') || col.includes('ram'));
     const hasIpAddress = columns.some(col => col.includes('ip') || col.includes('address'));
-    const hasTitle = columns.some(col => col.includes('title') || col.includes('message') || col.includes('description'));
+    const hasTitle = columns.some(col => col.includes('title') || col.includes('message'));
+    const hasDescription = columns.some(col => col.includes('description'));
     const hasSeverity = columns.some(col => col.includes('severity') || col.includes('level') || col.includes('priority'));
+    const hasMetricType = columns.some(col => col.includes('metrictype') || col.includes('metric_type') || col.includes('type'));
+    const hasThreshold = columns.some(col => col.includes('threshold') || col.includes('limit'));
+    
+    console.log('Detection flags:', { hasHostname, hasCpu, hasMemory, hasIpAddress, hasTitle, hasDescription, hasSeverity, hasMetricType, hasThreshold });
     
     let dataType: 'servers' | 'metrics' | 'alerts' | 'unknown' = 'unknown';
     let confidence = 0.5;
     
-    if (hasHostname && (hasCpu || hasMemory)) {
+    if ((hasSeverity && (hasDescription || hasTitle || hasMetricType)) || hasThreshold) {
+      dataType = 'alerts';
+      confidence = 0.9;
+      console.log('Detected as alerts based on severity/description/metricType/threshold');
+    } else if (hasHostname && (hasCpu || hasMemory)) {
       dataType = 'metrics';
       confidence = 0.7;
+      console.log('Detected as metrics based on hostname + cpu/memory');
     } else if (hasHostname && hasIpAddress) {
       dataType = 'servers';
       confidence = 0.7;
-    } else if ((hasTitle && hasSeverity) || columns.some(col => col.includes('alert') || col.includes('incident'))) {
-      dataType = 'alerts';
-      confidence = 0.8;
+      console.log('Detected as servers based on hostname + ipAddress');
     }
+    
+    console.log(`Final detection: ${dataType} with confidence ${confidence}`);
     
     return {
       dataType,
