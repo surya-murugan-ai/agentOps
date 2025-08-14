@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, TrendingUp, BarChart3, PieChart, LineChart, Settings, Download, Plus, Eye } from 'lucide-react';
+import Sidebar from "@/components/dashboard/Sidebar";
 import { Line, Bar, Doughnut, Scatter } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -253,7 +254,10 @@ export default function AdvancedAnalytics() {
   };
 
   return (
-    <div className="space-y-6 p-6" data-testid="advanced-analytics-page">
+    <div className="min-h-screen bg-dark-bg text-white">
+      <Sidebar />
+      <div className="ml-64 p-8">
+        <div className="max-w-7xl mx-auto space-y-6" data-testid="advanced-analytics-page">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -630,6 +634,8 @@ export default function AdvancedAnalytics() {
           </div>
         </TabsContent>
       </Tabs>
+        </div>
+      </div>
     </div>
   );
 }

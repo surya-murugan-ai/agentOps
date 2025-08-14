@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Database, Trash2, CheckCircle, AlertTriangle, BarChart3, Sparkles } from "lucide-react";
+import Sidebar from "@/components/dashboard/Sidebar";
 
 interface DataQualitySummary {
   servers: {
@@ -170,7 +171,10 @@ export default function DataManagement() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="min-h-screen bg-dark-bg text-white">
+      <Sidebar />
+      <div className="ml-64 p-8">
+        <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex items-center gap-3 mb-6">
         <Database className="h-8 w-8 text-blue-500" />
         <div>
@@ -473,6 +477,8 @@ export default function DataManagement() {
           </CardContent>
         </Card>
       )}
+        </div>
+      </div>
     </div>
   );
 }
