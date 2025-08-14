@@ -456,15 +456,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Handle different serverId field names (ServerID, serverId, server_id)
             let serverId = item.serverId || item.ServerID || item.server_id;
             
-            // Find server by hostname if serverId not provided
+            // Find server by hostname if serverId not provided  
             if (!serverId && item.hostname) {
-              console.log(`Looking for server with hostname: ${item.hostname}`);
-              const server = await storage.getServerByHostname(item.hostname);
-              if (server) {
-                console.log(`Found server: ${server.id} for hostname: ${item.hostname}`);
-                serverId = server.id;
-              } else {
-                console.log(`No server found for hostname: ${item.hostname}`);
+              try {
+                const server = await storage.getServerByHostname(item.hostname);
+                if (server) {
+                  serverId = server.id;
+                  console.log(`✓ Found server ${server.id} for hostname ${item.hostname}`);
+                } else {
+                  console.log(`✗ No server found for hostname: ${item.hostname}`);
+                }
+              } catch (error) {
+                console.error(`Error searching for hostname ${item.hostname}:`, error);
               }
             }
 
@@ -491,13 +494,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
               await storage.createAlert({
                 serverId: serverId,
-                title: item.title || item.Description || item.description || 'System Alert',
-                description: item.description || item.Description || 'Alert from uploaded data',
+                metricType: item.metricType || item.Metric || item.metric || 'system',
+                metricValue: item.metricValue || item.Value || item.value || 0,
+                threshold: item.threshold || item.Threshold || null,
                 severity: severity,
-                status: 'active',
-                metricType: item.metricType || item.Metric || 'system',
-                metricValue: item.metricValue || item.Value || null,
-                threshold: item.threshold || item.Threshold || null
+                description: item.description || item.Description || item.title || 'Alert from uploaded data',
+                title: item.title || item.Description || item.description || 'System Alert',
+                status: 'active'
               });
               count++;
             } else {

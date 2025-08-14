@@ -568,39 +568,43 @@ export default function DataManagementPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-slate-300">Title</TableHead>
-                        <TableHead className="text-slate-300">Server</TableHead>
-                        <TableHead className="text-slate-300">Severity</TableHead>
-                        <TableHead className="text-slate-300">Status</TableHead>
+                        <TableHead className="text-slate-300">AlertID</TableHead>
+                        <TableHead className="text-slate-300">ServerID</TableHead>
+                        <TableHead className="text-slate-300">Timestamp</TableHead>
                         <TableHead className="text-slate-300">Metric</TableHead>
                         <TableHead className="text-slate-300">Value</TableHead>
-                        <TableHead className="text-slate-300">Created</TableHead>
+                        <TableHead className="text-slate-300">Threshold</TableHead>
+                        <TableHead className="text-slate-300">Severity</TableHead>
+                        <TableHead className="text-slate-300">Description</TableHead>
                         <TableHead className="text-slate-300">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {Array.isArray(filteredAlerts) && filteredAlerts.map((alert: any) => (
                         <TableRow key={alert.id}>
-                          <TableCell className="text-white font-medium">{alert.title}</TableCell>
+                          <TableCell className="text-white font-medium font-mono text-xs">
+                            {alert.id?.slice(0, 8)}...
+                          </TableCell>
+                          <TableCell className="text-slate-300 font-mono text-xs">
+                            {alert.serverId?.slice(0, 8)}...
+                          </TableCell>
+                          <TableCell className="text-slate-300 text-xs">
+                            {new Date(alert.timestamp || alert.createdAt).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-white font-medium">{alert.metricType}</TableCell>
                           <TableCell className="text-slate-300">
-                            {alert.server?.hostname || 'Unknown'}
+                            {alert.metricValue ? parseFloat(alert.metricValue).toFixed(2) : 'N/A'}
+                          </TableCell>
+                          <TableCell className="text-slate-300">
+                            {alert.threshold ? parseFloat(alert.threshold).toFixed(2) : 'N/A'}
                           </TableCell>
                           <TableCell>
                             <Badge className={getSeverityColor(alert.severity)} variant="outline">
                               {alert.severity}
                             </Badge>
                           </TableCell>
-                          <TableCell>
-                            <Badge className={getStatusColor(alert.status)} variant="outline">
-                              {alert.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-slate-300">{alert.metricType}</TableCell>
-                          <TableCell className="text-slate-300">
-                            {alert.metricValue ? parseFloat(alert.metricValue).toFixed(2) : 'N/A'}
-                          </TableCell>
-                          <TableCell className="text-slate-300">
-                            {new Date(alert.createdAt).toLocaleString()}
+                          <TableCell className="text-slate-300 max-w-xs truncate">
+                            {alert.description || alert.title || 'No description'}
                           </TableCell>
                           <TableCell>
                             <Button 

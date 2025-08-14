@@ -63,18 +63,22 @@ export const agents = pgTable("agents", {
   config: jsonb("config").$type<Record<string, any>>().default({}),
 });
 
-// Alerts table
+// Alerts table - Updated to match required structure  
 export const alerts = pgTable("alerts", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  serverId: varchar("server_id").notNull().references(() => servers.id),
+  // Primary structure matching the required format
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`), // AlertID (keeping original primary key)
+  serverId: varchar("server_id").notNull().references(() => servers.id), // ServerID  
+  timestamp: timestamp("timestamp").defaultNow(), // Timestamp
+  metricType: text("metric_type").notNull(), // Metric (renamed from existing field)
+  metricValue: decimal("metric_value", { precision: 10, scale: 3 }), // Value (renamed from existing field)
+  threshold: decimal("threshold", { precision: 10, scale: 3 }), // Threshold
+  severity: severityLevelEnum("severity").notNull(), // Severity
+  description: text("description"), // Description
+  
+  // Keep existing fields for internal functionality
   agentId: varchar("agent_id").references(() => agents.id),
-  title: text("title").notNull(),
-  description: text("description").notNull(),
-  severity: severityLevelEnum("severity").notNull(),
+  title: text("title"),
   status: alertStatusEnum("status").notNull().default("active"),
-  metricType: text("metric_type").notNull(), // cpu, memory, disk, network
-  metricValue: decimal("metric_value", { precision: 10, scale: 3 }),
-  threshold: decimal("threshold", { precision: 10, scale: 3 }),
   createdAt: timestamp("created_at").defaultNow(),
   acknowledgedAt: timestamp("acknowledged_at"),
   resolvedAt: timestamp("resolved_at"),
@@ -185,7 +189,7 @@ export const insertUserSchema = createInsertSchema(users).omit({ id: true, creat
 export const insertServerSchema = createInsertSchema(servers).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertServerMetricsSchema = createInsertSchema(serverMetrics).omit({ id: true, timestamp: true });
 export const insertAgentSchema = createInsertSchema(agents).omit({ id: true, lastHeartbeat: true, startedAt: true });
-export const insertAlertSchema = createInsertSchema(alerts).omit({ id: true, createdAt: true, acknowledgedAt: true, resolvedAt: true });
+export const insertAlertSchema = createInsertSchema(alerts).omit({ id: true, timestamp: true, createdAt: true, acknowledgedAt: true, resolvedAt: true });
 export const insertRemediationActionSchema = createInsertSchema(remediationActions).omit({ 
   id: true, 
   createdAt: true, 
