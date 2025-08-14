@@ -741,6 +741,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const newSetting = await storage.createSetting(req.body);
       console.log("POST /api/settings - Created setting:", newSetting);
+      
+      // Reset AI clients if this is an API key update
+      if (req.body.category === 'api_keys') {
+        const { resetAIClients } = await import("./services/aiService");
+        resetAIClients();
+        console.log("Reset AI clients for new API key:", req.body.key);
+      }
+      
       res.status(201).json(newSetting);
     } catch (error) {
       console.error("Error creating setting:", error);
@@ -826,6 +834,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting integration:", error);
       res.status(500).json({ error: "Failed to delete integration" });
+    }
+  });
+
+  // Agent testing endpoint
+  app.post("/api/agents/test", async (req, res) => {
+    try {
+      const { agentTester } = await import("./testAgents");
+      const results = await agentTester.runComprehensiveTest();
+      res.json(results);
+    } catch (error) {
+      console.error("Error running agent tests:", error);
+      res.status(500).json({ error: "Failed to run agent tests" });
     }
   });
 

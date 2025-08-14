@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
+import { storage } from '../storage';
 
 /*
 <important_code_snippet_instructions>
@@ -13,14 +14,51 @@ When copying code from this code snippet, ensure you also include this informati
 const DEFAULT_MODEL_STR = "claude-sonnet-4-20250514";
 // </important_do_not_delete>
 
-// the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY 
-});
+// Global AI client instances - will be initialized with database keys
+let openaiClient: OpenAI | null = null;
+let anthropicClient: Anthropic | null = null;
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+// Helper function to get API key from database settings
+async function getApiKey(key: string): Promise<string | null> {
+  try {
+    const settings = await storage.getSettingsByCategory('api_keys');
+    const setting = settings.find((s: any) => s.key === key && s.isActive);
+    return setting?.value || null;
+  } catch (error) {
+    console.error(`Error fetching API key ${key}:`, error);
+    return null;
+  }
+}
+
+// Initialize OpenAI client with database API key or fallback to env
+async function getOpenAIClient(): Promise<OpenAI> {
+  if (!openaiClient) {
+    const apiKey = await getApiKey('openai_api_key') || process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error('OpenAI API key not found in database or environment variables');
+    }
+    openaiClient = new OpenAI({ apiKey });
+  }
+  return openaiClient;
+}
+
+// Initialize Anthropic client with database API key or fallback to env
+async function getAnthropicClient(): Promise<Anthropic> {
+  if (!anthropicClient) {
+    const apiKey = await getApiKey('anthropic_api_key') || process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      throw new Error('Anthropic API key not found in database or environment variables');
+    }
+    anthropicClient = new Anthropic({ apiKey });
+  }
+  return anthropicClient;
+}
+
+// Reset clients when API keys are updated
+export function resetAIClients() {
+  openaiClient = null;
+  anthropicClient = null;
+}
 
 export class AIService {
   
@@ -68,6 +106,7 @@ Respond in JSON format with:
   "insights": "Overall system health insights"
 }`;
 
+      const openai = await getOpenAIClient();
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
@@ -131,6 +170,7 @@ Provide:
 
 Focus on financial infrastructure best practices: minimal downtime, data integrity, compliance.`;
 
+      const anthropic = await getAnthropicClient();
       const response = await anthropic.messages.create({
         // "claude-sonnet-4-20250514"
         model: DEFAULT_MODEL_STR,
@@ -158,7 +198,10 @@ Focus on financial infrastructure best practices: minimal downtime, data integri
         }`
       });
 
-      let responseText = response.content[0].text;
+      let responseText = '';
+      if (response.content[0].type === 'text') {
+        responseText = response.content[0].text;
+      }
       
       // Clean up response if it contains markdown formatting
       if (responseText.includes('```json')) {
@@ -212,6 +255,7 @@ Consider:
 
 Predict values for next 1 hour, 6 hours, and 24 hours.`;
 
+      const openai = await getOpenAIClient();
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
@@ -264,6 +308,7 @@ Assess risks considering:
 
 Provide risk score (0-100) and approval recommendation.`;
 
+      const anthropic = await getAnthropicClient();
       const response = await anthropic.messages.create({
         // "claude-sonnet-4-20250514"
         model: DEFAULT_MODEL_STR,
@@ -282,7 +327,11 @@ Provide risk score (0-100) and approval recommendation.`;
         }`
       });
 
-      return JSON.parse(response.content[0].text);
+      let responseText = '';
+      if (response.content[0].type === 'text') {
+        responseText = response.content[0].text;
+      }
+      return JSON.parse(responseText);
     } catch (error) {
       console.error('AI Risk Assessment Error:', error);
       return {
@@ -320,6 +369,7 @@ Provide compliance analysis covering:
 4. Performance interventions
 5. Regulatory compliance gaps`;
 
+      const anthropic = await getAnthropicClient();
       const response = await anthropic.messages.create({
         // "claude-sonnet-4-20250514"
         model: DEFAULT_MODEL_STR,
@@ -337,7 +387,11 @@ Provide compliance analysis covering:
         }`
       });
 
-      return JSON.parse(response.content[0].text);
+      let responseText = '';
+      if (response.content[0].type === 'text') {
+        responseText = response.content[0].text;
+      }
+      return JSON.parse(responseText);
     } catch (error) {
       console.error('AI Audit Analysis Error:', error);
       return {

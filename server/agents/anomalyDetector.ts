@@ -215,8 +215,11 @@ export class AnomalyDetectorAgent implements Agent {
     );
 
     if (!existingAlert) {
+      // Get server info to include hostname
+      const server = await storage.getServer(serverId);
       const alert = await storage.createAlert({
         serverId,
+        hostname: server?.hostname || serverId,
         agentId: this.id,
         title: `${metricType.toUpperCase()} ${severity.toUpperCase()}`,
         description,
