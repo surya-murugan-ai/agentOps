@@ -730,11 +730,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/settings", async (req, res) => {
     try {
+      console.log("POST /api/settings - Request body:", JSON.stringify(req.body, null, 2));
+      
+      // Validate required fields
+      if (!req.body.key || !req.body.category) {
+        return res.status(400).json({ 
+          error: "Missing required fields: key and category are required" 
+        });
+      }
+
       const newSetting = await storage.createSetting(req.body);
+      console.log("POST /api/settings - Created setting:", newSetting);
       res.status(201).json(newSetting);
     } catch (error) {
       console.error("Error creating setting:", error);
-      res.status(500).json({ error: "Failed to create setting" });
+      console.error("Request body that failed:", req.body);
+      res.status(500).json({ 
+        error: "Failed to create setting", 
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
