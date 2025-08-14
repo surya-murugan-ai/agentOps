@@ -4,10 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertTriangle, CheckCircle, Clock, XCircle, Settings, BarChart3, FileText, Users, Filter, History, GitBranch } from "lucide-react";
+import { AlertTriangle, CheckCircle, Clock, XCircle, Settings, BarChart3, FileText, Users, Filter, History, GitBranch, ArrowLeft, Home } from "lucide-react";
+import { useLocation } from "wouter";
 
 export default function WorkflowPage() {
   const [activeSection, setActiveSection] = useState('overview');
+  const [, setLocation] = useLocation();
   
   // Simple data fetching
   const { data: workflows, isLoading } = useQuery({
@@ -102,10 +104,21 @@ export default function WorkflowPage() {
             Comprehensive view of all workflow activities and statistics
           </p>
         </div>
-        <Button variant="outline" size="sm">
-          <Settings className="w-4 h-4 mr-2" />
-          Configure Workflows
-        </Button>
+        <div className="flex space-x-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setLocation('/')}
+            data-testid="button-dashboard-main"
+          >
+            <Home className="w-4 h-4 mr-2" />
+            Dashboard
+          </Button>
+          <Button variant="outline" size="sm">
+            <Settings className="w-4 h-4 mr-2" />
+            Configure Workflows
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -375,14 +388,26 @@ export default function WorkflowPage() {
       {/* Left Navigation Sidebar */}
       <div className="w-64 border-r border-dark-border flex-shrink-0">
         <div className="p-6 border-b border-dark-border">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary to-blue-600 rounded-lg flex items-center justify-center">
-              <GitBranch className="text-white text-sm" size={16} />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-primary to-blue-600 rounded-lg flex items-center justify-center">
+                <GitBranch className="text-white text-sm" size={16} />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-white">Workflows</h2>
+                <p className="text-xs text-slate-400">Management Center</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-lg font-semibold text-white">Workflows</h2>
-              <p className="text-xs text-slate-400">Management Center</p>
-            </div>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => setLocation('/')}
+              className="text-slate-400 hover:text-white"
+              data-testid="button-back-dashboard"
+            >
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              Back
+            </Button>
           </div>
         </div>
 
