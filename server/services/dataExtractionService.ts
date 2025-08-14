@@ -227,6 +227,7 @@ Map original column names to target schema fields. Use intelligent matching for 
     const hasServerId = columns.some(col => col.includes('serverid') || col.includes('server_id'));
     const hasTimestamp = columns.some(col => col.includes('timestamp') || col.includes('time'));
     const hasValue = columns.some(col => col.includes('value'));
+    const hasMetricValue = columns.some(col => col.includes('metricvalue') || col.includes('metric_value'));
     
     console.log('Detection flags:', { hasHostname, hasCpu, hasMemory, hasIpAddress, hasTitle, hasDescription, hasSeverity, hasMetricType, hasThreshold });
     
@@ -234,10 +235,10 @@ Map original column names to target schema fields. Use intelligent matching for 
     let confidence = 0.5;
     
     // Improved alert detection - prioritize alert-specific fields
-    if (hasAlertId || (hasSeverity && (hasDescription || hasTitle || hasMetricType)) || hasThreshold || (hasServerId && hasMetricType && hasValue)) {
+    if (hasAlertId || (hasSeverity && (hasDescription || hasTitle || hasMetricType)) || hasThreshold || (hasServerId && hasMetricType && hasValue) || (hasHostname && hasTitle && hasSeverity) || (hasMetricType && hasMetricValue && hasThreshold)) {
       dataType = 'alerts';
       confidence = 0.95;
-      console.log('Detected as alerts based on AlertID/severity/description/metricType/threshold/ServerID+Metric+Value combination');
+      console.log('Detected as alerts based on AlertID/severity/description/metricType/threshold/hostname+title+severity/metricType+metricValue+threshold combination');
     } else if (hasHostname && (hasCpu || hasMemory)) {
       dataType = 'metrics';
       confidence = 0.7;

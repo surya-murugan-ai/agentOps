@@ -458,9 +458,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Find server by hostname if serverId not provided
             if (!serverId && item.hostname) {
+              console.log(`Looking for server with hostname: ${item.hostname}`);
               const server = await storage.getServerByHostname(item.hostname);
               if (server) {
+                console.log(`Found server: ${server.id} for hostname: ${item.hostname}`);
                 serverId = server.id;
+              } else {
+                console.log(`No server found for hostname: ${item.hostname}`);
               }
             }
 
@@ -479,15 +483,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 }
               }
 
+              // Normalize severity value to match schema
+              let severity = (item.severity || item.Severity || 'warning').toLowerCase();
+              if (!['critical', 'warning', 'info'].includes(severity)) {
+                severity = 'warning';
+              }
+
               await storage.createAlert({
                 serverId: serverId,
                 title: item.title || item.Description || item.description || 'System Alert',
-                description: item.Description || item.description || 'Alert from uploaded data',
-                severity: (item.Severity || item.severity || 'warning').toLowerCase(),
+                description: item.description || item.Description || 'Alert from uploaded data',
+                severity: severity,
                 status: 'active',
-                metricType: item.Metric || item.metricType || 'system',
-                metricValue: item.Value || item.metricValue || null,
-                threshold: item.Threshold || item.threshold || null
+                metricType: item.metricType || item.Metric || 'system',
+                metricValue: item.metricValue || item.Value || null,
+                threshold: item.threshold || item.Threshold || null
               });
               count++;
             } else {
