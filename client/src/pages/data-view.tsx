@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import Sidebar from "@/components/dashboard/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -318,15 +319,15 @@ export default function DataViewPage() {
   const getTableStats = () => {
     switch (selectedTable) {
       case "servers":
-        return { total: servers?.length || 0, icon: Server };
+        return { total: Array.isArray(servers) ? servers.length : 0, icon: Server };
       case "metrics":
-        return { total: metrics?.length || 0, icon: Activity };
+        return { total: Array.isArray(metrics) ? metrics.length : 0, icon: Activity };
       case "alerts":
-        return { total: alerts?.length || 0, icon: AlertTriangle };
+        return { total: Array.isArray(alerts) ? alerts.length : 0, icon: AlertTriangle };
       case "remediations":
-        return { total: remediations?.length || 0, icon: Wrench };
+        return { total: Array.isArray(remediations) ? remediations.length : 0, icon: Wrench };
       case "audit":
-        return { total: auditLogs?.length || 0, icon: Database };
+        return { total: Array.isArray(auditLogs) ? auditLogs.length : 0, icon: Database };
       default:
         return { total: 0, icon: Database };
     }
@@ -337,6 +338,7 @@ export default function DataViewPage() {
 
   return (
     <div className="min-h-screen bg-dark-bg text-white">
+      <Sidebar />
       <div className="ml-64 p-8">
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Header */}
@@ -366,11 +368,11 @@ export default function DataViewPage() {
           {/* Data Source Selector */}
           <div className="grid grid-cols-5 gap-4">
             {[
-              { key: "servers", label: "Servers", icon: Server, count: servers?.length || 0 },
-              { key: "metrics", label: "Metrics", icon: Activity, count: metrics?.length || 0 },
-              { key: "alerts", label: "Alerts", icon: AlertTriangle, count: alerts?.length || 0 },
-              { key: "remediations", label: "Remediations", icon: Wrench, count: remediations?.length || 0 },
-              { key: "audit", label: "Audit Logs", icon: Database, count: auditLogs?.length || 0 }
+              { key: "servers", label: "Servers", icon: Server, count: Array.isArray(servers) ? servers.length : 0 },
+              { key: "metrics", label: "Metrics", icon: Activity, count: Array.isArray(metrics) ? metrics.length : 0 },
+              { key: "alerts", label: "Alerts", icon: AlertTriangle, count: Array.isArray(alerts) ? alerts.length : 0 },
+              { key: "remediations", label: "Remediations", icon: Wrench, count: Array.isArray(remediations) ? remediations.length : 0 },
+              { key: "audit", label: "Audit Logs", icon: Database, count: Array.isArray(auditLogs) ? auditLogs.length : 0 }
             ].map((source) => {
               const IconComp = source.icon;
               const isSelected = selectedTable === source.key;
