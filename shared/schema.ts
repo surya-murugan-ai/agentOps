@@ -8,6 +8,9 @@ import { relations } from "drizzle-orm";
 export const severityLevelEnum = pgEnum("severity_level", ["info", "warning", "critical"]);
 export const alertStatusEnum = pgEnum("alert_status", ["active", "acknowledged", "resolved"]);
 export const remediationStatusEnum = pgEnum("remediation_status", ["pending", "approved", "executing", "completed", "failed", "rejected"]);
+export const approvalStatusEnum = pgEnum("approval_status", ["pending", "approved", "rejected", "escalated"]);
+export const approverRoleEnum = pgEnum("approver_role", ["operator", "supervisor", "manager", "director", "compliance_officer"]);
+export const workflowStepTypeEnum = pgEnum("workflow_step_type", ["basic_approval", "compliance_check", "impact_assessment", "security_review", "change_board"]);
 export const agentStatusEnum = pgEnum("agent_status", ["active", "inactive", "error"]);
 export const agentTypeEnum = pgEnum("agent_type", ["collector", "detector", "predictor", "recommender", "approval", "executor", "audit"]);
 
@@ -16,7 +19,14 @@ export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  role: text("role").notNull().default("operator"),
+  role: approverRoleEnum("role").notNull().default("operator"),
+  email: text("email").unique(),
+  isActive: boolean("is_active").default(true),
+  approvalLimits: jsonb("approval_limits").$type<{
+    maxRiskScore: number;
+    maxServerCount: number;
+    environments: string[];
+  }>().default({ maxRiskScore: 30, maxServerCount: 5, environments: ["development"] }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -159,6 +169,65 @@ export const predictions = pgTable("predictions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Approval Workflows table
+export const approvalWorkflows = pgTable("approval_workflows", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  remediationActionId: varchar("remediation_action_id").notNull().references(() => remediationActions.id),
+  workflowName: text("workflow_name").notNull(),
+  riskScore: integer("risk_score").notNull(), // 0-100 risk assessment
+  requiredApprovals: integer("required_approvals").notNull().default(1),
+  currentStep: integer("current_step").notNull().default(1),
+  totalSteps: integer("total_steps").notNull().default(1),
+  status: approvalStatusEnum("status").notNull().default("pending"),
+  metadata: jsonb("metadata").$type<{
+    serverCriticality: "low" | "medium" | "high" | "critical";
+    environment: string;
+    impactAssessment: string;
+    businessJustification: string;
+    escalationReason?: string;
+  }>().default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Workflow Steps table
+export const workflowSteps = pgTable("workflow_steps", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workflowId: varchar("workflow_id").notNull().references(() => approvalWorkflows.id),
+  stepNumber: integer("step_number").notNull(),
+  stepType: workflowStepTypeEnum("step_type").notNull(),
+  requiredRole: approverRoleEnum("required_role").notNull(),
+  status: approvalStatusEnum("status").notNull().default("pending"),
+  assignedTo: varchar("assigned_to").references(() => users.id),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  comments: text("comments"),
+  metadata: jsonb("metadata").$type<{
+    timeoutHours: number;
+    autoEscalate: boolean;
+    parallelApproval: boolean;
+    conditions: Record<string, any>;
+  }>().default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+// Approval History table
+export const approvalHistory = pgTable("approval_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workflowId: varchar("workflow_id").notNull().references(() => approvalWorkflows.id),
+  stepId: varchar("step_id").references(() => workflowSteps.id),
+  action: text("action").notNull(), // approved, rejected, escalated, delegated
+  approverUserId: varchar("approver_user_id").notNull().references(() => users.id),
+  comments: text("comments"),
+  metadata: jsonb("metadata").$type<{
+    ipAddress: string;
+    userAgent: string;
+    delegatedTo?: string;
+    escalationReason?: string;
+  }>().default({}),
+  timestamp: timestamp("timestamp").defaultNow(),
+});
+
 // Relations
 export const serversRelations = relations(servers, ({ many }) => ({
   metrics: many(serverMetrics),
@@ -184,11 +253,31 @@ export const alertsRelations = relations(alerts, ({ one, many }) => ({
   remediationActions: many(remediationActions),
 }));
 
-export const remediationActionsRelations = relations(remediationActions, ({ one }) => ({
+export const remediationActionsRelations = relations(remediationActions, ({ one, many }) => ({
   alert: one(alerts, { fields: [remediationActions.alertId], references: [alerts.id] }),
   server: one(servers, { fields: [remediationActions.serverId], references: [servers.id] }),
   agent: one(agents, { fields: [remediationActions.agentId], references: [agents.id] }),
   approvedByUser: one(users, { fields: [remediationActions.approvedBy], references: [users.id] }),
+  workflows: many(approvalWorkflows),
+}));
+
+export const approvalWorkflowsRelations = relations(approvalWorkflows, ({ one, many }) => ({
+  remediationAction: one(remediationActions, { fields: [approvalWorkflows.remediationActionId], references: [remediationActions.id] }),
+  steps: many(workflowSteps),
+  history: many(approvalHistory),
+}));
+
+export const workflowStepsRelations = relations(workflowSteps, ({ one, many }) => ({
+  workflow: one(approvalWorkflows, { fields: [workflowSteps.workflowId], references: [approvalWorkflows.id] }),
+  assignedToUser: one(users, { fields: [workflowSteps.assignedTo], references: [users.id] }),
+  approvedByUser: one(users, { fields: [workflowSteps.approvedBy], references: [users.id] }),
+  history: many(approvalHistory),
+}));
+
+export const approvalHistoryRelations = relations(approvalHistory, ({ one }) => ({
+  workflow: one(approvalWorkflows, { fields: [approvalHistory.workflowId], references: [approvalWorkflows.id] }),
+  step: one(workflowSteps, { fields: [approvalHistory.stepId], references: [workflowSteps.id] }),
+  approver: one(users, { fields: [approvalHistory.approverUserId], references: [users.id] }),
 }));
 
 // Insert schemas
@@ -207,6 +296,9 @@ export const insertRemediationActionSchema = createInsertSchema(remediationActio
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, timestamp: true });
 export const insertAnomalySchema = createInsertSchema(anomalies).omit({ id: true, createdAt: true, resolvedAt: true });
 export const insertPredictionSchema = createInsertSchema(predictions).omit({ id: true, createdAt: true });
+export const insertApprovalWorkflowSchema = createInsertSchema(approvalWorkflows).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertWorkflowStepSchema = createInsertSchema(workflowSteps).omit({ id: true, createdAt: true, completedAt: true });
+export const insertApprovalHistorySchema = createInsertSchema(approvalHistory).omit({ id: true, timestamp: true });
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -227,6 +319,12 @@ export type Anomaly = typeof anomalies.$inferSelect;
 export type InsertAnomaly = z.infer<typeof insertAnomalySchema>;
 export type Prediction = typeof predictions.$inferSelect;
 export type InsertPrediction = z.infer<typeof insertPredictionSchema>;
+export type ApprovalWorkflow = typeof approvalWorkflows.$inferSelect;
+export type InsertApprovalWorkflow = z.infer<typeof insertApprovalWorkflowSchema>;
+export type WorkflowStep = typeof workflowSteps.$inferSelect;
+export type InsertWorkflowStep = z.infer<typeof insertWorkflowStepSchema>;
+export type ApprovalHistory = typeof approvalHistory.$inferSelect;
+export type InsertApprovalHistory = z.infer<typeof insertApprovalHistorySchema>;
 
 // Agent Settings table for configuring AI models and prompts
 export const agentSettings = pgTable("agent_settings", {

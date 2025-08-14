@@ -1,11 +1,12 @@
 import {
   users, servers, serverMetrics, agents, alerts, remediationActions, auditLogs, anomalies, predictions, agentSettings,
-  systemSettings, integrations,
+  systemSettings, integrations, approvalWorkflows, workflowSteps, approvalHistory,
   type User, type InsertUser, type Server, type InsertServer, type ServerMetrics, type InsertServerMetrics,
   type Agent, type InsertAgent, type Alert, type InsertAlert, type RemediationAction, type InsertRemediationAction,
   type AuditLog, type InsertAuditLog, type Anomaly, type InsertAnomaly, type Prediction, type InsertPrediction,
   type AgentSettings, type InsertAgentSettings, type SystemSettings, type InsertSystemSettings,
-  type Integration, type InsertIntegration
+  type Integration, type InsertIntegration, type ApprovalWorkflow, type InsertApprovalWorkflow,
+  type WorkflowStep, type InsertWorkflowStep, type ApprovalHistory, type InsertApprovalHistory
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, count, sql, inArray } from "drizzle-orm";
@@ -73,6 +74,23 @@ export interface IStorage {
   // Predictions
   getRecentPredictions(serverId?: string): Promise<Prediction[]>;
   createPrediction(prediction: InsertPrediction): Promise<Prediction>;
+
+  // Approval Workflows
+  createApprovalWorkflow(workflow: InsertApprovalWorkflow): Promise<ApprovalWorkflow>;
+  getApprovalWorkflow(id: string): Promise<ApprovalWorkflow | undefined>;
+  getApprovalWorkflowByRemediationId(remediationActionId: string): Promise<ApprovalWorkflow | undefined>;
+  updateApprovalWorkflowStatus(id: string, status: string, currentStep?: number): Promise<void>;
+  getPendingWorkflows(): Promise<(ApprovalWorkflow & { remediationAction: RemediationAction; steps: WorkflowStep[] })[]>;
+
+  // Workflow Steps
+  createWorkflowStep(step: InsertWorkflowStep): Promise<WorkflowStep>;
+  getWorkflowSteps(workflowId: string): Promise<WorkflowStep[]>;
+  updateWorkflowStepStatus(id: string, status: string, approvedBy?: string, comments?: string): Promise<void>;
+  getNextPendingStep(workflowId: string): Promise<WorkflowStep | undefined>;
+
+  // Approval History
+  createApprovalHistory(history: InsertApprovalHistory): Promise<ApprovalHistory>;
+  getApprovalHistory(workflowId: string): Promise<(ApprovalHistory & { approver: User })[]>;
 
   // Dashboard metrics
   getDashboardMetrics(): Promise<{
@@ -514,6 +532,114 @@ export class DatabaseStorage implements IStorage {
   async createPrediction(prediction: InsertPrediction): Promise<Prediction> {
     const [newPrediction] = await db.insert(predictions).values(prediction).returning();
     return newPrediction;
+  }
+
+  // Approval Workflows Implementation
+  async createApprovalWorkflow(workflow: InsertApprovalWorkflow): Promise<ApprovalWorkflow> {
+    const [newWorkflow] = await db.insert(approvalWorkflows).values(workflow).returning();
+    return newWorkflow;
+  }
+
+  async getApprovalWorkflow(id: string): Promise<ApprovalWorkflow | undefined> {
+    const [workflow] = await db.select().from(approvalWorkflows).where(eq(approvalWorkflows.id, id));
+    return workflow || undefined;
+  }
+
+  async getApprovalWorkflowByRemediationId(remediationActionId: string): Promise<ApprovalWorkflow | undefined> {
+    const [workflow] = await db.select().from(approvalWorkflows).where(eq(approvalWorkflows.remediationActionId, remediationActionId));
+    return workflow || undefined;
+  }
+
+  async updateApprovalWorkflowStatus(id: string, status: string, currentStep?: number): Promise<void> {
+    const updateData: any = { status, updatedAt: new Date() };
+    if (currentStep !== undefined) {
+      updateData.currentStep = currentStep;
+    }
+    await db.update(approvalWorkflows).set(updateData).where(eq(approvalWorkflows.id, id));
+  }
+
+  async getPendingWorkflows(): Promise<(ApprovalWorkflow & { remediationAction: RemediationAction; steps: WorkflowStep[] })[]> {
+    const workflows = await db
+      .select()
+      .from(approvalWorkflows)
+      .leftJoin(remediationActions, eq(approvalWorkflows.remediationActionId, remediationActions.id))
+      .where(eq(approvalWorkflows.status, "pending"));
+
+    const result = [];
+    for (const row of workflows) {
+      if (row.approval_workflows && row.remediation_actions) {
+        const steps = await this.getWorkflowSteps(row.approval_workflows.id);
+        result.push({
+          ...row.approval_workflows,
+          remediationAction: row.remediation_actions,
+          steps
+        });
+      }
+    }
+    return result;
+  }
+
+  // Workflow Steps Implementation
+  async createWorkflowStep(step: InsertWorkflowStep): Promise<WorkflowStep> {
+    const [newStep] = await db.insert(workflowSteps).values(step).returning();
+    return newStep;
+  }
+
+  async getWorkflowSteps(workflowId: string): Promise<WorkflowStep[]> {
+    return await db.select().from(workflowSteps).where(eq(workflowSteps.workflowId, workflowId)).orderBy(workflowSteps.stepNumber);
+  }
+
+  async updateWorkflowStepStatus(id: string, status: string, approvedBy?: string, comments?: string): Promise<void> {
+    const updateData: any = { status };
+    if (approvedBy) updateData.approvedBy = approvedBy;
+    if (comments) updateData.comments = comments;
+    if (status === "approved" || status === "rejected") {
+      updateData.completedAt = new Date();
+    }
+    await db.update(workflowSteps).set(updateData).where(eq(workflowSteps.id, id));
+  }
+
+  async getNextPendingStep(workflowId: string): Promise<WorkflowStep | undefined> {
+    const [step] = await db
+      .select()
+      .from(workflowSteps)
+      .where(and(eq(workflowSteps.workflowId, workflowId), eq(workflowSteps.status, "pending")))
+      .orderBy(workflowSteps.stepNumber)
+      .limit(1);
+    return step || undefined;
+  }
+
+  // Approval History Implementation
+  async createApprovalHistory(history: InsertApprovalHistory): Promise<ApprovalHistory> {
+    const [newHistory] = await db.insert(approvalHistory).values(history).returning();
+    return newHistory;
+  }
+
+  async getApprovalHistory(workflowId: string): Promise<(ApprovalHistory & { approver: User })[]> {
+    return await db
+      .select({
+        id: approvalHistory.id,
+        workflowId: approvalHistory.workflowId,
+        stepId: approvalHistory.stepId,
+        action: approvalHistory.action,
+        approverUserId: approvalHistory.approverUserId,
+        comments: approvalHistory.comments,
+        metadata: approvalHistory.metadata,
+        timestamp: approvalHistory.timestamp,
+        approver: {
+          id: users.id,
+          username: users.username,
+          role: users.role,
+          email: users.email,
+          isActive: users.isActive,
+          approvalLimits: users.approvalLimits,
+          createdAt: users.createdAt
+        }
+      })
+      .from(approvalHistory)
+      .leftJoin(users, eq(approvalHistory.approverUserId, users.id))
+      .where(eq(approvalHistory.workflowId, workflowId))
+      .orderBy(desc(approvalHistory.timestamp));
   }
 
   // Dashboard metrics

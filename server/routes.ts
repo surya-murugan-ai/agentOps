@@ -867,5 +867,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Data cleaning routes
   app.use("/api/data-cleaning", (await import("./routes/dataCleaningRoutes")).default);
 
+  // Workflow routes
+  app.use("/api/workflows", (await import("./routes/workflowRoutes")).workflowRoutes);
+
   return httpServer;
 }
