@@ -28,7 +28,7 @@ export default function DataManagementPage() {
   });
 
   const { data: alerts, isLoading: alertsLoading } = useQuery({
-    queryKey: ['/api/alerts', {}],
+    queryKey: ['/api/alerts'],
     refetchInterval: 30000,
   });
 
@@ -38,12 +38,12 @@ export default function DataManagementPage() {
   });
 
   const { data: remediations, isLoading: remediationsLoading } = useQuery({
-    queryKey: ['/api/remediation-actions', {}],
+    queryKey: ['/api/remediation-actions'],
     refetchInterval: 30000,
   });
 
   const { data: auditLogs, isLoading: auditLoading } = useQuery({
-    queryKey: ['/api/audit-logs', {}],
+    queryKey: ['/api/audit-logs'],
     refetchInterval: 30000,
   });
 
