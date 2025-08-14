@@ -70,7 +70,7 @@ export default function Settings() {
 
   // Create setting mutation
   const createSettingMutation = useMutation({
-    mutationFn: (setting: typeof newSetting) => apiRequest('/api/settings', 'POST', setting),
+    mutationFn: (setting: typeof newSetting) => apiRequest('POST', '/api/settings', setting),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/settings'] });
       setNewSetting({ category: "api_keys", key: "", value: "", description: "", isSecure: true });
@@ -84,7 +84,7 @@ export default function Settings() {
   // Update setting mutation
   const updateSettingMutation = useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: Partial<SystemSetting> }) => 
-      apiRequest(`/api/settings/${id}`, 'PUT', updates),
+      apiRequest('PUT', `/api/settings/${id}`, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/settings'] });
       toast({ description: "Setting updated successfully" });
@@ -96,7 +96,7 @@ export default function Settings() {
 
   // Delete setting mutation
   const deleteSettingMutation = useMutation({
-    mutationFn: (id: string) => apiRequest(`/api/settings/${id}`, 'DELETE'),
+    mutationFn: (id: string) => apiRequest('DELETE', `/api/settings/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/settings'] });
       toast({ description: "Setting deleted successfully" });
@@ -108,7 +108,7 @@ export default function Settings() {
 
   // Create integration mutation
   const createIntegrationMutation = useMutation({
-    mutationFn: (integration: typeof newIntegration) => apiRequest('/api/integrations', 'POST', integration),
+    mutationFn: (integration: typeof newIntegration) => apiRequest('POST', '/api/integrations', integration),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
       setNewIntegration({ name: "", type: "ai_provider", config: {} });
