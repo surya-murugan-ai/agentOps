@@ -11,7 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Upload, Server, Database, Activity, AlertTriangle, CheckCircle, FileText, X, Eye, Download, RefreshCw, CloudUpload, FileSpreadsheet } from 'lucide-react';
+import { Upload, Server, Database, Activity, AlertTriangle, CheckCircle, FileText, X, Eye, Download, RefreshCw, CloudUpload, FileSpreadsheet, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Sidebar from '@/components/dashboard/Sidebar';
 import Papa from 'papaparse';
@@ -97,6 +97,38 @@ export default function DataUploadPage() {
         metricValue: 87.5,
         threshold: 85.0
       }
+    },
+    {
+      type: 'remediations',
+      name: 'Remediation Actions',
+      description: 'Automated remediation actions and workflows',
+      requiredFields: ['title', 'actionType'],
+      icon: Settings,
+      example: {
+        hostname: "web-prod-01",
+        title: "Restart Apache Service",
+        description: "Automatically restart web service due to high memory usage",
+        actionType: "restart_service",
+        confidence: 85.0,
+        estimatedDowntime: 30,
+        status: "pending"
+      }
+    },
+    {
+      type: 'audit-logs',
+      name: 'Audit Logs',
+      description: 'System audit trail and compliance logs',
+      requiredFields: ['action', 'status'],
+      icon: FileText,
+      example: {
+        hostname: "web-prod-01",
+        agentName: "Remediation Executor",
+        action: "restart_service",
+        details: "Restarted Apache service on web-prod-01",
+        status: "success",
+        impact: "Service restored, response time improved",
+        timestamp: "2025-01-13T10:45:00Z"
+      }
     }
   ];
 
@@ -110,12 +142,18 @@ export default function DataUploadPage() {
       const endpoint = useSmartUpload ? '/api/data/smart-upload' :
                      type === 'servers' ? '/api/servers/bulk' :
                      type === 'metrics' ? '/api/metrics/bulk' :
-                     '/api/alerts/bulk';
+                     type === 'alerts' ? '/api/alerts/bulk' :
+                     type === 'remediations' ? '/api/remediation-actions/bulk' :
+                     type === 'audit-logs' ? '/api/audit-logs/bulk' :
+                     '/api/data/smart-upload';
       
       const payload = useSmartUpload ? { data } :
                      type === 'servers' ? { servers: data } :
                      type === 'metrics' ? { metrics: data } :
-                     { alerts: data };
+                     type === 'alerts' ? { alerts: data } :
+                     type === 'remediations' ? { remediations: data } :
+                     type === 'audit-logs' ? { auditLogs: data } :
+                     { data };
 
       // Simulate progress
       for (let i = 0; i <= 90; i += 10) {
@@ -273,9 +311,19 @@ export default function DataUploadPage() {
     const hasTitle = columns.some(col => col.includes('title') || col.includes('message') || col.includes('description'));
     const hasSeverity = columns.some(col => col.includes('severity') || col.includes('level') || col.includes('priority'));
     
+    // More flexible matching for remediation actions
+    const hasActionType = columns.some(col => col.includes('action') || col.includes('type'));
+    const hasConfidence = columns.some(col => col.includes('confidence') || col.includes('score'));
+    
+    // More flexible matching for audit logs
+    const hasStatus = columns.some(col => col.includes('status') || col.includes('result'));
+    const hasImpact = columns.some(col => col.includes('impact') || col.includes('effect'));
+    
     if (hasHostname && (hasCpu || hasMemory)) return 'metrics';
     if (hasHostname && hasIpAddress) return 'servers';  
     if (hasTitle && hasSeverity) return 'alerts';
+    if (hasTitle && hasActionType && hasConfidence) return 'remediations';
+    if (hasActionType && hasStatus) return 'audit-logs';
     
     // Additional detection patterns
     if (columns.includes('status') && hasHostname) return 'servers';
@@ -461,6 +509,8 @@ export default function DataUploadPage() {
                         <SelectItem value="servers">Servers</SelectItem>
                         <SelectItem value="metrics">Metrics</SelectItem>
                         <SelectItem value="alerts">Alerts</SelectItem>
+                        <SelectItem value="remediations">Remediations</SelectItem>
+                        <SelectItem value="audit-logs">Audit Logs</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
