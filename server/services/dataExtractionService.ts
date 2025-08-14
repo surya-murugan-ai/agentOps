@@ -177,7 +177,8 @@ Map original column names to target schema fields. Use intelligent matching for 
       'status': dataType === 'servers' ? 'healthy' : 'open',
       'environment': 'production',
       'operatingSystem': 'Linux',
-      'location': 'Unknown'
+      'location': 'Unknown',
+      'ipAddress': '192.168.1.1'
     };
     
     return defaults[fieldName] || '';
@@ -188,6 +189,8 @@ Map original column names to target schema fields. Use intelligent matching for 
       if (!row.id) row.id = `server-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       if (!row.status) row.status = 'healthy';
       if (!row.environment) row.environment = 'production';
+      if (!row.ipAddress) row.ipAddress = '192.168.1.1'; // Default IP address
+      if (!row.location) row.location = 'Unknown';
     }
     
     if (dataType === 'metrics') {
@@ -224,9 +227,9 @@ Map original column names to target schema fields. Use intelligent matching for 
     } else if (hasHostname && hasIpAddress) {
       dataType = 'servers';
       confidence = 0.7;
-    } else if (hasTitle && hasSeverity) {
+    } else if ((hasTitle && hasSeverity) || columns.some(col => col.includes('alert') || col.includes('incident'))) {
       dataType = 'alerts';
-      confidence = 0.7;
+      confidence = 0.8;
     }
     
     return {
