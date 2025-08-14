@@ -1,832 +1,478 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Database, Search, Trash2, Edit, RefreshCw, Download } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import Sidebar from '@/components/dashboard/Sidebar';
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { Database, Trash2, CheckCircle, AlertTriangle, BarChart3, Sparkles } from "lucide-react";
 
-export default function DataManagementPage() {
+interface DataQualitySummary {
+  servers: {
+    total: number;
+    withMissingFields: number;
+    qualityScore: number;
+  };
+  metrics: {
+    total: number;
+    withNullValues: number;
+    qualityScore: number;
+  };
+  alerts: {
+    total: number;
+    withMissingFields: number;
+    qualityScore: number;
+  };
+  overall: {
+    totalRecords: number;
+    totalIssues: number;
+    overallQualityScore: number;
+  };
+}
+
+interface CleaningOptions {
+  removeDuplicates: boolean;
+  handleMissingValues: boolean;
+  normalizeValues: boolean;
+  validateDataTypes: boolean;
+  cleanOutliers: boolean;
+}
+
+interface CleaningResult {
+  duplicatesRemoved: number;
+  missingValuesHandled: number;
+  outliersDetected: number;
+  recordsProcessed: number;
+  dataQualityScore: number;
+}
+
+export default function DataManagement() {
+  const [cleaningOptions, setCleaningOptions] = useState<CleaningOptions>({
+    removeDuplicates: true,
+    handleMissingValues: true,
+    normalizeValues: true,
+    validateDataTypes: true,
+    cleanOutliers: true,
+  });
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTab, setSelectedTab] = useState('servers');
 
-  const { data: servers, isLoading: serversLoading } = useQuery({
-    queryKey: ['/api/servers'],
-    refetchInterval: 30000,
+  // Fetch data quality summary
+  const { data: qualitySummary, isLoading: qualityLoading } = useQuery<{ data: DataQualitySummary }>({
+    queryKey: ["/api/data-cleaning/quality-summary"],
   });
 
-  const { data: metrics, isLoading: metricsLoading } = useQuery({
-    queryKey: ['/api/metrics/range'],
-    queryFn: async () => {
-      const endTime = new Date();
-      const startTime = new Date(endTime.getTime() - 7 * 24 * 60 * 60 * 1000); // Last 7 days
-      const response = await fetch(`/api/metrics/range?start=${startTime.toISOString()}&end=${endTime.toISOString()}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch metrics');
-      }
-      return response.json();
-    },
-    refetchInterval: 30000,
-  });
-
-  const { data: alerts, isLoading: alertsLoading } = useQuery({
-    queryKey: ['/api/alerts'],
-    refetchInterval: 30000,
-  });
-
-  const { data: agents, isLoading: agentsLoading } = useQuery({
-    queryKey: ['/api/agents'],
-    refetchInterval: 30000,
-  });
-
-  const { data: remediations, isLoading: remediationsLoading } = useQuery({
-    queryKey: ['/api/remediation-actions'],
-    refetchInterval: 30000,
-  });
-
-  const { data: auditLogs, isLoading: auditLoading } = useQuery({
-    queryKey: ['/api/audit-logs'],
-    refetchInterval: 30000,
-  });
-
-  const deleteServerMutation = useMutation({
-    mutationFn: async (serverId: string) => {
-      const response = await fetch(`/api/servers/${serverId}`, {
-        method: 'DELETE',
+  // Clean servers mutation
+  const cleanServersMutation = useMutation({
+    mutationFn: () => apiRequest("/api/data-cleaning/servers", {
+      method: "POST",
+      body: cleaningOptions,
+    }),
+    onSuccess: (data) => {
+      toast({
+        title: "Server Data Cleaned",
+        description: data.message,
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete server');
-      }
-      
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/servers'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/metrics'] });
-      toast({ title: "Server deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/data-cleaning/quality-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/servers"] });
     },
     onError: (error) => {
-      toast({ 
-        title: "Delete Failed", 
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive" 
+      toast({
+        title: "Cleaning Failed",
+        description: error instanceof Error ? error.message : "Failed to clean server data",
+        variant: "destructive",
       });
     },
   });
 
-  const clearMetricsMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch('/api/metrics/clear', {
-        method: 'POST',
+  // Clean metrics mutation
+  const cleanMetricsMutation = useMutation({
+    mutationFn: () => apiRequest("/api/data-cleaning/metrics", {
+      method: "POST",
+      body: cleaningOptions,
+    }),
+    onSuccess: (data) => {
+      toast({
+        title: "Metrics Data Cleaned",
+        description: data.message,
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to clear metrics');
-      }
-      
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/metrics/range'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/metrics'] });
-      toast({ title: "Metrics data cleared successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/data-cleaning/quality-summary"] });
     },
     onError: (error) => {
-      toast({ 
-        title: "Clear Failed", 
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive" 
+      toast({
+        title: "Cleaning Failed",
+        description: error instanceof Error ? error.message : "Failed to clean metrics data",
+        variant: "destructive",
       });
     },
   });
 
-  const exportDataMutation = useMutation({
-    mutationFn: async (dataType: string) => {
-      const response = await fetch(`/api/export/${dataType}`);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to export ${dataType} data`);
-      }
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${dataType}_export_${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-    },
-    onSuccess: (_, dataType) => {
-      toast({ title: `${dataType} data exported successfully` });
+  // Clean alerts mutation
+  const cleanAlertsMutation = useMutation({
+    mutationFn: () => apiRequest("/api/data-cleaning/alerts", {
+      method: "POST",
+      body: cleaningOptions,
+    }),
+    onSuccess: (data) => {
+      toast({
+        title: "Alerts Data Cleaned",
+        description: data.message,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/data-cleaning/quality-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
     },
     onError: (error) => {
-      toast({ 
-        title: "Export Failed", 
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive" 
+      toast({
+        title: "Cleaning Failed",
+        description: error instanceof Error ? error.message : "Failed to clean alerts data",
+        variant: "destructive",
       });
     },
   });
 
-  // Add delete mutations for other data types
-  const deleteMetricMutation = useMutation({
-    mutationFn: async (metricId: string) => {
-      const response = await fetch(`/api/metrics/${metricId}`, {
-        method: 'DELETE',
+  // Full clean mutation
+  const fullCleanMutation = useMutation({
+    mutationFn: () => apiRequest("/api/data-cleaning/full-clean", {
+      method: "POST",
+      body: cleaningOptions,
+    }),
+    onSuccess: (data) => {
+      toast({
+        title: "Comprehensive Cleaning Complete",
+        description: data.message,
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete metric');
-      }
-      
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/metrics/range'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/metrics'] });
-      toast({ title: "Metric deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/data-cleaning/quality-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/servers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
     },
     onError: (error) => {
-      toast({ 
-        title: "Delete Failed", 
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive" 
+      toast({
+        title: "Cleaning Failed",
+        description: error instanceof Error ? error.message : "Failed to perform comprehensive cleaning",
+        variant: "destructive",
       });
     },
   });
 
-  const deleteAlertMutation = useMutation({
-    mutationFn: async (alertId: string) => {
-      const response = await fetch(`/api/alerts/${alertId}`, {
-        method: 'DELETE',
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete alert');
-      }
-      
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/alerts', {}] });
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/metrics'] });
-      toast({ title: "Alert deleted successfully" });
-    },
-    onError: (error) => {
-      toast({ 
-        title: "Delete Failed", 
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive" 
-      });
-    },
-  });
-
-  const deleteRemediationMutation = useMutation({
-    mutationFn: async (remediationId: string) => {
-      const response = await fetch(`/api/remediation-actions/${remediationId}`, {
-        method: 'DELETE',
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete remediation action');
-      }
-      
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/remediation-actions', {}] });
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/metrics'] });
-      toast({ title: "Remediation action deleted successfully" });
-    },
-    onError: (error) => {
-      toast({ 
-        title: "Delete Failed", 
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive" 
-      });
-    },
-  });
-
-  const deleteAuditLogMutation = useMutation({
-    mutationFn: async (auditLogId: string) => {
-      const response = await fetch(`/api/audit-logs/${auditLogId}`, {
-        method: 'DELETE',
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete audit log');
-      }
-      
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/audit-logs', {}] });
-      toast({ title: "Audit log deleted successfully" });
-    },
-    onError: (error) => {
-      toast({ 
-        title: "Delete Failed", 
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive" 
-      });
-    },
-  });
-
-  const filteredServers = Array.isArray(servers) ? servers.filter((server: any) =>
-    server.hostname.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    server.ipAddress.includes(searchTerm) ||
-    server.environment.toLowerCase().includes(searchTerm.toLowerCase())
-  ) : [];
-
-  const filteredMetrics = Array.isArray(metrics) ? metrics.filter((metric: any) => {
-    if (!searchTerm) return true;
-    const server = servers?.find((s: any) => s.id === metric.serverId);
-    return server?.hostname.toLowerCase().includes(searchTerm.toLowerCase()) || 
-           metric.serverId?.toLowerCase().includes(searchTerm.toLowerCase());
-  }) : [];
-
-  const filteredAlerts = Array.isArray(alerts) ? alerts.filter((alert: any) =>
-    alert.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    alert.server?.hostname.toLowerCase().includes(searchTerm.toLowerCase())
-  ) : [];
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'healthy': return 'bg-success/20 text-success border-success/30';
-      case 'warning': return 'bg-warning/20 text-warning border-warning/30';
-      case 'critical': return 'bg-error/20 text-error border-error/30';
-      case 'active': return 'bg-success/20 text-success border-success/30';
-      case 'inactive': return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
-      default: return 'bg-slate-600/20 text-slate-300 border-slate-600/30';
-    }
+  const getQualityColor = (score: number) => {
+    if (score >= 90) return "text-green-500";
+    if (score >= 70) return "text-yellow-500";
+    return "text-red-500";
   };
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'critical': return 'bg-error/20 text-error border-error/30';
-      case 'warning': return 'bg-warning/20 text-warning border-warning/30';
-      case 'info': return 'bg-primary/20 text-primary border-primary/30';
-      default: return 'bg-slate-600/20 text-slate-300 border-slate-600/30';
-    }
+  const getQualityBadge = (score: number) => {
+    if (score >= 90) return <Badge className="bg-green-100 text-green-800">Excellent</Badge>;
+    if (score >= 70) return <Badge className="bg-yellow-100 text-yellow-800">Good</Badge>;
+    return <Badge className="bg-red-100 text-red-800">Needs Attention</Badge>;
   };
-
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  // Show loading state while any critical data is loading
-  if (serversLoading && metricsLoading && alertsLoading) {
-    return (
-      <div className="min-h-screen bg-dark-background">
-        <Sidebar />
-        <div className="ml-64 p-6">
-          <div className="flex items-center justify-center h-96">
-            <div className="text-white text-lg">Loading data management...</div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-dark-background">
-      <Sidebar />
-      <div className="ml-64 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Data Management</h1>
-            <p className="text-slate-400 mt-1">View and manage all infrastructure data</p>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={16} />
-              <Input
-                placeholder="Search data..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 bg-dark-surface border-dark-border text-white w-64"
-              />
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => {
-                queryClient.invalidateQueries();
-                toast({ title: "Data refreshed" });
-              }}
-            >
-              <RefreshCw size={16} className="mr-2" />
-              Refresh
-            </Button>
-          </div>
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex items-center gap-3 mb-6">
+        <Database className="h-8 w-8 text-blue-500" />
+        <div>
+          <h1 className="text-3xl font-bold">Data Management</h1>
+          <p className="text-muted-foreground">Clean, normalize, and validate your monitoring data</p>
         </div>
-
-        <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-          <TabsList className="bg-dark-surface border-dark-border">
-            <TabsTrigger value="servers">Servers ({Array.isArray(servers) ? servers.length : 0})</TabsTrigger>
-            <TabsTrigger value="metrics">Metrics ({Array.isArray(metrics) ? metrics.length : 0})</TabsTrigger>
-            <TabsTrigger value="alerts">Alerts ({Array.isArray(alerts) ? alerts.length : 0})</TabsTrigger>
-            <TabsTrigger value="agents">Agents ({Array.isArray(agents) ? agents.length : 0})</TabsTrigger>
-            <TabsTrigger value="remediations">Remediations ({Array.isArray(remediations) ? remediations.length : 0})</TabsTrigger>
-            <TabsTrigger value="audit">Audit Logs ({Array.isArray(auditLogs) ? auditLogs.length : 0})</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="servers" className="space-y-4">
-            <Card className="bg-dark-surface border-dark-border">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-white flex items-center space-x-2">
-                  <Database size={20} />
-                  <span>Server Inventory</span>
-                </CardTitle>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => exportDataMutation.mutate('servers')}
-                  disabled={exportDataMutation.isPending}
-                >
-                  <Download size={16} className="mr-2" />
-                  Export
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {serversLoading ? (
-                  <div className="animate-pulse space-y-4">
-                    {[...Array(5)].map((_, i) => (
-                      <div key={i} className="h-12 bg-slate-700 rounded"></div>
-                    ))}
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-slate-300">Hostname</TableHead>
-                        <TableHead className="text-slate-300">IP Address</TableHead>
-                        <TableHead className="text-slate-300">Environment</TableHead>
-                        <TableHead className="text-slate-300">Status</TableHead>
-                        <TableHead className="text-slate-300">Location</TableHead>
-                        <TableHead className="text-slate-300">Last Heartbeat</TableHead>
-                        <TableHead className="text-slate-300">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {Array.isArray(filteredServers) && filteredServers.map((server: any) => (
-                        <TableRow key={server.id}>
-                          <TableCell className="text-white font-medium">{server.hostname}</TableCell>
-                          <TableCell className="text-slate-300">{server.ipAddress}</TableCell>
-                          <TableCell>
-                            <Badge className={getStatusColor(server.environment)} variant="outline">
-                              {server.environment}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={getStatusColor(server.status)} variant="outline">
-                              {server.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-slate-300">{server.location}</TableCell>
-                          <TableCell className="text-slate-300">
-                            {new Date(server.lastHeartbeat).toLocaleString()}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center space-x-2">
-                              <Button variant="ghost" size="sm">
-                                <Edit size={16} />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="text-error hover:text-error"
-                                onClick={() => {
-                                  if (confirm(`Are you sure you want to delete ${server.hostname}?`)) {
-                                    deleteServerMutation.mutate(server.id);
-                                  }
-                                }}
-                              >
-                                <Trash2 size={16} />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="metrics" className="space-y-4">
-            <Card className="bg-dark-surface border-dark-border">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-white flex items-center space-x-2">
-                  <Database size={20} />
-                  <span>Performance Metrics</span>
-                </CardTitle>
-                <div className="flex space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => exportDataMutation.mutate('metrics')}
-                    disabled={exportDataMutation.isPending}
-                  >
-                    <Download size={16} className="mr-2" />
-                    Export
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="text-warning hover:text-warning"
-                    onClick={() => {
-                      if (confirm("Are you sure you want to clear all metrics data? This action cannot be undone.")) {
-                        clearMetricsMutation.mutate();
-                      }
-                    }}
-                  >
-                    <Trash2 size={16} className="mr-2" />
-                    Clear All
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {metricsLoading ? (
-                  <div className="animate-pulse space-y-4">
-                    {[...Array(10)].map((_, i) => (
-                      <div key={i} className="h-12 bg-slate-700 rounded"></div>
-                    ))}
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-slate-300">Server</TableHead>
-                        <TableHead className="text-slate-300">CPU %</TableHead>
-                        <TableHead className="text-slate-300">Memory %</TableHead>
-                        <TableHead className="text-slate-300">Disk %</TableHead>
-                        <TableHead className="text-slate-300">Network Latency</TableHead>
-                        <TableHead className="text-slate-300">Process Count</TableHead>
-                        <TableHead className="text-slate-300">Timestamp</TableHead>
-                        <TableHead className="text-slate-300">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {Array.isArray(filteredMetrics) && filteredMetrics.length > 0 ? filteredMetrics.slice(0, 50).map((metric: any) => (
-                        <TableRow key={metric.id}>
-                          <TableCell className="text-white font-medium">
-                            {(() => {
-                              const server = servers?.find((s: any) => s.id === metric.serverId);
-                              return server?.hostname || metric.serverId?.slice(0, 8) || 'Unknown';
-                            })()}
-                          </TableCell>
-                          <TableCell className="text-slate-300">{parseFloat(metric.cpuUsage || metric.cpu_usage || 0).toFixed(1)}%</TableCell>
-                          <TableCell className="text-slate-300">
-                            {metric.memoryUsage ? parseFloat(metric.memoryUsage).toFixed(1) : 'N/A'}%
-                          </TableCell>
-                          <TableCell className="text-slate-300">
-                            {metric.diskUsage ? parseFloat(metric.diskUsage).toFixed(1) : 'N/A'}%
-                          </TableCell>
-                          <TableCell className="text-slate-300">{metric.networkLatency || metric.network_latency || 'N/A'}ms</TableCell>
-                          <TableCell className="text-slate-300">{metric.processCount || metric.process_count || 'N/A'}</TableCell>
-                          <TableCell className="text-slate-300">
-                            {new Date(metric.timestamp).toLocaleString()}
-                          </TableCell>
-                          <TableCell>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="text-error hover:text-error"
-                              onClick={() => {
-                                if (confirm("Are you sure you want to delete this metric?")) {
-                                  deleteMetricMutation.mutate(metric.id);
-                                }
-                              }}
-                              disabled={deleteMetricMutation.isPending}
-                              data-testid={`button-delete-metric-${metric.id}`}
-                            >
-                              <Trash2 size={16} />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      )) : (
-                        <TableRow>
-                          <TableCell colSpan={8} className="text-center text-slate-400 py-8">
-                            {Array.isArray(metrics) && metrics.length > 0 ? 
-                              'No metrics match your search criteria' : 
-                              'No metrics data available'
-                            }
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="alerts" className="space-y-4">
-            <Card className="bg-dark-surface border-dark-border">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-white flex items-center space-x-2">
-                  <Database size={20} />
-                  <span>Alert Management</span>
-                </CardTitle>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => exportDataMutation.mutate('alerts')}
-                  disabled={exportDataMutation.isPending}
-                >
-                  <Download size={16} className="mr-2" />
-                  Export
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {alertsLoading ? (
-                  <div className="animate-pulse space-y-4">
-                    {[...Array(8)].map((_, i) => (
-                      <div key={i} className="h-12 bg-slate-700 rounded"></div>
-                    ))}
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-slate-300">Hostname</TableHead>
-                        <TableHead className="text-slate-300">Title</TableHead>
-                        <TableHead className="text-slate-300">Description</TableHead>
-                        <TableHead className="text-slate-300">Severity</TableHead>
-                        <TableHead className="text-slate-300">Metric Type</TableHead>
-                        <TableHead className="text-slate-300">Metric Value</TableHead>
-                        <TableHead className="text-slate-300">Threshold</TableHead>
-                        <TableHead className="text-slate-300">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {Array.isArray(filteredAlerts) && filteredAlerts.map((alert: any) => (
-                        <TableRow key={alert.id}>
-                          <TableCell className="text-white font-medium">
-                            {alert.hostname || alert.server?.hostname || 'N/A'}
-                          </TableCell>
-                          <TableCell className="text-slate-300">
-                            {alert.title || 'Alert'}
-                          </TableCell>
-                          <TableCell className="text-slate-300 max-w-xs truncate">
-                            {alert.description || 'No description'}
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={getSeverityColor(alert.severity)} variant="outline">
-                              {alert.severity || 'MEDIUM'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-white font-medium">{alert.metricType || 'N/A'}</TableCell>
-                          <TableCell className="text-slate-300">
-                            {alert.metricValue ? parseFloat(alert.metricValue).toFixed(2) : 'N/A'}
-                          </TableCell>
-                          <TableCell className="text-slate-300">
-                            {alert.threshold ? parseFloat(alert.threshold).toFixed(2) : 'N/A'}
-                          </TableCell>
-                          <TableCell>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="text-error hover:text-error"
-                              onClick={() => {
-                                if (confirm("Are you sure you want to delete this alert?")) {
-                                  deleteAlertMutation.mutate(alert.id);
-                                }
-                              }}
-                              disabled={deleteAlertMutation.isPending}
-                              data-testid={`button-delete-alert-${alert.id}`}
-                            >
-                              <Trash2 size={16} />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="agents" className="space-y-4">
-            <Card className="bg-dark-surface border-dark-border">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center space-x-2">
-                  <Database size={20} />
-                  <span>AI Agents Status</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {agentsLoading ? (
-                  <div className="animate-pulse space-y-4">
-                    {[...Array(7)].map((_, i) => (
-                      <div key={i} className="h-12 bg-slate-700 rounded"></div>
-                    ))}
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-slate-300">Agent Name</TableHead>
-                        <TableHead className="text-slate-300">Type</TableHead>
-                        <TableHead className="text-slate-300">Status</TableHead>
-                        <TableHead className="text-slate-300">CPU Usage</TableHead>
-                        <TableHead className="text-slate-300">Memory Usage</TableHead>
-                        <TableHead className="text-slate-300">Processed Count</TableHead>
-                        <TableHead className="text-slate-300">Error Count</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {Array.isArray(agents) && agents.map((agent: any) => (
-                        <TableRow key={agent.id}>
-                          <TableCell className="text-white font-medium">{agent.name}</TableCell>
-                          <TableCell className="text-slate-300">{agent.type}</TableCell>
-                          <TableCell>
-                            <Badge className={getStatusColor(agent.status)} variant="outline">
-                              {agent.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-slate-300">{agent.cpuUsage}%</TableCell>
-                          <TableCell className="text-slate-300">{agent.memoryUsage} MB</TableCell>
-                          <TableCell className="text-slate-300">{agent.processedCount}</TableCell>
-                          <TableCell className="text-slate-300">{agent.errorCount}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="remediations" className="space-y-4">
-            <Card className="bg-dark-surface border-dark-border">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center space-x-2">
-                  <Database size={20} />
-                  <span>Remediation Actions</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {remediationsLoading ? (
-                  <div className="animate-pulse space-y-4">
-                    {[...Array(6)].map((_, i) => (
-                      <div key={i} className="h-12 bg-slate-700 rounded"></div>
-                    ))}
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-slate-300">Hostname</TableHead>
-                        <TableHead className="text-slate-300">Title</TableHead>
-                        <TableHead className="text-slate-300">Description</TableHead>
-                        <TableHead className="text-slate-300">Action Type</TableHead>
-                        <TableHead className="text-slate-300">Confidence</TableHead>
-                        <TableHead className="text-slate-300">Estimated Downtime</TableHead>
-                        <TableHead className="text-slate-300">Status</TableHead>
-                        <TableHead className="text-slate-300">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {Array.isArray(remediations) && remediations.map((remediation: any) => (
-                        <TableRow key={remediation.id}>
-                          <TableCell className="text-white font-medium">
-                            {remediation.hostname || remediation.server?.hostname || 'N/A'}
-                          </TableCell>
-                          <TableCell className="text-slate-300">
-                            {remediation.title || 'Remediation Action'}
-                          </TableCell>
-                          <TableCell className="text-slate-300 max-w-xs truncate">
-                            {remediation.description || 'No description'}
-                          </TableCell>
-                          <TableCell className="text-slate-300">{remediation.actionType || 'N/A'}</TableCell>
-                          <TableCell className="text-slate-300">{remediation.confidence || 'N/A'}</TableCell>
-                          <TableCell className="text-slate-300">{remediation.estimatedDowntime || 'N/A'}</TableCell>
-                          <TableCell>
-                            <Badge className={getStatusColor(remediation.status)} variant="outline">
-                              {remediation.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="text-error hover:text-error"
-                              onClick={() => {
-                                if (confirm("Are you sure you want to delete this remediation action?")) {
-                                  deleteRemediationMutation.mutate(remediation.id);
-                                }
-                              }}
-                              disabled={deleteRemediationMutation.isPending}
-                              data-testid={`button-delete-remediation-${remediation.id}`}
-                            >
-                              <Trash2 size={16} />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="audit" className="space-y-4">
-            <Card className="bg-dark-surface border-dark-border">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center space-x-2">
-                  <Database size={20} />
-                  <span>Audit Trail</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {auditLoading ? (
-                  <div className="animate-pulse space-y-4">
-                    {[...Array(10)].map((_, i) => (
-                      <div key={i} className="h-12 bg-slate-700 rounded"></div>
-                    ))}
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-slate-300">Hostname</TableHead>
-                        <TableHead className="text-slate-300">Agent Name</TableHead>
-                        <TableHead className="text-slate-300">Action</TableHead>
-                        <TableHead className="text-slate-300">Details</TableHead>
-                        <TableHead className="text-slate-300">Status</TableHead>
-                        <TableHead className="text-slate-300">Impact</TableHead>
-                        <TableHead className="text-slate-300">Timestamp</TableHead>
-                        <TableHead className="text-slate-300">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {Array.isArray(auditLogs) && auditLogs.slice(0, 50).map((log: any) => (
-                        <TableRow key={log.id}>
-                          <TableCell className="text-white font-medium">
-                            {log.hostname || log.server?.hostname || 'N/A'}
-                          </TableCell>
-                          <TableCell className="text-slate-300">
-                            {log.agentName || log.agent?.name || 'System'}
-                          </TableCell>
-                          <TableCell className="text-white font-medium">{log.action}</TableCell>
-                          <TableCell className="text-slate-300 max-w-xs truncate">{log.details}</TableCell>
-                          <TableCell>
-                            <Badge className={getStatusColor(log.status)} variant="outline">
-                              {log.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-slate-300 max-w-xs truncate">{log.impact || 'N/A'}</TableCell>
-                          <TableCell className="text-slate-300">
-                            {new Date(log.timestamp).toLocaleString()}
-                          </TableCell>
-                          <TableCell>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="text-error hover:text-error"
-                              onClick={() => {
-                                if (confirm("Are you sure you want to delete this audit log?")) {
-                                  deleteAuditLogMutation.mutate(log.id);
-                                }
-                              }}
-                              disabled={deleteAuditLogMutation.isPending}
-                              data-testid={`button-delete-audit-${log.id}`}
-                            >
-                              <Trash2 size={16} />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
       </div>
+
+      {/* Data Quality Overview */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Overall Quality</CardTitle>
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {qualityLoading ? (
+              <div className="animate-pulse">
+                <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded"></div>
+              </div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  <span className={getQualityColor(qualitySummary?.data.overall.overallQualityScore || 0)}>
+                    {Math.round(qualitySummary?.data.overall.overallQualityScore || 0)}%
+                  </span>
+                </div>
+                <Progress value={qualitySummary?.data.overall.overallQualityScore || 0} className="mt-2" />
+                <p className="text-xs text-muted-foreground mt-2">
+                  {qualitySummary?.data.overall.totalRecords || 0} total records
+                </p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Server Data</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {qualityLoading ? (
+              <div className="animate-pulse">
+                <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded"></div>
+              </div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  <span className={getQualityColor(qualitySummary?.data.servers.qualityScore || 0)}>
+                    {Math.round(qualitySummary?.data.servers.qualityScore || 0)}%
+                  </span>
+                </div>
+                <div className="flex items-center justify-between mt-2">
+                  {getQualityBadge(qualitySummary?.data.servers.qualityScore || 0)}
+                  <span className="text-xs text-muted-foreground">
+                    {qualitySummary?.data.servers.total || 0} servers
+                  </span>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Metrics Data</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {qualityLoading ? (
+              <div className="animate-pulse">
+                <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded"></div>
+              </div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  <span className={getQualityColor(qualitySummary?.data.metrics.qualityScore || 0)}>
+                    {Math.round(qualitySummary?.data.metrics.qualityScore || 0)}%
+                  </span>
+                </div>
+                <div className="flex items-center justify-between mt-2">
+                  {getQualityBadge(qualitySummary?.data.metrics.qualityScore || 0)}
+                  <span className="text-xs text-muted-foreground">
+                    {qualitySummary?.data.metrics.total || 0} metrics
+                  </span>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Alerts Data</CardTitle>
+            <Sparkles className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {qualityLoading ? (
+              <div className="animate-pulse">
+                <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded"></div>
+              </div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  <span className={getQualityColor(qualitySummary?.data.alerts.qualityScore || 0)}>
+                    {Math.round(qualitySummary?.data.alerts.qualityScore || 0)}%
+                  </span>
+                </div>
+                <div className="flex items-center justify-between mt-2">
+                  {getQualityBadge(qualitySummary?.data.alerts.qualityScore || 0)}
+                  <span className="text-xs text-muted-foreground">
+                    {qualitySummary?.data.alerts.total || 0} alerts
+                  </span>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Data Cleaning Controls */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Cleaning Options */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Cleaning Options</CardTitle>
+            <CardDescription>
+              Configure which data cleaning operations to perform
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="removeDuplicates"
+                checked={cleaningOptions.removeDuplicates}
+                onCheckedChange={(checked) =>
+                  setCleaningOptions(prev => ({ ...prev, removeDuplicates: !!checked }))
+                }
+                data-testid="checkbox-remove-duplicates"
+              />
+              <label htmlFor="removeDuplicates" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Remove Duplicates
+              </label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="handleMissingValues"
+                checked={cleaningOptions.handleMissingValues}
+                onCheckedChange={(checked) =>
+                  setCleaningOptions(prev => ({ ...prev, handleMissingValues: !!checked }))
+                }
+                data-testid="checkbox-handle-missing-values"
+              />
+              <label htmlFor="handleMissingValues" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Handle Missing Values
+              </label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="normalizeValues"
+                checked={cleaningOptions.normalizeValues}
+                onCheckedChange={(checked) =>
+                  setCleaningOptions(prev => ({ ...prev, normalizeValues: !!checked }))
+                }
+                data-testid="checkbox-normalize-values"
+              />
+              <label htmlFor="normalizeValues" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Normalize Values
+              </label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="validateDataTypes"
+                checked={cleaningOptions.validateDataTypes}
+                onCheckedChange={(checked) =>
+                  setCleaningOptions(prev => ({ ...prev, validateDataTypes: !!checked }))
+                }
+                data-testid="checkbox-validate-data-types"
+              />
+              <label htmlFor="validateDataTypes" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Validate Data Types
+              </label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="cleanOutliers"
+                checked={cleaningOptions.cleanOutliers}
+                onCheckedChange={(checked) =>
+                  setCleaningOptions(prev => ({ ...prev, cleanOutliers: !!checked }))
+                }
+                data-testid="checkbox-clean-outliers"
+              />
+              <label htmlFor="cleanOutliers" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Clean Outliers
+              </label>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Cleaning Actions */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Data Cleaning Actions</CardTitle>
+            <CardDescription>
+              Execute cleaning operations on specific data types
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button
+              onClick={() => cleanServersMutation.mutate()}
+              disabled={cleanServersMutation.isPending}
+              className="w-full"
+              data-testid="button-clean-servers"
+            >
+              {cleanServersMutation.isPending ? "Cleaning..." : "Clean Server Data"}
+            </Button>
+
+            <Button
+              onClick={() => cleanMetricsMutation.mutate()}
+              disabled={cleanMetricsMutation.isPending}
+              className="w-full"
+              variant="outline"
+              data-testid="button-clean-metrics"
+            >
+              {cleanMetricsMutation.isPending ? "Cleaning..." : "Clean Metrics Data"}
+            </Button>
+
+            <Button
+              onClick={() => cleanAlertsMutation.mutate()}
+              disabled={cleanAlertsMutation.isPending}
+              className="w-full"
+              variant="outline"
+              data-testid="button-clean-alerts"
+            >
+              {cleanAlertsMutation.isPending ? "Cleaning..." : "Clean Alerts Data"}
+            </Button>
+
+            <div className="pt-3 border-t">
+              <Button
+                onClick={() => fullCleanMutation.mutate()}
+                disabled={fullCleanMutation.isPending}
+                className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+                data-testid="button-full-clean"
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                {fullCleanMutation.isPending ? "Performing Full Clean..." : "Comprehensive Data Cleaning"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Data Quality Details */}
+      {qualitySummary && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Data Quality Details</CardTitle>
+            <CardDescription>
+              Detailed breakdown of data quality issues by category
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <h4 className="font-medium">Server Data Issues</h4>
+                <div className="text-sm text-muted-foreground">
+                  <p>{qualitySummary.data.servers.withMissingFields} records with missing fields</p>
+                  <p>out of {qualitySummary.data.servers.total} total servers</p>
+                </div>
+                <Progress value={(1 - qualitySummary.data.servers.withMissingFields / qualitySummary.data.servers.total) * 100} className="h-2" />
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-medium">Metrics Data Issues</h4>
+                <div className="text-sm text-muted-foreground">
+                  <p>{qualitySummary.data.metrics.withNullValues} records with null values</p>
+                  <p>out of {qualitySummary.data.metrics.total} total metrics</p>
+                </div>
+                <Progress value={(1 - qualitySummary.data.metrics.withNullValues / qualitySummary.data.metrics.total) * 100} className="h-2" />
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-medium">Alerts Data Issues</h4>
+                <div className="text-sm text-muted-foreground">
+                  <p>{qualitySummary.data.alerts.withMissingFields} records with missing fields</p>
+                  <p>out of {qualitySummary.data.alerts.total} total alerts</p>
+                </div>
+                <Progress value={(1 - qualitySummary.data.alerts.withMissingFields / qualitySummary.data.alerts.total) * 100} className="h-2" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
