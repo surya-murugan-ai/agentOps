@@ -29,14 +29,20 @@ export default function DataViewPage() {
   // Fetch data for different tables
   const { data: servers, isLoading: serversLoading } = useQuery({
     queryKey: ["/api/servers"],
-    enabled: selectedTable === "servers"
+    enabled: selectedTable === "servers" || selectedTable === "metrics" || selectedTable === "alerts" || selectedTable === "remediations"
   });
 
   const { data: metrics, isLoading: metricsLoading } = useQuery({
-    queryKey: ["/api/metrics/range", { 
-      startTime: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-      endTime: new Date().toISOString()
-    }],
+    queryKey: ["/api/metrics/range"],
+    queryFn: async () => {
+      const endTime = new Date();
+      const startTime = new Date(endTime.getTime() - 7 * 24 * 60 * 60 * 1000); // Last 7 days
+      const response = await fetch(`/api/metrics/range?start=${startTime.toISOString()}&end=${endTime.toISOString()}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch metrics');
+      }
+      return response.json();
+    },
     enabled: selectedTable === "metrics"
   });
 
@@ -156,7 +162,10 @@ export default function DataViewPage() {
               {Array.isArray(metrics) && metrics.slice(0, 50).map((metric: any) => (
                 <TableRow key={metric.id}>
                   <TableCell className="text-white font-medium">
-                    {metric.server?.hostname || metric.serverId}
+                    {(() => {
+                      const server = servers?.find((s: any) => s.id === metric.serverId);
+                      return server?.hostname || metric.serverId?.slice(0, 8) || 'Unknown';
+                    })()}
                   </TableCell>
                   <TableCell className="text-slate-300">{parseFloat(metric.cpuUsage).toFixed(1)}%</TableCell>
                   <TableCell className="text-slate-300">{parseFloat(metric.memoryUsage).toFixed(1)}%</TableCell>
