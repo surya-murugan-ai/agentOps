@@ -3,6 +3,48 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, TrendingUp, TrendingDown, BarChart3, PieChart } from 'lucide-react';
 import Sidebar from '@/components/dashboard/Sidebar';
 
+// Helper functions to calculate real metrics
+function calculateMTTR(remediations: any[]): string {
+  const resolvedRemediations = remediations.filter(r => r.status === 'executed');
+  if (resolvedRemediations.length === 0) return '0 min';
+  
+  const totalTime = resolvedRemediations.reduce((acc, r) => {
+    const created = new Date(r.createdAt).getTime();
+    const updated = new Date(r.updatedAt).getTime();
+    return acc + (updated - created);
+  }, 0);
+  
+  const avgTimeMs = totalTime / resolvedRemediations.length;
+  const avgTimeMin = Math.round(avgTimeMs / (1000 * 60));
+  return `${avgTimeMin} min`;
+}
+
+function calculateAvgResponseTime(agents: any[]): string {
+  const activeAgents = agents.filter(a => a.status === 'active');
+  if (activeAgents.length === 0) return '0 min';
+  
+  // Use a simple calculation based on agent processing metrics
+  const avgTime = activeAgents.reduce((acc, agent) => {
+    // If agents have processing metrics, use them; otherwise default
+    return acc + (agent.avgProcessingTime || 2);
+  }, 0) / activeAgents.length;
+  
+  return `${avgTime.toFixed(1)} min`;
+}
+
+function calculateFalsePositiveRate(alerts: any[]): string {
+  if (alerts.length === 0) return '0%';
+  
+  // Count alerts that were resolved without requiring action
+  const falsePositives = alerts.filter(a => 
+    a.status === 'resolved' && 
+    a.description?.toLowerCase().includes('false') || 
+    a.description?.toLowerCase().includes('no action')
+  ).length;
+  
+  return `${((falsePositives / alerts.length) * 100).toFixed(1)}%`;
+}
+
 export default function AnalyticsPage() {
   const { data: metrics } = useQuery({
     queryKey: ['/api/dashboard/metrics'],
@@ -24,18 +66,36 @@ export default function AnalyticsPage() {
     refetchInterval: 30000,
   });
 
-  // Calculate analytics metrics
+  // Type-safe data with defaults
+  const safeMetrics = metrics as any || { totalServers: 0, healthyServers: 0, warningServers: 0, criticalServers: 0 };
+  const safeAgents = (agents as any[]) || [];
+  const safeAlerts = (alerts as any[]) || [];
+  const safeRemediations = (remediations as any[]) || [];
+
+  // Calculate analytics metrics from real data
   const analyticsData = {
-    totalAlerts: alerts?.length || 0,
-    criticalAlerts: alerts?.filter((a: any) => a.severity === 'critical').length || 0,
-    resolvedAlerts: alerts?.filter((a: any) => a.status === 'resolved').length || 0,
-    activeAgents: agents?.filter((a: any) => a.status === 'active').length || 0,
-    totalRemediations: remediations?.length || 0,
-    executedRemediations: remediations?.filter((r: any) => r.status === 'executed').length || 0,
-    avgResponseTime: '2.3 min',
-    systemUptime: '99.97%',
-    mttr: '4.2 min', // Mean Time To Recovery
-    falsePositiveRate: '2.1%'
+    totalAlerts: safeAlerts.length,
+    criticalAlerts: safeAlerts.filter((a: any) => a.severity === 'critical').length,
+    resolvedAlerts: safeAlerts.filter((a: any) => a.status === 'resolved').length,
+    activeAgents: safeAgents.filter((a: any) => a.status === 'active').length,
+    totalRemediations: safeRemediations.length,
+    executedRemediations: safeRemediations.filter((r: any) => r.status === 'executed').length,
+    // Calculate system uptime based on server health
+    systemUptime: safeMetrics.totalServers > 0 
+      ? (((safeMetrics.healthyServers / safeMetrics.totalServers) * 100).toFixed(2) + '%')
+      : '0.00%',
+    // Calculate MTTR from remediation data
+    mttr: safeRemediations.length > 0 
+      ? calculateMTTR(safeRemediations) 
+      : '0 min',
+    // Calculate average response time from agent data
+    avgResponseTime: safeAgents.length > 0 
+      ? calculateAvgResponseTime(safeAgents) 
+      : '0 min',
+    // Calculate false positive rate from resolved alerts
+    falsePositiveRate: safeAlerts.length > 0 
+      ? calculateFalsePositiveRate(safeAlerts) 
+      : '0.0%'
   };
 
   const alertResolutionRate = analyticsData.totalAlerts > 0 
@@ -124,13 +184,13 @@ export default function AnalyticsPage() {
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400">Warning Alerts</span>
                   <span className="text-warning font-semibold">
-                    {alerts?.filter((a: any) => a.severity === 'warning').length || 0}
+                    {safeAlerts.filter((a: any) => a.severity === 'warning').length}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400">Info Alerts</span>
                   <span className="text-primary font-semibold">
-                    {alerts?.filter((a: any) => a.severity === 'info').length || 0}
+                    {safeAlerts.filter((a: any) => a.severity === 'info').length}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -156,7 +216,7 @@ export default function AnalyticsPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400">Total Agents</span>
-                  <span className="text-white font-semibold">{agents?.length || 0}</span>
+                  <span className="text-white font-semibold">{safeAgents.length}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400">Avg Response Time</span>
@@ -183,17 +243,17 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="text-center">
                 <p className="text-slate-400 text-sm mb-2">Healthy Servers</p>
-                <p className="text-3xl font-bold text-success">{metrics?.healthyServers || 0}</p>
-                <p className="text-slate-500 text-xs">out of {metrics?.totalServers || 0} total</p>
+                <p className="text-3xl font-bold text-success">{safeMetrics.healthyServers}</p>
+                <p className="text-slate-500 text-xs">out of {safeMetrics.totalServers} total</p>
               </div>
               <div className="text-center">
                 <p className="text-slate-400 text-sm mb-2">Warning Status</p>
-                <p className="text-3xl font-bold text-warning">{metrics?.warningServers || 0}</p>
+                <p className="text-3xl font-bold text-warning">{safeMetrics.warningServers}</p>
                 <p className="text-slate-500 text-xs">servers need attention</p>
               </div>
               <div className="text-center">
                 <p className="text-slate-400 text-sm mb-2">Critical Issues</p>
-                <p className="text-3xl font-bold text-error">{metrics?.criticalServers || 0}</p>
+                <p className="text-3xl font-bold text-error">{safeMetrics.criticalServers}</p>
                 <p className="text-slate-500 text-xs">urgent intervention</p>
               </div>
             </div>
