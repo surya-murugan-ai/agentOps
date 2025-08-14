@@ -144,6 +144,9 @@ export class DatabaseStorage implements IStorage {
     // Now safe to delete alerts
     await db.delete(alerts).where(eq(alerts.serverId, id));
     
+    // Delete audit logs associated with the server
+    await db.delete(auditLogs).where(eq(auditLogs.serverId, id));
+    
     // Delete other related data
     await db.delete(serverMetrics).where(eq(serverMetrics.serverId, id));
     await db.delete(anomalies).where(eq(anomalies.serverId, id));
