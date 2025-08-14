@@ -20,7 +20,7 @@ export default function AuditLog() {
   const itemsPerPage = 10;
 
   const { data: auditLogs, isLoading } = useQuery({
-    queryKey: ['/api/audit-logs', { limit: 50 }],
+    queryKey: ['/api/audit-logs'],
     refetchInterval: 60000,
   });
 

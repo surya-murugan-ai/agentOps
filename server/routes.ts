@@ -459,21 +459,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const server = await storage.getServerByHostname(item.hostname);
               if (server) {
                 item.serverId = server.id;
+              } else {
+                // Auto-create server if it doesn't exist
+                const newServer = await storage.createServer({
+                  hostname: item.hostname,
+                  ipAddress: '192.168.1.1', // Default IP
+                  environment: 'production',
+                  status: 'healthy',
+                  location: 'Auto-generated'
+                });
+                item.serverId = newServer.id;
               }
             }
 
-            if (item.serverId) {
+            if (item.serverId || item.hostname) {
+              // If still no serverId, create a default server
+              if (!item.serverId) {
+                const defaultServer = await storage.createServer({
+                  hostname: 'server-001',
+                  ipAddress: '192.168.1.1',
+                  environment: 'production', 
+                  status: 'healthy',
+                  location: 'Auto-generated'
+                });
+                item.serverId = defaultServer.id;
+              }
+
               await storage.createAlert({
                 serverId: item.serverId,
-                title: item.title,
-                description: item.description,
+                title: item.title || 'System Alert',
+                description: item.description || 'Alert generated from uploaded data',
                 severity: item.severity === 'critical' ? 'critical' : item.severity === 'warning' ? 'warning' : 'info',
                 status: item.status === 'resolved' ? 'resolved' : item.status === 'acknowledged' ? 'acknowledged' : 'active',
                 metricType: item.metricType || 'system'
               });
               count++;
             } else {
-              errors.push(`Alert '${item.title}': Server not found`);
+              errors.push(`Alert '${item.title}': Unable to create or find server`);
             }
           }
         } catch (error) {
