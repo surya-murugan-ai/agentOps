@@ -1,4 +1,4 @@
-import { Brain, BarChart3, Server, Users, AlertTriangle, Settings, ClipboardList, Activity, Upload, Database, Wrench, Key, TrendingUp, GitBranch } from 'lucide-react';
+import { Brain, BarChart3, Server, Users, AlertTriangle, Settings, ClipboardList, Activity, Upload, Database, Wrench, Key, TrendingUp, GitBranch, HelpCircle } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 
@@ -162,6 +162,11 @@ export default function Sidebar() {
           <Link href="/settings" className={getNavItemClass("/settings")} data-testid="nav-settings">
             <Key size={20} />
             <span>API Keys & Config</span>
+          </Link>
+          
+          <Link href="/help" className={getNavItemClass("/help")} data-testid="nav-help">
+            <HelpCircle size={20} />
+            <span>Help Center</span>
           </Link>
         </div>
         
