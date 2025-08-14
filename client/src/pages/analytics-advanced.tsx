@@ -110,126 +110,7 @@ export default function AdvancedAnalytics() {
   const safeServers = (servers as any[]) || [];
 
   // Chart configurations
-  const createLineChart = (data: any, title: string) => ({
-    type: 'line' as const,
-    data: {
-      labels: data?.timestamps || [],
-      datasets: [
-        {
-          label: 'CPU Usage %',
-          data: data?.cpu || [],
-          borderColor: 'rgb(59, 130, 246)',
-          backgroundColor: 'rgba(59, 130, 246, 0.1)',
-          tension: 0.4,
-        },
-        {
-          label: 'Memory Usage %',
-          data: data?.memory || [],
-          borderColor: 'rgb(16, 185, 129)',
-          backgroundColor: 'rgba(16, 185, 129, 0.1)',
-          tension: 0.4,
-        },
-        {
-          label: 'Disk Usage %',
-          data: data?.disk || [],
-          borderColor: 'rgb(245, 158, 11)',
-          backgroundColor: 'rgba(245, 158, 11, 0.1)',
-          tension: 0.4,
-        }
-      ],
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { position: 'top' as const },
-        title: { display: true, text: title },
-      },
-      scales: {
-        x: { type: 'time' as const, time: { unit: 'hour' as const } },
-        y: { beginAtZero: true, max: 100 },
-      },
-    },
-  });
-
-  const createBarChart = (data: any, title: string) => ({
-    type: 'bar' as const,
-    data: {
-      labels: data?.servers || [],
-      datasets: [
-        {
-          label: 'Critical Alerts',
-          data: data?.critical || [],
-          backgroundColor: 'rgba(239, 68, 68, 0.8)',
-        },
-        {
-          label: 'Warning Alerts',
-          data: data?.warning || [],
-          backgroundColor: 'rgba(245, 158, 11, 0.8)',
-        },
-        {
-          label: 'Info Alerts',
-          data: data?.info || [],
-          backgroundColor: 'rgba(59, 130, 246, 0.8)',
-        }
-      ],
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { position: 'top' as const },
-        title: { display: true, text: title },
-      },
-      scales: {
-        y: { beginAtZero: true },
-      },
-    },
-  });
-
-  const createDoughnutChart = (data: any, title: string) => ({
-    type: 'doughnut' as const,
-    data: {
-      labels: data?.labels || ['Critical', 'Warning', 'Info', 'Resolved'],
-      datasets: [
-        {
-          data: data?.values || [0, 0, 0, 0],
-          backgroundColor: [
-            'rgba(239, 68, 68, 0.8)',
-            'rgba(245, 158, 11, 0.8)',
-            'rgba(59, 130, 246, 0.8)',
-            'rgba(16, 185, 129, 0.8)',
-          ],
-          borderWidth: 2,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { position: 'right' as const },
-        title: { display: true, text: title },
-      },
-    },
-  });
-
-  const predictiveMaintenanceData = {
-    labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
-    datasets: [
-      {
-        label: 'Predicted Failures',
-        data: performanceData?.predictions || [2, 3, 1, 4],
-        borderColor: 'rgb(239, 68, 68)',
-        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-        tension: 0.4,
-      },
-      {
-        label: 'Maintenance Windows',
-        data: performanceData?.maintenance || [1, 2, 2, 1],
-        borderColor: 'rgb(16, 185, 129)',
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-        tension: 0.4,
-      }
-    ],
-  };
+  // Data processing helpers removed - using real data directly in components
 
   const handleCreateDashboard = () => {
     const newDashboard: CustomDashboard = {
@@ -358,9 +239,47 @@ export default function AdvancedAnalytics() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">System Health Trends</CardTitle>
+                <CardDescription>Resource usage over time</CardDescription>
               </CardHeader>
               <CardContent>
-                <Line {...createLineChart(metricsData, 'Resource Usage Over Time')} />
+                <Line
+                  data={{
+                    labels: metricsData?.timestamps || [],
+                    datasets: [
+                      {
+                        label: 'CPU Usage %',
+                        data: metricsData?.cpu || [],
+                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4,
+                      },
+                      {
+                        label: 'Memory Usage %',
+                        data: metricsData?.memory || [],
+                        borderColor: 'rgb(16, 185, 129)',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.4,
+                      },
+                      {
+                        label: 'Disk Usage %',
+                        data: metricsData?.disk || [],
+                        borderColor: 'rgb(245, 158, 11)',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        tension: 0.4,
+                      }
+                    ],
+                  }}
+                  options={{
+                    responsive: true,
+                    plugins: { 
+                      legend: { position: 'top' as const },
+                      title: { display: true, text: 'Resource Usage Over Time' }
+                    },
+                    scales: { 
+                      y: { beginAtZero: true, max: 100 }
+                    },
+                  }}
+                />
               </CardContent>
             </Card>
 
@@ -368,9 +287,32 @@ export default function AdvancedAnalytics() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Alert Distribution</CardTitle>
+                <CardDescription>Alert severity breakdown</CardDescription>
               </CardHeader>
               <CardContent>
-                <Doughnut {...createDoughnutChart(alertsAnalytics, 'Alert Severity Breakdown')} />
+                <Doughnut
+                  data={{
+                    labels: alertsAnalytics?.labels || ['Critical', 'Warning', 'Info'],
+                    datasets: [
+                      {
+                        data: alertsAnalytics?.values || [0, 0, 0],
+                        backgroundColor: [
+                          'rgba(239, 68, 68, 0.8)',
+                          'rgba(245, 158, 11, 0.8)',
+                          'rgba(59, 130, 246, 0.8)',
+                        ],
+                        borderWidth: 2,
+                      },
+                    ],
+                  }}
+                  options={{
+                    responsive: true,
+                    plugins: { 
+                      legend: { position: 'right' as const },
+                      title: { display: true, text: 'Alert Severity Breakdown' }
+                    },
+                  }}
+                />
               </CardContent>
             </Card>
 
@@ -378,9 +320,39 @@ export default function AdvancedAnalytics() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Server Alert Comparison</CardTitle>
+                <CardDescription>Alerts by server</CardDescription>
               </CardHeader>
               <CardContent>
-                <Bar {...createBarChart(alertsAnalytics, 'Alerts by Server')} />
+                <Bar
+                  data={{
+                    labels: alertsAnalytics?.servers || [],
+                    datasets: [
+                      {
+                        label: 'Critical Alerts',
+                        data: alertsAnalytics?.critical || [],
+                        backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                      },
+                      {
+                        label: 'Warning Alerts',
+                        data: alertsAnalytics?.warning || [],
+                        backgroundColor: 'rgba(245, 158, 11, 0.8)',
+                      },
+                      {
+                        label: 'Info Alerts',
+                        data: alertsAnalytics?.info || [],
+                        backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                      }
+                    ],
+                  }}
+                  options={{
+                    responsive: true,
+                    plugins: { 
+                      legend: { position: 'top' as const },
+                      title: { display: true, text: 'Alerts by Server' }
+                    },
+                    scales: { y: { beginAtZero: true } },
+                  }}
+                />
               </CardContent>
             </Card>
           </div>
@@ -477,15 +449,27 @@ export default function AdvancedAnalytics() {
                         label: 'CPU vs Memory',
                         data: performanceData?.correlation || [],
                         backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
                       }
                     ],
                   }}
                   options={{
                     responsive: true,
-                    plugins: { legend: { position: 'top' } },
+                    plugins: { 
+                      legend: { position: 'top' as const },
+                      title: { display: true, text: 'CPU vs Memory Performance Correlation' }
+                    },
                     scales: {
-                      x: { title: { display: true, text: 'CPU Usage %' } },
-                      y: { title: { display: true, text: 'Memory Usage %' } },
+                      x: { 
+                        title: { display: true, text: 'CPU Usage %' },
+                        beginAtZero: true,
+                        max: 100
+                      },
+                      y: { 
+                        title: { display: true, text: 'Memory Usage %' },
+                        beginAtZero: true,
+                        max: 100
+                      },
                     },
                   }}
                 />
@@ -494,32 +478,39 @@ export default function AdvancedAnalytics() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Response Time Analysis</CardTitle>
-                <CardDescription>Network latency and response time trends</CardDescription>
+                <CardTitle>Server Status Overview</CardTitle>
+                <CardDescription>Real-time server health from uploaded data</CardDescription>
               </CardHeader>
               <CardContent>
-                <Bar
-                  data={{
-                    labels: performanceData?.servers || [],
-                    datasets: [
-                      {
-                        label: 'Avg Response Time (ms)',
-                        data: performanceData?.responseTime || [],
-                        backgroundColor: 'rgba(16, 185, 129, 0.8)',
-                      },
-                      {
-                        label: 'Peak Response Time (ms)',
-                        data: performanceData?.peakResponseTime || [],
-                        backgroundColor: 'rgba(239, 68, 68, 0.8)',
-                      }
-                    ],
-                  }}
-                  options={{
-                    responsive: true,
-                    plugins: { legend: { position: 'top' } },
-                    scales: { y: { beginAtZero: true } },
-                  }}
-                />
+                <div className="space-y-4">
+                  {safeServers && safeServers.length > 0 ? (
+                    safeServers.map((server: any) => (
+                      <div key={server.id} className="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
+                        <div>
+                          <div className="font-medium">{server.hostname}</div>
+                          <div className="text-sm text-slate-400">{server.ipAddress} • {server.environment}</div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <Badge 
+                            variant={server.status === 'healthy' ? 'default' : 
+                                    server.status === 'warning' ? 'secondary' : 'destructive'}
+                            className="capitalize"
+                          >
+                            {server.status}
+                          </Badge>
+                          <div className="text-xs text-slate-400">
+                            {server.location}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center text-slate-400 py-8">
+                      <BarChart3 size={48} className="mx-auto mb-4 opacity-50" />
+                      <p>Server performance data will appear here</p>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </div>
