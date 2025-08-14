@@ -696,25 +696,59 @@ export default function DataUploadPage() {
 
                   {/* Data Preview Table */}
                   <div className="bg-slate-800 rounded-lg p-4 max-h-96 overflow-auto">
-                    <Table>
+                    <Table className="w-full table-fixed">
                       <TableHeader>
                         <TableRow>
-                          {uploadState.previewData && Object.keys(uploadState.previewData[0]).map((key) => (
-                            <TableHead key={key} className="text-slate-300">{key}</TableHead>
-                          ))}
+                          {uploadState.previewData && Object.keys(uploadState.previewData[0]).map((key, index) => {
+                            // Calculate dynamic column width based on content
+                            const maxLength = Math.max(
+                              key.length,
+                              ...uploadState.previewData.slice(0, 5).map(row => 
+                                String(row[key] || '').length
+                              )
+                            );
+                            const width = Math.min(Math.max(maxLength * 8 + 20, 100), 200);
+                            
+                            return (
+                              <TableHead 
+                                key={key} 
+                                className="text-slate-300 text-left px-3 py-2 border-b border-slate-600"
+                                style={{ width: `${width}px`, minWidth: `${width}px` }}
+                              >
+                                <div className="truncate" title={key}>{key}</div>
+                              </TableHead>
+                            );
+                          })}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {uploadState.previewData?.slice(0, 5).map((row, index) => (
-                          <TableRow key={index}>
-                            {Object.values(row).map((value, cellIndex) => (
-                              <TableCell key={cellIndex} className="text-slate-300">
-                                {String(value).length > 50 
-                                  ? String(value).substring(0, 50) + '...' 
-                                  : String(value)
-                                }
-                              </TableCell>
-                            ))}
+                          <TableRow key={index} className="border-b border-slate-700">
+                            {Object.entries(row).map(([key, value], cellIndex) => {
+                              // Match the column width calculation from header
+                              const maxLength = Math.max(
+                                key.length,
+                                ...uploadState.previewData.slice(0, 5).map(r => 
+                                  String(r[key] || '').length
+                                )
+                              );
+                              const width = Math.min(Math.max(maxLength * 8 + 20, 100), 200);
+                              
+                              return (
+                                <TableCell 
+                                  key={cellIndex} 
+                                  className="text-slate-300 px-3 py-2"
+                                  style={{ width: `${width}px`, minWidth: `${width}px` }}
+                                >
+                                  <div className="truncate" title={String(value)}>
+                                    {String(value).length > 30 
+                                      ? String(value).substring(0, 30) + '...' 
+                                      : String(value)
+                                    }
+                                  </div>
+                                </TableCell>
+                              );
+                            })}
                           </TableRow>
                         ))}
                       </TableBody>
