@@ -712,28 +712,34 @@ export default function DataUploadPage() {
                         
                         {/* Table Body */}
                         <div className="space-y-1">
-                          {uploadState.previewData.slice(0, 5).map((row, index) => (
-                            <div 
-                              key={index} 
-                              className="grid gap-2 p-3 hover:bg-slate-700/50 border-b border-slate-700/30"
-                              style={{ 
-                                gridTemplateColumns: Object.keys(uploadState.previewData[0]).map(() => 'minmax(120px, 1fr)').join(' ')
-                              }}
-                            >
-                              {Object.values(row).map((value, cellIndex) => (
-                                <div 
-                                  key={cellIndex} 
-                                  className="text-slate-300 text-sm truncate" 
-                                  title={String(value)}
-                                >
-                                  {String(value).length > 25 
-                                    ? String(value).substring(0, 25) + '...' 
-                                    : String(value)
-                                  }
-                                </div>
-                              ))}
-                            </div>
-                          ))}
+                          {uploadState.previewData.slice(0, 5).map((row, index) => {
+                            const columns = Object.keys(uploadState.previewData[0]);
+                            return (
+                              <div 
+                                key={index} 
+                                className="grid gap-2 p-3 hover:bg-slate-700/50 border-b border-slate-700/30"
+                                style={{ 
+                                  gridTemplateColumns: columns.map(() => 'minmax(120px, 1fr)').join(' ')
+                                }}
+                              >
+                                {columns.map((columnKey, cellIndex) => {
+                                  const value = row[columnKey];
+                                  return (
+                                    <div 
+                                      key={cellIndex} 
+                                      className="text-slate-300 text-sm truncate" 
+                                      title={String(value)}
+                                    >
+                                      {String(value).length > 25 
+                                        ? String(value).substring(0, 25) + '...' 
+                                        : String(value)
+                                      }
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
