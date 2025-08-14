@@ -281,20 +281,23 @@ export class AnomalyDetectorAgent implements Agent {
       // Create anomaly record
       await storage.createAnomaly({
         serverId: anomaly.serverId,
+        agentId: this.id,
         metricType: anomaly.metricType,
-        metricValue: "AI-detected",
-        baseline: "AI-determined",
+        actualValue: "AI-detected",
+        expectedValue: "AI-determined",
         deviationScore: anomaly.confidence.toString(),
         severity: mappedSeverity,
         detectionMethod: "ai_analysis",
       });
 
       // Create corresponding alert
+      const server = await storage.getServer(anomaly.serverId);
       await storage.createAlert({
         serverId: anomaly.serverId,
+        hostname: server?.hostname || anomaly.serverId,
         agentId: this.id,
         title: `AI Detected ${anomaly.metricType.toUpperCase()} Anomaly`,
-        message: anomaly.description,
+        description: anomaly.description,
         severity: mappedSeverity,
         metricType: anomaly.metricType,
         metricValue: anomaly.confidence.toString(),

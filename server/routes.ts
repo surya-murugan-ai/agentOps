@@ -849,5 +849,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI client refresh endpoint
+  app.post("/api/ai/refresh", async (req, res) => {
+    try {
+      const { resetAIClients } = await import("./services/aiService");
+      resetAIClients();
+      res.json({ success: true, message: "AI clients refreshed with latest API keys" });
+    } catch (error) {
+      console.error("Error refreshing AI clients:", error);
+      res.status(500).json({ error: "Failed to refresh AI clients" });
+    }
+  });
+
   return httpServer;
 }
