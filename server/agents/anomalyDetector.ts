@@ -83,7 +83,7 @@ export class AnomalyDetectorAgent implements Agent {
       // Get historical data for AI analysis
       const historicalData = await storage.getAllMetrics(200); // Last 200 readings
       
-      // Use AI for intelligent anomaly detection (with error handling for API issues)
+      // Use AI for intelligent anomaly detection only when necessary (expensive API calls)
       try {
         // Double-check limit before AI analysis
         const preAIAlerts = await storage.getActiveAlerts();
@@ -92,6 +92,14 @@ export class AnomalyDetectorAgent implements Agent {
           return;
         }
 
+        // OPTIMIZATION: Only run AI analysis if metrics have changed significantly 
+        const shouldRunAI = await this.shouldRunAIAnalysis(latestMetrics);
+        if (!shouldRunAI) {
+          console.log(`${this.name}: Metrics stable, skipping expensive AI analysis to save API costs`);
+          return;
+        }
+
+        console.log(`${this.name}: Running AI analysis due to significant metric changes`);
         const aiAnalysis = await aiService.analyzeAnomalies(latestMetrics, historicalData, this.id);
         
         // Process AI-detected anomalies with per-anomaly limit checking
@@ -109,6 +117,9 @@ export class AnomalyDetectorAgent implements Agent {
         if (aiAnalysis.insights) {
           console.log(`${this.name}: AI Insights: ${aiAnalysis.insights}`);
         }
+        
+        // Record that we completed AI analysis
+        this.recordAIAnalysis(latestMetrics);
       } catch (aiError) {
         console.log(`${this.name}: AI analysis unavailable, using threshold detection only`);
         // Continue with threshold detection even if AI fails
@@ -428,6 +439,61 @@ export class AnomalyDetectorAgent implements Agent {
 
   private getRandomBetween(min: number, max: number): string {
     return (Math.random() * (max - min) + min).toFixed(1);
+  }
+
+  private lastAIAnalysisHash: string = '';
+  private lastAIAnalysisTime: Date = new Date(0);
+
+  private async shouldRunAIAnalysis(currentMetrics: any[]): Promise<boolean> {
+    // Don't run AI more than once every 15 minutes
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+    if (this.lastAIAnalysisTime > fifteenMinutesAgo) {
+      return false;
+    }
+
+    // Create a hash of current metric values to detect changes
+    const metricsHash = this.createMetricsHash(currentMetrics);
+    
+    // Compare with last analysis hash
+    if (metricsHash === this.lastAIAnalysisHash) {
+      return false; // No significant changes
+    }
+
+    // Check if there are any obvious anomalies that warrant AI analysis
+    const hasSignificantAnomaly = await this.hasSignificantAnomaly(currentMetrics);
+    
+    return hasSignificantAnomaly;
+  }
+
+  private createMetricsHash(metrics: any[]): string {
+    // Create a simple hash based on rounded metric values
+    const hashData = metrics.map(m => ({
+      cpu: Math.round(parseFloat(m.cpuUsage || '0') / 5) * 5, // Round to nearest 5%
+      mem: Math.round(parseFloat(m.memoryUsage || '0') / 5) * 5,
+      disk: Math.round(parseFloat(m.diskUsage || '0') / 5) * 5
+    }));
+    
+    return JSON.stringify(hashData);
+  }
+
+  private async hasSignificantAnomaly(metrics: any[]): Promise<boolean> {
+    // Check if any metric exceeds basic thresholds that would warrant AI analysis
+    for (const metric of metrics) {
+      const cpu = parseFloat(metric.cpuUsage || '0');
+      const memory = parseFloat(metric.memoryUsage || '0');
+      const disk = parseFloat(metric.diskUsage || '0');
+      
+      // Only run AI if we have concerning values
+      if (cpu > 80 || memory > 85 || disk > 90) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private recordAIAnalysis(metrics: any[]): void {
+    this.lastAIAnalysisTime = new Date();
+    this.lastAIAnalysisHash = this.createMetricsHash(metrics);
   }
 
   private async cleanupOldAlerts() {

@@ -73,8 +73,24 @@ export class PredictiveAnalyticsAgent implements Agent {
           continue; // Need enough historical data
         }
 
+        // Check if we need new predictions (only run AI if data has significantly changed)
+        const recentPredictions = await storage.getRecentPredictions(server.id, 60); // Last hour
+        if (recentPredictions.length > 0) {
+          console.log(`${this.name}: Recent predictions exist for server ${server.id}, skipping AI analysis to save API costs`);
+          continue; // Skip if we have recent predictions
+        }
+
+        // Check if metrics have changed significantly since last prediction
+        const lastPredictionTime = await this.getLastPredictionTime(server.id);
+        const newMetricsCount = await this.getNewMetricsCount(server.id, lastPredictionTime);
+        
+        if (newMetricsCount < 5) {
+          console.log(`${this.name}: Only ${newMetricsCount} new metrics for server ${server.id}, skipping expensive AI analysis`);
+          continue; // Skip if not enough new data
+        }
+
         try {
-          // Use AI for intelligent predictions
+          // Use AI for intelligent predictions only when data has changed significantly
           const aiPredictions = await aiService.generatePredictions(server.id, historicalMetrics);
           
           // Validate AI response structure
@@ -405,6 +421,24 @@ export class PredictiveAnalyticsAgent implements Agent {
 
   private getRandomBetween(min: number, max: number): string {
     return (Math.random() * (max - min) + min).toFixed(1);
+  }
+
+  private async getLastPredictionTime(serverId: string): Promise<Date> {
+    try {
+      const predictions = await storage.getServerPredictions(serverId, 1);
+      return predictions.length > 0 ? new Date(predictions[0].createdAt) : new Date(0);
+    } catch (error) {
+      return new Date(0);
+    }
+  }
+
+  private async getNewMetricsCount(serverId: string, since: Date): Promise<number> {
+    try {
+      const metrics = await storage.getMetricsInRange(since, new Date());
+      return metrics.filter(m => m.serverId === serverId).length;
+    } catch (error) {
+      return 0;
+    }
   }
 
   private async getServerHostname(serverId: string): Promise<string> {

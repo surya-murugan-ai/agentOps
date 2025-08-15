@@ -28,6 +28,11 @@ export class ConversationalAIAgent {
   private agentId: string;
   private sessions: Map<string, ConversationSession> = new Map();
   private isRunning = false;
+  
+  // Context caching to reduce API calls
+  private cachedContext: any = null;
+  private lastContextFetch: Date = new Date(0);
+  private readonly CONTEXT_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
   constructor(storage: DatabaseStorage) {
     this.storage = storage;
@@ -130,8 +135,8 @@ export class ConversationalAIAgent {
     session.messages.push(userMsg);
 
     try {
-      // Get platform context for the AI
-      const platformContext = await this.getPlatformContext();
+      // Get platform context for the AI (with caching to reduce database queries)
+      const platformContext = await this.getCachedPlatformContext();
       
       // Prepare messages for OpenAI
       const messages = [
@@ -209,6 +214,21 @@ When users ask about:
 - Cost optimization: Analyze cloud resource usage and costs
 - Compliance: Review audit logs and remediation actions
 - Predictions: Explain forecasted issues and preventive measures`;
+  }
+
+  private async getCachedPlatformContext(): Promise<any> {
+    // Check if cached context is still valid
+    const now = new Date();
+    if (this.cachedContext && (now.getTime() - this.lastContextFetch.getTime()) < this.CONTEXT_CACHE_DURATION) {
+      return this.cachedContext;
+    }
+
+    // Fetch fresh context if cache is expired
+    const freshContext = await this.getPlatformContext();
+    this.cachedContext = freshContext;
+    this.lastContextFetch = now;
+    
+    return freshContext;
   }
 
   private async getPlatformContext(): Promise<any> {
