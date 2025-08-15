@@ -1,7 +1,7 @@
 import {
   users, servers, serverMetrics, agents, alerts, remediationActions, auditLogs, anomalies, predictions, agentSettings,
   systemSettings, integrations, approvalWorkflows, workflowSteps, approvalHistory, llmUsage, llmUsageAggregates,
-  agentControlSettings,
+  agentControlSettings, cloudResources, cloudMetrics, cloudConnections,
   type User, type InsertUser, type Server, type InsertServer, type ServerMetrics, type InsertServerMetrics,
   type Agent, type InsertAgent, type Alert, type InsertAlert, type RemediationAction, type InsertRemediationAction,
   type AuditLog, type InsertAuditLog, type Anomaly, type InsertAnomaly, type Prediction, type InsertPrediction,
@@ -9,7 +9,8 @@ import {
   type Integration, type InsertIntegration, type ApprovalWorkflow, type InsertApprovalWorkflow,
   type WorkflowStep, type InsertWorkflowStep, type ApprovalHistory, type InsertApprovalHistory,
   type LlmUsage, type InsertLlmUsage, type LlmUsageAggregates, type InsertLlmUsageAggregates,
-  type AgentControlSettings, type InsertAgentControlSettings
+  type AgentControlSettings, type InsertAgentControlSettings, type CloudResource, type InsertCloudResource,
+  type CloudMetric, type InsertCloudMetric, type CloudConnection, type InsertCloudConnection
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, count, sql, inArray } from "drizzle-orm";
@@ -149,6 +150,31 @@ export interface IStorage {
   updateLlmUsageAggregate(id: string, updates: Partial<InsertLlmUsageAggregates>): Promise<void>;
   getLlmUsageAggregateForDate(agentId: string, provider: string, model: string, operation: string, date: Date): Promise<LlmUsageAggregates | undefined>;
   getLlmUsageAggregatesByDateRange(startDate: Date, endDate: Date): Promise<LlmUsageAggregates[]>;
+
+  // Cloud Resources
+  getAllCloudResources(): Promise<CloudResource[]>;
+  getCloudResource(id: string): Promise<CloudResource | undefined>;
+  getCloudResourceByResourceId(resourceId: string): Promise<CloudResource | undefined>;
+  createCloudResource(resource: InsertCloudResource): Promise<CloudResource>;
+  updateCloudResource(id: string, updates: Partial<InsertCloudResource>): Promise<void>;
+  deleteCloudResource(id: string): Promise<void>;
+  getCloudResourcesByProvider(provider: string): Promise<CloudResource[]>;
+  getCloudResourcesByEnvironment(environment: string): Promise<CloudResource[]>;
+
+  // Cloud Metrics
+  getCloudMetrics(resourceId: string, limit?: number): Promise<CloudMetric[]>;
+  createCloudMetric(metric: InsertCloudMetric): Promise<CloudMetric>;
+  getCloudMetricsInTimeRange(resourceId: string, startTime: Date, endTime: Date): Promise<CloudMetric[]>;
+  getLatestCloudMetrics(): Promise<CloudMetric[]>;
+
+  // Cloud Connections
+  getAllCloudConnections(): Promise<CloudConnection[]>;
+  getCloudConnections(): Promise<CloudConnection[]>;
+  getCloudConnection(id: string): Promise<CloudConnection | undefined>;
+  createCloudConnection(connection: InsertCloudConnection): Promise<CloudConnection>;
+  updateCloudConnection(id: string, updates: Partial<InsertCloudConnection>): Promise<void>;
+  deleteCloudConnection(id: string): Promise<void>;
+  getCloudConnectionsByProvider(provider: string): Promise<CloudConnection[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -978,6 +1004,116 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .orderBy(desc(llmUsageAggregates.aggregateDate));
+  }
+
+  // Cloud Resources
+  async getAllCloudResources(): Promise<CloudResource[]> {
+    return await db.select().from(cloudResources).orderBy(cloudResources.resourceName);
+  }
+
+  async getCloudResource(id: string): Promise<CloudResource | undefined> {
+    const [resource] = await db.select().from(cloudResources).where(eq(cloudResources.id, id));
+    return resource || undefined;
+  }
+
+  async getCloudResourceByResourceId(resourceId: string): Promise<CloudResource | undefined> {
+    const [resource] = await db.select().from(cloudResources).where(eq(cloudResources.resourceId, resourceId));
+    return resource || undefined;
+  }
+
+  async createCloudResource(resource: InsertCloudResource): Promise<CloudResource> {
+    const [newResource] = await db.insert(cloudResources).values(resource).returning();
+    return newResource;
+  }
+
+  async updateCloudResource(id: string, updates: Partial<InsertCloudResource>): Promise<void> {
+    await db
+      .update(cloudResources)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(cloudResources.id, id));
+  }
+
+  async deleteCloudResource(id: string): Promise<void> {
+    await db.delete(cloudResources).where(eq(cloudResources.id, id));
+  }
+
+  async getCloudResourcesByProvider(provider: string): Promise<CloudResource[]> {
+    return await db.select().from(cloudResources).where(eq(cloudResources.provider, provider as any));
+  }
+
+  async getCloudResourcesByEnvironment(environment: string): Promise<CloudResource[]> {
+    return await db.select().from(cloudResources).where(eq(cloudResources.environment, environment));
+  }
+
+  // Cloud Metrics
+  async getCloudMetrics(resourceId: string, limit: number = 100): Promise<CloudMetric[]> {
+    return await db
+      .select()
+      .from(cloudMetrics)
+      .where(eq(cloudMetrics.resourceId, resourceId))
+      .orderBy(desc(cloudMetrics.timestamp))
+      .limit(limit);
+  }
+
+  async createCloudMetric(metric: InsertCloudMetric): Promise<CloudMetric> {
+    const [newMetric] = await db.insert(cloudMetrics).values(metric).returning();
+    return newMetric;
+  }
+
+  async getCloudMetricsInTimeRange(resourceId: string, startTime: Date, endTime: Date): Promise<CloudMetric[]> {
+    return await db
+      .select()
+      .from(cloudMetrics)
+      .where(
+        and(
+          eq(cloudMetrics.resourceId, resourceId),
+          gte(cloudMetrics.timestamp, startTime),
+          lte(cloudMetrics.timestamp, endTime)
+        )
+      )
+      .orderBy(desc(cloudMetrics.timestamp));
+  }
+
+  async getLatestCloudMetrics(): Promise<CloudMetric[]> {
+    return await db
+      .select()
+      .from(cloudMetrics)
+      .orderBy(desc(cloudMetrics.timestamp))
+      .limit(100);
+  }
+
+  // Cloud Connections
+  async getAllCloudConnections(): Promise<CloudConnection[]> {
+    return await db.select().from(cloudConnections).orderBy(cloudConnections.name);
+  }
+
+  async getCloudConnections(): Promise<CloudConnection[]> {
+    return await db.select().from(cloudConnections).where(eq(cloudConnections.isActive, true));
+  }
+
+  async getCloudConnection(id: string): Promise<CloudConnection | undefined> {
+    const [connection] = await db.select().from(cloudConnections).where(eq(cloudConnections.id, id));
+    return connection || undefined;
+  }
+
+  async createCloudConnection(connection: InsertCloudConnection): Promise<CloudConnection> {
+    const [newConnection] = await db.insert(cloudConnections).values(connection).returning();
+    return newConnection;
+  }
+
+  async updateCloudConnection(id: string, updates: Partial<InsertCloudConnection>): Promise<void> {
+    await db
+      .update(cloudConnections)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(cloudConnections.id, id));
+  }
+
+  async deleteCloudConnection(id: string): Promise<void> {
+    await db.delete(cloudConnections).where(eq(cloudConnections.id, id));
+  }
+
+  async getCloudConnectionsByProvider(provider: string): Promise<CloudConnection[]> {
+    return await db.select().from(cloudConnections).where(eq(cloudConnections.provider, provider as any));
   }
 }
 

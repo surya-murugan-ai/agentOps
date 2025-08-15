@@ -1,4 +1,4 @@
-import { Brain, BarChart3, Server, Users, AlertTriangle, Settings, ClipboardList, Activity, Upload, Database, Wrench, Key, TrendingUp, GitBranch, HelpCircle } from 'lucide-react';
+import { Brain, BarChart3, Server, Users, AlertTriangle, Settings, ClipboardList, Activity, Upload, Database, Wrench, Key, TrendingUp, GitBranch, HelpCircle, Cloud } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 
@@ -78,6 +78,11 @@ export default function Sidebar() {
             {serverCount > 0 && (
               <span className="ml-auto bg-slate-600 text-xs px-2 py-1 rounded-full">{serverCount}</span>
             )}
+          </Link>
+          
+          <Link href="/cloud-infrastructure" className={getNavItemClass("/cloud-infrastructure")} data-testid="nav-cloud-infrastructure">
+            <Cloud size={20} />
+            <span>Cloud Infrastructure</span>
           </Link>
         </div>
         

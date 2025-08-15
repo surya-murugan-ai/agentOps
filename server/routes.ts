@@ -11,6 +11,7 @@ import { DataExtractionService } from "./services/dataExtractionService";
 import { registerAgentControlRoutes } from "./routes/agentControlRoutes";
 import { systemRouter } from "./routes/system";
 import { thresholdsRouter } from "./routes/thresholds";
+import cloudRoutes from "./routes/cloudRoutes";
 
 // Helper functions for agent details
 async function getAgentInsights(agentId: string) {
@@ -992,6 +993,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // LLM Usage tracking routes
   app.use("/api/llm-usage", (await import("./routes/llmUsageRoutes")).default);
+
+  // Cloud infrastructure routes
+  app.use("/api", cloudRoutes);
 
   return httpServer;
 }

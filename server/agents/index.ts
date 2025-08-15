@@ -5,6 +5,7 @@ import { RecommendationEngineAgent } from "./recommendationEngine";
 import { ApprovalComplianceAgent } from "./approvalCompliance";
 import { RemediationExecutorAgent } from "./remediationExecutor";
 import { AuditReportingAgent } from "./auditReporting";
+import { CloudCollectorAgent } from "./cloudCollector";
 import { storage } from "../storage";
 import { wsManager } from "../services/websocket";
 
@@ -37,6 +38,7 @@ class AgentManager {
       new ApprovalComplianceAgent(),
       new RemediationExecutorAgent(),
       new AuditReportingAgent(),
+      new CloudCollectorAgent(storage),
     ];
 
     // Register agents in database

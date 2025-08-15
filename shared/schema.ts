@@ -12,7 +12,11 @@ export const approvalStatusEnum = pgEnum("approval_status", ["pending", "approve
 export const approverRoleEnum = pgEnum("approver_role", ["operator", "supervisor", "manager", "director", "compliance_officer"]);
 export const workflowStepTypeEnum = pgEnum("workflow_step_type", ["basic_approval", "compliance_check", "impact_assessment", "security_review", "change_board"]);
 export const agentStatusEnum = pgEnum("agent_status", ["active", "inactive", "error"]);
-export const agentTypeEnum = pgEnum("agent_type", ["collector", "detector", "predictor", "recommender", "approval", "executor", "audit"]);
+export const agentTypeEnum = pgEnum("agent_type", ["collector", "detector", "predictor", "recommender", "approval", "executor", "audit", "cloud_collector"]);
+
+// Cloud provider enums
+export const cloudProviderEnum = pgEnum("cloud_provider", ["aws", "azure", "gcp"]);
+export const cloudResourceTypeEnum = pgEnum("cloud_resource_type", ["ec2", "rds", "s3", "elb", "lambda", "vm", "sql_database", "storage_account", "app_service", "function_app"]);
 export const llmProviderEnum = pgEnum("llm_provider", ["openai", "anthropic"]);
 export const llmModelEnum = pgEnum("llm_model", ["gpt-4o", "gpt-4", "gpt-3.5-turbo", "claude-sonnet-4-20250514", "claude-3-7-sonnet-20250219", "claude-3-5-sonnet-20241022"]);
 
@@ -32,7 +36,7 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Servers table
+// Servers table (for on-premises and traditional infrastructure)
 export const servers = pgTable("servers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   hostname: text("hostname").notNull().unique(),
@@ -40,7 +44,55 @@ export const servers = pgTable("servers", {
   environment: text("environment").notNull(), // prod, staging, dev
   location: text("location").notNull(),
   status: text("status").notNull().default("healthy"), // healthy, warning, critical, offline
-  tags: jsonb("tags").$type<string[]>().default([]),
+  tags: jsonb("tags").$type<Record<string, any>>().default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Cloud resources table (for AWS, Azure, GCP resources)
+export const cloudResources = pgTable("cloud_resources", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  resourceId: text("resource_id").notNull(), // AWS instance-id, Azure VM name, etc.
+  resourceName: text("resource_name").notNull(),
+  resourceType: cloudResourceTypeEnum("resource_type").notNull(),
+  provider: cloudProviderEnum("provider").notNull(),
+  region: text("region").notNull(),
+  environment: text("environment").notNull(), // prod, staging, dev
+  status: text("status").notNull().default("running"), // running, stopped, terminated, healthy, unhealthy
+  configuration: jsonb("configuration").$type<Record<string, any>>().default({}),
+  tags: jsonb("tags").$type<Record<string, any>>().default({}),
+  cost: decimal("cost", { precision: 10, scale: 2 }).default("0"), // Monthly cost estimate
+  lastSync: timestamp("last_sync").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Cloud metrics table (for cloud resource telemetry)
+export const cloudMetrics = pgTable("cloud_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  resourceId: varchar("resource_id").notNull().references(() => cloudResources.id),
+  metricName: text("metric_name").notNull(), // CPUUtilization, NetworkIn, etc.
+  metricValue: decimal("metric_value", { precision: 15, scale: 5 }).notNull(),
+  unit: text("unit").notNull(), // Percent, Bytes, Count, etc.
+  dimensions: jsonb("dimensions").$type<Record<string, any>>().default({}),
+  timestamp: timestamp("timestamp").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Cloud credentials/connections table
+export const cloudConnections = pgTable("cloud_connections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  provider: cloudProviderEnum("provider").notNull(),
+  region: text("region").notNull(),
+  accountId: text("account_id"), // AWS Account ID, Azure Subscription ID, etc.
+  isActive: boolean("is_active").default(true),
+  encryptedCredentials: text("encrypted_credentials").notNull(), // Encrypted JSON with credentials
+  lastTestResult: jsonb("last_test_result").$type<{
+    status: "success" | "error";
+    message: string;
+    timestamp: Date;
+  }>(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -379,10 +431,27 @@ export const llmUsageAggregatesRelations = relations(llmUsageAggregates, ({ one 
   agent: one(agents, { fields: [llmUsageAggregates.agentId], references: [agents.id] }),
 }));
 
+// Cloud resource relations
+export const cloudResourcesRelations = relations(cloudResources, ({ many, one }) => ({
+  metrics: many(cloudMetrics),
+  connection: one(cloudConnections, { fields: [cloudResources.provider], references: [cloudConnections.provider] }),
+}));
+
+export const cloudMetricsRelations = relations(cloudMetrics, ({ one }) => ({
+  resource: one(cloudResources, { fields: [cloudMetrics.resourceId], references: [cloudResources.id] }),
+}));
+
+export const cloudConnectionsRelations = relations(cloudConnections, ({ many }) => ({
+  resources: many(cloudResources),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertServerSchema = createInsertSchema(servers).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertServerMetricsSchema = createInsertSchema(serverMetrics).omit({ id: true, timestamp: true });
+export const insertCloudResourceSchema = createInsertSchema(cloudResources).omit({ id: true, createdAt: true, updatedAt: true, lastSync: true });
+export const insertCloudMetricSchema = createInsertSchema(cloudMetrics).omit({ id: true, createdAt: true });
+export const insertCloudConnectionSchema = createInsertSchema(cloudConnections).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertAgentSchema = createInsertSchema(agents).omit({ id: true, lastHeartbeat: true, startedAt: true });
 export const insertAlertSchema = createInsertSchema(alerts).omit({ id: true, timestamp: true, createdAt: true, acknowledgedAt: true, resolvedAt: true });
 export const insertRemediationActionSchema = createInsertSchema(remediationActions).omit({ 
@@ -409,6 +478,12 @@ export type Server = typeof servers.$inferSelect;
 export type InsertServer = z.infer<typeof insertServerSchema>;
 export type ServerMetrics = typeof serverMetrics.$inferSelect;
 export type InsertServerMetrics = z.infer<typeof insertServerMetricsSchema>;
+export type CloudResource = typeof cloudResources.$inferSelect;
+export type InsertCloudResource = z.infer<typeof insertCloudResourceSchema>;
+export type CloudMetric = typeof cloudMetrics.$inferSelect;
+export type InsertCloudMetric = z.infer<typeof insertCloudMetricSchema>;
+export type CloudConnection = typeof cloudConnections.$inferSelect;
+export type InsertCloudConnection = z.infer<typeof insertCloudConnectionSchema>;
 export type Agent = typeof agents.$inferSelect;
 export type InsertAgent = z.infer<typeof insertAgentSchema>;
 export type Alert = typeof alerts.$inferSelect;
