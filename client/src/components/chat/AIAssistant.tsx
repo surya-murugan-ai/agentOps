@@ -20,6 +20,7 @@ export function AIAssistant() {
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -28,6 +29,23 @@ export function AIAssistant() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Handle click outside to close chat
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (chatContainerRef.current && !chatContainerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
 
   const createSession = async () => {
     try {
@@ -158,7 +176,7 @@ export function AIAssistant() {
 
       {/* Chat Window */}
       {isOpen && (
-        <Card className="fixed bottom-24 right-6 w-80 h-[450px] shadow-xl z-40 bg-background border">
+        <Card className="fixed bottom-24 right-6 w-80 h-[450px] shadow-xl z-40 bg-background border" ref={chatContainerRef}>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
               <Bot className="h-5 w-5 text-primary" />
