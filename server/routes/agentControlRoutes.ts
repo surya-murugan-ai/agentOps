@@ -161,7 +161,7 @@ export function registerAgentControlRoutes(app: Express) {
     try {
       const [allSettings, agents] = await Promise.all([
         agentControlService.getAllAgentControlSettings(),
-        require("../storage").storage.getAgents()
+        (await import("../storage")).storage.getAllAgents()
       ]);
 
       const dashboard = {
