@@ -1000,11 +1000,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Conversational AI Routes
   app.post('/api/ai-chat/session', async (req, res) => {
     try {
+      console.log('Creating AI chat session...');
       const conversationalAgent = agentManager.getAgent('conversational-ai-001');
+      console.log('Conversational agent found:', !!conversationalAgent);
       if (!conversationalAgent) {
+        console.log('Available agents:', Array.from(agentManager.getAllAgents().map(a => a.id)));
         return res.status(503).json({ error: 'Conversational AI agent not available' });
       }
       const sessionId = await (conversationalAgent as any).createSession(req.body.userId);
+      console.log('Session created:', sessionId);
       res.json({ sessionId });
     } catch (error) {
       console.error('Error creating AI chat session:', error);
