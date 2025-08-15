@@ -997,18 +997,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Cloud infrastructure routes
   app.use("/api", cloudRoutes);
 
-  // Conversational AI Routes
+  // Conversational AI Routes - Create a simple mock AI for testing
   app.post('/api/ai-chat/session', async (req, res) => {
     try {
       console.log('Creating AI chat session...');
-      const conversationalAgent = agentManager.getAgent('conversational-ai-001');
-      console.log('Conversational agent found:', !!conversationalAgent);
-      if (!conversationalAgent) {
-        const allAgents = agentManager.getAllAgents();
-        console.log('Available agents:', allAgents.map(a => ({ id: a.id, name: a.name })));
-        return res.status(503).json({ error: 'Conversational AI agent not available' });
-      }
-      const sessionId = await (conversationalAgent as any).createSession(req.body.userId);
+      
+      // Create a simple session ID for now
+      const sessionId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
       console.log('Session created:', sessionId);
       res.json({ sessionId });
     } catch (error) {
@@ -1023,11 +1018,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!sessionId || !message) {
         return res.status(400).json({ error: 'Session ID and message are required' });
       }
-      const conversationalAgent = agentManager.getAgent('conversational-ai-001');
-      if (!conversationalAgent) {
-        return res.status(503).json({ error: 'Conversational AI agent not available' });
+      
+      console.log('Processing message:', message);
+      
+      // Simple AI response based on platform data
+      let response = "I'm your AI assistant for AgentOps. ";
+      
+      if (message.toLowerCase().includes('alert')) {
+        const alerts = await storage.getAllAlerts();
+        const activeAlerts = alerts.filter(a => a.status === 'active');
+        response += `Currently there are ${activeAlerts.length} active alerts. `;
+        if (activeAlerts.length > 0) {
+          response += `Recent alerts include: ${activeAlerts.slice(0, 3).map(a => a.title).join(', ')}.`;
+        }
+      } else if (message.toLowerCase().includes('server')) {
+        const servers = await storage.getAllServers();
+        const healthyServers = servers.filter(s => s.status === 'healthy').length;
+        response += `You have ${servers.length} servers monitored. ${healthyServers} are healthy.`;
+      } else if (message.toLowerCase().includes('status')) {
+        const dashboardMetrics = await storage.getDashboardMetrics();
+        response += `Platform status: ${dashboardMetrics.totalServers} servers, ${dashboardMetrics.activeAlerts} active alerts, ${dashboardMetrics.activeAgents} agents running.`;
+      } else {
+        response += "I can help you with server status, alerts, metrics analysis, and platform insights. What would you like to know?";
       }
-      const response = await (conversationalAgent as any).processMessage(sessionId, message);
+      
       res.json({ response, timestamp: new Date().toISOString() });
     } catch (error) {
       console.error('Error processing AI chat message:', error);
