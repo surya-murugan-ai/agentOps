@@ -68,6 +68,12 @@ export default function Settings() {
     select: (data: Integration[]) => data
   });
 
+  // Fetch API status to show configured keys
+  const { data: apiStatus } = useQuery({
+    queryKey: ['/api/system/api-status'],
+    refetchInterval: 30000 // Refresh every 30 seconds
+  });
+
   // Create setting mutation
   const createSettingMutation = useMutation({
     mutationFn: (setting: typeof newSetting) => apiRequest('POST', '/api/settings', setting),
@@ -290,6 +296,59 @@ export default function Settings() {
                   <h2 className="text-2xl font-bold mb-2">API Keys & Settings</h2>
                   <p className="text-muted-foreground">Manage API keys for external services and system configuration.</p>
                 </div>
+
+                {/* Configured API Keys Status */}
+                {apiStatus && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Key className="h-5 w-5" />
+                        Configured API Keys Status
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {Object.entries(apiStatus).map(([provider, status]: [string, any]) => (
+                          <div key={provider} className="flex items-center justify-between p-3 border border-dark-border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-2 h-2 rounded-full ${
+                                status.status === 'active' ? 'bg-green-500' : 
+                                status.status === 'quota_exceeded' ? 'bg-yellow-500' : 'bg-red-500'
+                              }`} />
+                              <div>
+                                <div className="font-medium capitalize">{provider} API</div>
+                                <div className="text-xs text-slate-400">
+                                  {status.lastError ? `Error: ${status.lastError}` : 
+                                   status.status === 'active' ? 'Connected and functioning' :
+                                   status.status === 'quota_exceeded' ? 'Quota exceeded - optimization active' :
+                                   'Not configured or error'}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant={
+                                status.status === 'active' ? 'default' : 
+                                status.status === 'quota_exceeded' ? 'secondary' : 'destructive'
+                              }>
+                                {status.status === 'active' ? 'Active' :
+                                 status.status === 'quota_exceeded' ? 'Quota Exceeded' :
+                                 status.status === 'error' ? 'Error' : 'Inactive'}
+                              </Badge>
+                              {status.status === 'quota_exceeded' && (
+                                <div className="text-xs text-yellow-400">
+                                  Cost optimization enabled
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-4 text-xs text-slate-500">
+                        API keys are stored as secure environment variables. To update keys, contact your administrator or check the deployment configuration.
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Add New Setting */}
                 <Card>
