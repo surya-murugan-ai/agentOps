@@ -13,6 +13,8 @@ export const approverRoleEnum = pgEnum("approver_role", ["operator", "supervisor
 export const workflowStepTypeEnum = pgEnum("workflow_step_type", ["basic_approval", "compliance_check", "impact_assessment", "security_review", "change_board"]);
 export const agentStatusEnum = pgEnum("agent_status", ["active", "inactive", "error"]);
 export const agentTypeEnum = pgEnum("agent_type", ["collector", "detector", "predictor", "recommender", "approval", "executor", "audit"]);
+export const llmProviderEnum = pgEnum("llm_provider", ["openai", "anthropic"]);
+export const llmModelEnum = pgEnum("llm_model", ["gpt-4o", "gpt-4", "gpt-3.5-turbo", "claude-sonnet-4-20250514", "claude-3-7-sonnet-20250219", "claude-3-5-sonnet-20241022"]);
 
 // Users table
 export const users = pgTable("users", {
@@ -228,6 +230,51 @@ export const approvalHistory = pgTable("approval_history", {
   timestamp: timestamp("timestamp").defaultNow(),
 });
 
+// LLM Usage Tracking table
+export const llmUsage = pgTable("llm_usage", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull().references(() => agents.id),
+  provider: llmProviderEnum("provider").notNull(),
+  model: llmModelEnum("model").notNull(),
+  operation: text("operation").notNull(), // 'anomaly_detection', 'prediction', 'recommendation', etc.
+  requestId: text("request_id"), // for tracking specific requests
+  promptTokens: integer("prompt_tokens").notNull().default(0),
+  completionTokens: integer("completion_tokens").notNull().default(0),
+  totalTokens: integer("total_tokens").notNull().default(0),
+  requestDuration: integer("request_duration_ms"), // duration in milliseconds
+  cost: decimal("cost", { precision: 10, scale: 6 }), // cost in USD
+  success: boolean("success").notNull().default(true),
+  errorMessage: text("error_message"),
+  metadata: jsonb("metadata").$type<{
+    temperature?: number;
+    maxTokens?: number;
+    confidence?: number;
+    serverId?: string;
+    alertId?: string;
+  }>().default({}),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+});
+
+// LLM Usage Aggregates table for efficient reporting
+export const llmUsageAggregates = pgTable("llm_usage_aggregates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull().references(() => agents.id),
+  provider: llmProviderEnum("provider").notNull(),
+  model: llmModelEnum("model").notNull(),
+  operation: text("operation").notNull(),
+  aggregateDate: timestamp("aggregate_date").notNull(), // daily aggregates
+  totalRequests: integer("total_requests").notNull().default(0),
+  successfulRequests: integer("successful_requests").notNull().default(0),
+  failedRequests: integer("failed_requests").notNull().default(0),
+  totalPromptTokens: integer("total_prompt_tokens").notNull().default(0),
+  totalCompletionTokens: integer("total_completion_tokens").notNull().default(0),
+  totalTokens: integer("total_tokens").notNull().default(0),
+  totalCost: decimal("total_cost", { precision: 12, scale: 6 }).notNull().default("0"),
+  avgRequestDuration: integer("avg_request_duration_ms"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relations
 export const serversRelations = relations(servers, ({ many }) => ({
   metrics: many(serverMetrics),
@@ -244,6 +291,8 @@ export const agentsRelations = relations(agents, ({ many }) => ({
   auditLogs: many(auditLogs),
   anomalies: many(anomalies),
   predictions: many(predictions),
+  llmUsage: many(llmUsage),
+  llmUsageAggregates: many(llmUsageAggregates),
 }));
 
 export const alertsRelations = relations(alerts, ({ one, many }) => ({
@@ -280,6 +329,14 @@ export const approvalHistoryRelations = relations(approvalHistory, ({ one }) => 
   approver: one(users, { fields: [approvalHistory.approverUserId], references: [users.id] }),
 }));
 
+export const llmUsageRelations = relations(llmUsage, ({ one }) => ({
+  agent: one(agents, { fields: [llmUsage.agentId], references: [agents.id] }),
+}));
+
+export const llmUsageAggregatesRelations = relations(llmUsageAggregates, ({ one }) => ({
+  agent: one(agents, { fields: [llmUsageAggregates.agentId], references: [agents.id] }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertServerSchema = createInsertSchema(servers).omit({ id: true, createdAt: true, updatedAt: true });
@@ -299,6 +356,8 @@ export const insertPredictionSchema = createInsertSchema(predictions).omit({ id:
 export const insertApprovalWorkflowSchema = createInsertSchema(approvalWorkflows).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertWorkflowStepSchema = createInsertSchema(workflowSteps).omit({ id: true, createdAt: true, completedAt: true });
 export const insertApprovalHistorySchema = createInsertSchema(approvalHistory).omit({ id: true, timestamp: true });
+export const insertLlmUsageSchema = createInsertSchema(llmUsage).omit({ id: true, timestamp: true });
+export const insertLlmUsageAggregatesSchema = createInsertSchema(llmUsageAggregates).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -325,6 +384,10 @@ export type WorkflowStep = typeof workflowSteps.$inferSelect;
 export type InsertWorkflowStep = z.infer<typeof insertWorkflowStepSchema>;
 export type ApprovalHistory = typeof approvalHistory.$inferSelect;
 export type InsertApprovalHistory = z.infer<typeof insertApprovalHistorySchema>;
+export type LlmUsage = typeof llmUsage.$inferSelect;
+export type InsertLlmUsage = z.infer<typeof insertLlmUsageSchema>;
+export type LlmUsageAggregates = typeof llmUsageAggregates.$inferSelect;
+export type InsertLlmUsageAggregates = z.infer<typeof insertLlmUsageAggregatesSchema>;
 
 // Agent Settings table for configuring AI models and prompts
 export const agentSettings = pgTable("agent_settings", {
@@ -398,7 +461,9 @@ export const insertIntegrationsSchema = createInsertSchema(integrations).omit({
   lastTestAt: true,
 });
 
-// Types for new tables
+
+
+// Types for configuration tables
 export type SystemSettings = typeof systemSettings.$inferSelect;
 export type InsertSystemSettings = z.infer<typeof insertSystemSettingsSchema>;
 export type Integration = typeof integrations.$inferSelect;

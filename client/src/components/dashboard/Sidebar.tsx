@@ -151,6 +151,11 @@ export default function Sidebar() {
             <Settings size={20} />
             <span>Agent Settings</span>
           </Link>
+          
+          <Link href="/llm-analytics" className={getNavItemClass("/llm-analytics")} data-testid="nav-llm-analytics">
+            <Brain size={20} />
+            <span>LLM Analytics</span>
+          </Link>
         </div>
 
         {/* System Section */}

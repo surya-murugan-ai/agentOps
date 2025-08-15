@@ -96,7 +96,7 @@ export class RecommendationEngineAgent implements Agent {
       const historicalMetrics = await storage.getServerMetrics(serverId, 20);
       
       // Use AI to generate intelligent recommendations
-      const aiRecommendations = await aiService.generateRecommendations(alert, server, historicalMetrics);
+      const aiRecommendations = await aiService.generateRecommendations(alert, server, historicalMetrics, this.id);
       
       // Process AI recommendations
       for (const aiRec of aiRecommendations.recommendations) {
@@ -107,7 +107,7 @@ export class RecommendationEngineAgent implements Agent {
           title: aiRec.title,
           description: `${aiRec.description}\n\nAI Reasoning: ${aiRec.reasoning}`,
           actionType: aiRec.actionType,
-          confidence: aiRec.confidence.toString(),
+          confidence: aiRec.confidence,
           estimatedDowntime: aiRec.estimatedDowntime,
           requiresApproval: aiRec.requiresApproval,
           command: aiRec.command,

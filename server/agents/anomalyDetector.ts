@@ -69,7 +69,7 @@ export class AnomalyDetectorAgent implements Agent {
       const historicalData = await storage.getAllMetrics(200); // Last 200 readings
       
       // Use AI for intelligent anomaly detection
-      const aiAnalysis = await aiService.analyzeAnomalies(latestMetrics, historicalData);
+      const aiAnalysis = await aiService.analyzeAnomalies(latestMetrics, historicalData, this.id);
       
       // Process AI-detected anomalies
       for (const anomaly of aiAnalysis.anomalies) {

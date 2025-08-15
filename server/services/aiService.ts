@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { storage } from '../storage';
+import { llmUsageService } from './llmUsageService';
 
 /*
 <important_code_snippet_instructions>
@@ -65,7 +66,7 @@ export class AIService {
   /**
    * Analyze server metrics using OpenAI for anomaly detection
    */
-  async analyzeAnomalies(serverMetrics: any[], historicalData: any[]): Promise<{
+  async analyzeAnomalies(serverMetrics: any[], historicalData: any[], agentId: string = 'anomaly-detector-001'): Promise<{
     anomalies: Array<{
       serverId: string;
       metricType: string;
@@ -76,6 +77,8 @@ export class AIService {
     }>;
     insights: string;
   }> {
+    const startTime = Date.now();
+    
     try {
       const prompt = `Analyze the following server metrics for anomalies. You are an expert system administrator monitoring critical financial infrastructure.
 
@@ -120,8 +123,51 @@ Respond in JSON format with:
         temperature: 0.1,
       });
 
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      
+      // Track LLM usage
+      await llmUsageService.trackUsage({
+        agentId,
+        provider: 'openai',
+        model: 'gpt-4o',
+        operation: 'anomaly_analysis',
+        promptTokens: response.usage?.prompt_tokens || 0,
+        completionTokens: response.usage?.completion_tokens || 0,
+        totalTokens: response.usage?.total_tokens || 0,
+        requestDuration: duration,
+        success: true,
+        metadata: {
+          temperature: 0.1,
+          metricsCount: serverMetrics.length,
+          historicalDataPoints: historicalData.length
+        }
+      });
+
       return JSON.parse(response.choices[0].message.content || '{"anomalies": [], "insights": "No analysis available"}');
     } catch (error) {
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      
+      // Track failed usage
+      await llmUsageService.trackUsage({
+        agentId,
+        provider: 'openai',
+        model: 'gpt-4o',
+        operation: 'anomaly_analysis',
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+        requestDuration: duration,
+        success: false,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        metadata: {
+          temperature: 0.1,
+          metricsCount: serverMetrics.length,
+          historicalDataPoints: historicalData.length
+        }
+      });
+      
       console.error('AI Anomaly Analysis Error:', error);
       return { anomalies: [], insights: "AI analysis temporarily unavailable" };
     }
@@ -130,7 +176,7 @@ Respond in JSON format with:
   /**
    * Generate intelligent recommendations using Claude Sonnet
    */
-  async generateRecommendations(alert: any, serverContext: any, historicalPattern: any[]): Promise<{
+  async generateRecommendations(alert: any, serverContext: any, historicalPattern: any[], agentId: string = 'recommendation-engine-001'): Promise<{
     recommendations: Array<{
       actionType: string;
       title: string;
@@ -145,6 +191,8 @@ Respond in JSON format with:
     }>;
     rootCauseAnalysis: string;
   }> {
+    const startTime = Date.now();
+    
     try {
       const prompt = `You are an expert DevOps engineer specializing in financial infrastructure. Analyze this alert and provide intelligent remediation recommendations.
 
@@ -198,6 +246,28 @@ Focus on financial infrastructure best practices: minimal downtime, data integri
         }`
       });
 
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      
+      // Track LLM usage
+      await llmUsageService.trackUsage({
+        agentId,
+        provider: 'anthropic',
+        model: DEFAULT_MODEL_STR,
+        operation: 'recommendation_generation',
+        promptTokens: response.usage?.input_tokens || 0,
+        completionTokens: response.usage?.output_tokens || 0,
+        totalTokens: (response.usage?.input_tokens || 0) + (response.usage?.output_tokens || 0),
+        requestDuration: duration,
+        success: true,
+        metadata: {
+          maxTokens: 2000,
+          alertSeverity: alert.severity,
+          serverId: alert.serverId,
+          metricType: alert.metricType
+        }
+      });
+
       let responseText = '';
       if (response.content[0].type === 'text') {
         responseText = response.content[0].text;
@@ -211,6 +281,29 @@ Focus on financial infrastructure best practices: minimal downtime, data integri
       const result = JSON.parse(responseText);
       return result;
     } catch (error) {
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      
+      // Track failed usage
+      await llmUsageService.trackUsage({
+        agentId,
+        provider: 'anthropic',
+        model: DEFAULT_MODEL_STR,
+        operation: 'recommendation_generation',
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+        requestDuration: duration,
+        success: false,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        metadata: {
+          maxTokens: 2000,
+          alertSeverity: alert.severity,
+          serverId: alert.serverId,
+          metricType: alert.metricType
+        }
+      });
+      
       console.error('AI Recommendation Error:', error);
       return {
         recommendations: [],

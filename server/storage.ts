@@ -1,12 +1,13 @@
 import {
   users, servers, serverMetrics, agents, alerts, remediationActions, auditLogs, anomalies, predictions, agentSettings,
-  systemSettings, integrations, approvalWorkflows, workflowSteps, approvalHistory,
+  systemSettings, integrations, approvalWorkflows, workflowSteps, approvalHistory, llmUsage, llmUsageAggregates,
   type User, type InsertUser, type Server, type InsertServer, type ServerMetrics, type InsertServerMetrics,
   type Agent, type InsertAgent, type Alert, type InsertAlert, type RemediationAction, type InsertRemediationAction,
   type AuditLog, type InsertAuditLog, type Anomaly, type InsertAnomaly, type Prediction, type InsertPrediction,
   type AgentSettings, type InsertAgentSettings, type SystemSettings, type InsertSystemSettings,
   type Integration, type InsertIntegration, type ApprovalWorkflow, type InsertApprovalWorkflow,
-  type WorkflowStep, type InsertWorkflowStep, type ApprovalHistory, type InsertApprovalHistory
+  type WorkflowStep, type InsertWorkflowStep, type ApprovalHistory, type InsertApprovalHistory,
+  type LlmUsage, type InsertLlmUsage, type LlmUsageAggregates, type InsertLlmUsageAggregates
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, count, sql, inArray } from "drizzle-orm";
@@ -124,6 +125,14 @@ export interface IStorage {
   updateIntegration(id: string, updates: Partial<InsertIntegration>): Promise<Integration | undefined>;
   deleteIntegration(id: string): Promise<void>;
   testIntegration(id: string): Promise<{ success: boolean; message: string; timestamp: Date }>;
+
+  // LLM Usage Tracking
+  createLlmUsage(usage: InsertLlmUsage): Promise<LlmUsage>;
+  getLlmUsageByDateRange(agentId: string, startDate: Date, endDate: Date): Promise<LlmUsage[]>;
+  createLlmUsageAggregate(aggregate: InsertLlmUsageAggregates): Promise<LlmUsageAggregates>;
+  updateLlmUsageAggregate(id: string, updates: Partial<InsertLlmUsageAggregates>): Promise<void>;
+  getLlmUsageAggregateForDate(agentId: string, provider: string, model: string, operation: string, date: Date): Promise<LlmUsageAggregates | undefined>;
+  getLlmUsageAggregatesByDateRange(startDate: Date, endDate: Date): Promise<LlmUsageAggregates[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -843,6 +852,73 @@ export class DatabaseStorage implements IStorage {
     }
 
     return testResult;
+  }
+
+  // LLM Usage Tracking
+  async createLlmUsage(usage: InsertLlmUsage): Promise<LlmUsage> {
+    const [newUsage] = await db.insert(llmUsage).values(usage).returning();
+    return newUsage;
+  }
+
+  async getLlmUsageByDateRange(agentId: string, startDate: Date, endDate: Date): Promise<LlmUsage[]> {
+    return await db
+      .select()
+      .from(llmUsage)
+      .where(
+        and(
+          eq(llmUsage.agentId, agentId),
+          gte(llmUsage.timestamp, startDate),
+          lte(llmUsage.timestamp, endDate)
+        )
+      )
+      .orderBy(desc(llmUsage.timestamp));
+  }
+
+  async createLlmUsageAggregate(aggregate: InsertLlmUsageAggregates): Promise<LlmUsageAggregates> {
+    const [newAggregate] = await db.insert(llmUsageAggregates).values(aggregate).returning();
+    return newAggregate;
+  }
+
+  async updateLlmUsageAggregate(id: string, updates: Partial<InsertLlmUsageAggregates>): Promise<void> {
+    await db
+      .update(llmUsageAggregates)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(llmUsageAggregates.id, id));
+  }
+
+  async getLlmUsageAggregateForDate(
+    agentId: string, 
+    provider: string, 
+    model: string, 
+    operation: string, 
+    date: Date
+  ): Promise<LlmUsageAggregates | undefined> {
+    const [aggregate] = await db
+      .select()
+      .from(llmUsageAggregates)
+      .where(
+        and(
+          eq(llmUsageAggregates.agentId, agentId),
+          eq(llmUsageAggregates.provider, provider as any),
+          eq(llmUsageAggregates.model, model as any),
+          eq(llmUsageAggregates.operation, operation),
+          eq(llmUsageAggregates.aggregateDate, date)
+        )
+      );
+    return aggregate || undefined;
+  }
+
+  async getLlmUsageAggregatesByDateRange(startDate: Date, endDate: Date): Promise<LlmUsageAggregates[]> {
+    return await db
+      .select()
+      .from(llmUsageAggregates)
+      .where(
+        and(
+          gte(llmUsageAggregates.aggregateDate, startDate),
+          lte(llmUsageAggregates.aggregateDate, endDate)
+        )
+      )
+      .orderBy(desc(llmUsageAggregates.aggregateDate));
   }
 }
 

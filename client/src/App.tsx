@@ -12,6 +12,7 @@ import RemediationsPage from "@/pages/remediations";
 import AuditPage from "@/pages/audit";
 import AnalyticsPage from "@/pages/analytics";
 import AdvancedAnalyticsPage from "@/pages/analytics-advanced";
+import LlmAnalyticsPage from "@/pages/llm-analytics";
 import DataUploadPage from "@/pages/data-upload";
 import DataViewPage from "@/pages/data-view";
 import DataManagementPage from "@/pages/data-management";
@@ -33,6 +34,7 @@ function Router() {
       <Route path="/audit" component={AuditPage} />
       <Route path="/analytics" component={AnalyticsPage} />
       <Route path="/analytics-advanced" component={AdvancedAnalyticsPage} />
+      <Route path="/llm-analytics" component={LlmAnalyticsPage} />
       <Route path="/data-view" component={DataViewPage} />
       <Route path="/data-upload" component={DataUploadPage} />
       <Route path="/data-management" component={DataManagementPage} />

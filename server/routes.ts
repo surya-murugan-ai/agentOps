@@ -870,5 +870,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Workflow routes
   app.use("/api/workflows", (await import("./routes/workflowRoutes")).workflowRoutes);
 
+  // LLM Usage tracking routes
+  app.use("/api/llm-usage", (await import("./routes/llmUsageRoutes")).default);
+
   return httpServer;
 }
