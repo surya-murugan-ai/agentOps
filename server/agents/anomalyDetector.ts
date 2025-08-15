@@ -2,6 +2,7 @@ import { Agent } from "./index";
 import { storage } from "../storage";
 import { wsManager } from "../services/websocket";
 import { aiService } from "../services/aiService";
+import { thresholdConfig } from "../config/thresholds";
 
 export class AnomalyDetectorAgent implements Agent {
   public readonly id = "anomaly-detector-001";
@@ -107,40 +108,47 @@ export class AnomalyDetectorAgent implements Agent {
     const memoryUsage = parseFloat(metric.memoryUsage);
     const diskUsage = parseFloat(metric.diskUsage);
 
-    // CPU threshold detection
-    if (cpuUsage > 85) {
+    // Get server environment for threshold configuration
+    const server = await storage.getServer(metric.serverId);
+    const environment = server?.environment || 'default';
+
+    // CPU threshold detection using configurable thresholds
+    const cpuCheck = thresholdConfig.checkThreshold('cpu', cpuUsage, environment);
+    if (cpuCheck.severity !== 'normal') {
       await this.createAnomalyAndAlert(
         metric.serverId,
         "cpu",
         cpuUsage,
-        85,
-        cpuUsage > 95 ? "critical" : "warning",
+        cpuCheck.threshold,
+        cpuCheck.severity as "warning" | "critical",
         "threshold",
         `High CPU usage detected: ${cpuUsage.toFixed(1)}%`
       );
     }
 
-    // Memory threshold detection
-    if (memoryUsage > 85) {
+    // Memory threshold detection using configurable thresholds
+    const memoryCheck = thresholdConfig.checkThreshold('memory', memoryUsage, environment);
+    if (memoryCheck.severity !== 'normal') {
       await this.createAnomalyAndAlert(
         metric.serverId,
         "memory",
         memoryUsage,
-        85,
-        memoryUsage > 95 ? "critical" : "warning",
+        memoryCheck.threshold,
+        memoryCheck.severity as "warning" | "critical",
         "threshold",
         `High memory usage detected: ${memoryUsage.toFixed(1)}%`
       );
     }
 
-    // Disk threshold detection
-    if (diskUsage > 80) {
+    // Disk threshold detection using configurable thresholds
+    const diskCheck = thresholdConfig.checkThreshold('disk', diskUsage, environment);
+    if (diskCheck.severity !== 'normal') {
       await this.createAnomalyAndAlert(
         metric.serverId,
         "disk",
         diskUsage,
-        80,
-        diskUsage > 90 ? "critical" : "warning",
+        diskCheck.threshold,
+        diskCheck.severity as "warning" | "critical",
         "threshold",
         `High disk usage detected: ${diskUsage.toFixed(1)}%`
       );

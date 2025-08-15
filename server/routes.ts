@@ -10,6 +10,7 @@ import { z } from "zod";
 import { DataExtractionService } from "./services/dataExtractionService";
 import { registerAgentControlRoutes } from "./routes/agentControlRoutes";
 import { systemRouter } from "./routes/system";
+import { thresholdsRouter } from "./routes/thresholds";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -24,6 +25,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register system routes (includes API status tracking)
   app.use('/api/system', systemRouter);
+  
+  // Register threshold configuration routes
+  app.use('/api/thresholds', thresholdsRouter);
 
   // Dashboard metrics endpoint
   app.get("/api/dashboard/metrics", async (req, res) => {
