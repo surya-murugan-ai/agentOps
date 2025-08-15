@@ -107,7 +107,7 @@ export class AgentControlService {
   }
 
   async pauseAgent(agentId: string): Promise<void> {
-    await storage.updateAgent(agentId, { status: 'paused' });
+    await storage.updateAgent(agentId, { status: 'inactive' });
     
     // Clear monitoring interval when paused
     if (this.monitoringIntervals.has(agentId)) {
@@ -117,7 +117,7 @@ export class AgentControlService {
 
     wsManager.broadcast({
       type: 'agent_status_changed',
-      data: { agentId, status: 'paused' }
+      data: { agentId, status: 'inactive' }
     });
   }
 
