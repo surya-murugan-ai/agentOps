@@ -1,6 +1,9 @@
 import { RefreshCw, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Switch } from '@/components/ui/switch';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
 
 interface TopBarProps {
   isConnected: boolean;
@@ -22,6 +25,44 @@ export default function TopBar({ isConnected }: TopBarProps) {
 
   // Determine if real-time monitoring is actually enabled
   const isMonitoringActive = agentControlData?.activeMonitoring > 0;
+  
+  const { toast } = useToast();
+
+  // Get all agents for master control
+  const { data: agents } = useQuery({
+    queryKey: ['/api/agents'],
+    refetchInterval: 30000,
+  });
+
+  // Master monitoring toggle mutation
+  const masterToggleMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      if (!agents) return;
+      
+      // Toggle monitoring for all agents
+      const promises = agents.map((agent: any) => 
+        apiRequest('POST', `/api/agents/${agent.id}/enable-monitoring`, { enabled })
+      );
+      
+      await Promise.all(promises);
+      return enabled;
+    },
+    onSuccess: (enabled) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/agents'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/agent-control/dashboard'] });
+      toast({ 
+        title: `All agents ${enabled ? 'enabled' : 'disabled'} successfully`,
+        description: `Real-time monitoring ${enabled ? 'activated' : 'deactivated'} for all agents`
+      });
+    },
+    onError: () => {
+      toast({ 
+        title: "Failed to update monitoring", 
+        variant: "destructive",
+        description: "Could not update monitoring settings for all agents"
+      });
+    },
+  });
 
   const handleRefresh = () => {
     queryClient.invalidateQueries();
@@ -54,11 +95,19 @@ export default function TopBar({ isConnected }: TopBarProps) {
         </div>
         
         <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2 text-sm" data-testid="connection-status">
-            <div className={`w-2 h-2 rounded-full ${isMonitoringActive ? 'bg-success' : 'bg-yellow-500'}`}></div>
-            <span className="text-slate-300">
-              {isMonitoringActive ? 'Real-time monitoring' : 'Monitoring disabled'}
-            </span>
+          <div className="flex items-center space-x-3" data-testid="monitoring-control">
+            <div className="flex items-center space-x-2 text-sm">
+              <div className={`w-2 h-2 rounded-full ${isMonitoringActive ? 'bg-success' : 'bg-yellow-500'}`}></div>
+              <span className="text-slate-300">
+                {isMonitoringActive ? 'Real-time monitoring' : 'Monitoring disabled'}
+              </span>
+            </div>
+            <Switch
+              checked={isMonitoringActive}
+              onCheckedChange={(enabled) => masterToggleMutation.mutate(enabled)}
+              disabled={masterToggleMutation.isPending}
+              data-testid="master-monitoring-toggle"
+            />
           </div>
           
           <Button 
