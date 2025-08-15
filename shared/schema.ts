@@ -75,6 +75,43 @@ export const agents = pgTable("agents", {
   config: jsonb("config").$type<Record<string, any>>().default({}),
 });
 
+// Agent Control Settings
+export const agentControlSettings = pgTable("agent_control_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull().references(() => agents.id),
+  realtimeMonitoringEnabled: boolean("realtime_monitoring_enabled").notNull().default(true),
+  monitoringFrequencySeconds: integer("monitoring_frequency_seconds").notNull().default(60),
+  autoRestartEnabled: boolean("auto_restart_enabled").notNull().default(true),
+  maxRetries: integer("max_retries").notNull().default(3),
+  alertThresholds: jsonb("alert_thresholds").$type<{
+    cpuUsage: number;
+    memoryUsage: number;
+    errorRate: number;
+    responseTime: number;
+  }>().default({
+    cpuUsage: 80,
+    memoryUsage: 1000,
+    errorRate: 5,
+    responseTime: 5000
+  }),
+  operatingSchedule: jsonb("operating_schedule").$type<{
+    enabled: boolean;
+    timezone: string;
+    schedule: Array<{
+      day: string; // monday, tuesday, etc.
+      startTime: string; // HH:MM
+      endTime: string; // HH:MM
+      enabled: boolean;
+    }>;
+  }>().default({
+    enabled: false,
+    timezone: "UTC",
+    schedule: []
+  }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Alerts table - Updated to match template structure
 export const alerts = pgTable("alerts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -285,7 +322,7 @@ export const serversRelations = relations(servers, ({ many }) => ({
   predictions: many(predictions),
 }));
 
-export const agentsRelations = relations(agents, ({ many }) => ({
+export const agentsRelations = relations(agents, ({ one, many }) => ({
   alerts: many(alerts),
   remediationActions: many(remediationActions),
   auditLogs: many(auditLogs),
@@ -293,6 +330,11 @@ export const agentsRelations = relations(agents, ({ many }) => ({
   predictions: many(predictions),
   llmUsage: many(llmUsage),
   llmUsageAggregates: many(llmUsageAggregates),
+  controlSettings: one(agentControlSettings),
+}));
+
+export const agentControlSettingsRelations = relations(agentControlSettings, ({ one }) => ({
+  agent: one(agents, { fields: [agentControlSettings.agentId], references: [agents.id] }),
 }));
 
 export const alertsRelations = relations(alerts, ({ one, many }) => ({
@@ -358,6 +400,7 @@ export const insertWorkflowStepSchema = createInsertSchema(workflowSteps).omit({
 export const insertApprovalHistorySchema = createInsertSchema(approvalHistory).omit({ id: true, timestamp: true });
 export const insertLlmUsageSchema = createInsertSchema(llmUsage).omit({ id: true, timestamp: true });
 export const insertLlmUsageAggregatesSchema = createInsertSchema(llmUsageAggregates).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertAgentControlSettingsSchema = createInsertSchema(agentControlSettings).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -388,6 +431,8 @@ export type LlmUsage = typeof llmUsage.$inferSelect;
 export type InsertLlmUsage = z.infer<typeof insertLlmUsageSchema>;
 export type LlmUsageAggregates = typeof llmUsageAggregates.$inferSelect;
 export type InsertLlmUsageAggregates = z.infer<typeof insertLlmUsageAggregatesSchema>;
+export type AgentControlSettings = typeof agentControlSettings.$inferSelect;
+export type InsertAgentControlSettings = z.infer<typeof insertAgentControlSettingsSchema>;
 
 // Agent Settings table for configuring AI models and prompts
 export const agentSettings = pgTable("agent_settings", {

@@ -146,6 +146,11 @@ export default function Sidebar() {
               <span className="ml-auto bg-success text-xs px-2 py-1 rounded-full">{agentCount}</span>
             )}
           </Link>
+
+          <Link href="/agent-control" className={getNavItemClass("/agent-control")} data-testid="nav-agent-control">
+            <Settings size={20} />
+            <span>Agent Control</span>
+          </Link>
           
           <Link href="/agent-settings" className={getNavItemClass("/agent-settings")} data-testid="nav-agent-settings">
             <Settings size={20} />

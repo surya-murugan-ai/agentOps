@@ -8,6 +8,7 @@ import { nanoid } from "nanoid";
 import { insertServerMetricsSchema, insertRemediationActionSchema, insertAuditLogSchema } from "@shared/schema";
 import { z } from "zod";
 import { DataExtractionService } from "./services/dataExtractionService";
+import { registerAgentControlRoutes } from "./routes/agentControlRoutes";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -16,6 +17,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup WebSocket server
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
   setupWebSocket(wss);
+
+  // Register agent control routes
+  registerAgentControlRoutes(app);
 
   // Dashboard metrics endpoint
   app.get("/api/dashboard/metrics", async (req, res) => {

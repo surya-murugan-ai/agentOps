@@ -1,13 +1,15 @@
 import {
   users, servers, serverMetrics, agents, alerts, remediationActions, auditLogs, anomalies, predictions, agentSettings,
   systemSettings, integrations, approvalWorkflows, workflowSteps, approvalHistory, llmUsage, llmUsageAggregates,
+  agentControlSettings,
   type User, type InsertUser, type Server, type InsertServer, type ServerMetrics, type InsertServerMetrics,
   type Agent, type InsertAgent, type Alert, type InsertAlert, type RemediationAction, type InsertRemediationAction,
   type AuditLog, type InsertAuditLog, type Anomaly, type InsertAnomaly, type Prediction, type InsertPrediction,
   type AgentSettings, type InsertAgentSettings, type SystemSettings, type InsertSystemSettings,
   type Integration, type InsertIntegration, type ApprovalWorkflow, type InsertApprovalWorkflow,
   type WorkflowStep, type InsertWorkflowStep, type ApprovalHistory, type InsertApprovalHistory,
-  type LlmUsage, type InsertLlmUsage, type LlmUsageAggregates, type InsertLlmUsageAggregates
+  type LlmUsage, type InsertLlmUsage, type LlmUsageAggregates, type InsertLlmUsageAggregates,
+  type AgentControlSettings, type InsertAgentControlSettings
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, count, sql, inArray } from "drizzle-orm";
@@ -41,11 +43,19 @@ export interface IStorage {
 
   // Agents
   getAllAgents(): Promise<Agent[]>;
+  getAgents(): Promise<Agent[]>;
   getAgent(id: string): Promise<Agent | undefined>;
   createAgent(agent: InsertAgent): Promise<Agent>;
+  updateAgent(id: string, updates: Partial<InsertAgent>): Promise<void>;
   updateAgentStatus(id: string, status: string): Promise<void>;
   updateAgentHeartbeat(id: string): Promise<void>;
   updateAgentMetrics(id: string, cpuUsage: string, memoryUsage: number, processedCount: number): Promise<void>;
+
+  // Agent Control Settings
+  getAgentControlSettings(agentId: string): Promise<AgentControlSettings | null>;
+  createAgentControlSettings(settings: InsertAgentControlSettings): Promise<AgentControlSettings>;
+  updateAgentControlSettings(agentId: string, updates: Partial<InsertAgentControlSettings>): Promise<AgentControlSettings>;
+  getAllAgentControlSettings(): Promise<AgentControlSettings[]>;
 
   // Alerts
   getActiveAlerts(): Promise<(Alert & { server: Server })[]>;
@@ -325,6 +335,38 @@ export class DatabaseStorage implements IStorage {
       .update(agents)
       .set({ cpuUsage, memoryUsage: memoryUsage.toString(), processedCount, lastHeartbeat: new Date() })
       .where(eq(agents.id, id));
+  }
+
+  async getAgents(): Promise<Agent[]> {
+    return await db.select().from(agents).orderBy(agents.name);
+  }
+
+  async updateAgent(id: string, updates: Partial<InsertAgent>): Promise<void> {
+    await db.update(agents).set(updates).where(eq(agents.id, id));
+  }
+
+  // Agent Control Settings
+  async getAgentControlSettings(agentId: string): Promise<AgentControlSettings | null> {
+    const [settings] = await db.select().from(agentControlSettings).where(eq(agentControlSettings.agentId, agentId));
+    return settings || null;
+  }
+
+  async createAgentControlSettings(settings: InsertAgentControlSettings): Promise<AgentControlSettings> {
+    const [newSettings] = await db.insert(agentControlSettings).values(settings).returning();
+    return newSettings;
+  }
+
+  async updateAgentControlSettings(agentId: string, updates: Partial<InsertAgentControlSettings>): Promise<AgentControlSettings> {
+    const [updatedSettings] = await db
+      .update(agentControlSettings)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(agentControlSettings.agentId, agentId))
+      .returning();
+    return updatedSettings;
+  }
+
+  async getAllAgentControlSettings(): Promise<AgentControlSettings[]> {
+    return await db.select().from(agentControlSettings);
   }
 
   // Alerts

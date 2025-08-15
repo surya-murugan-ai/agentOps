@@ -18,6 +18,7 @@ import DataViewPage from "@/pages/data-view";
 import DataManagementPage from "@/pages/data-management";
 import SettingsPage from "@/pages/Settings";
 import WorkflowPage from "@/pages/workflows-operational";
+import AgentControlPage from "@/pages/agent-control";
 import HelpPage from "@/pages/help";
 import NotFound from "@/pages/not-found";
 
@@ -39,6 +40,7 @@ function Router() {
       <Route path="/data-upload" component={DataUploadPage} />
       <Route path="/data-management" component={DataManagementPage} />
       <Route path="/workflows" component={WorkflowPage} />
+      <Route path="/agent-control" component={AgentControlPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/help" component={HelpPage} />
       <Route component={NotFound} />
