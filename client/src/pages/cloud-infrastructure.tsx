@@ -1,9 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { CloudConnectionDialog } from "@/components/cloud/CloudConnectionDialog";
 import { 
   Cloud, 
   Plus, 
@@ -46,6 +48,9 @@ interface CloudConnection {
 }
 
 export default function CloudInfrastructure() {
+  const [isConnectionDialogOpen, setIsConnectionDialogOpen] = useState(false);
+  const queryClient = useQueryClient();
+
   const { data: cloudResources = [], isLoading: resourcesLoading } = useQuery({
     queryKey: ['/api/cloud-resources'],
     refetchInterval: 30000,
@@ -121,8 +126,13 @@ export default function CloudInfrastructure() {
   };
 
   const handleAddConnection = () => {
-    // For now, show an alert with future functionality
-    alert('Cloud connection setup coming soon! You will be able to add AWS, Azure, and GCP connections here.');
+    setIsConnectionDialogOpen(true);
+  };
+
+  const handleConnectionCreated = () => {
+    // Refresh the data after creating a new connection
+    queryClient.invalidateQueries({ queryKey: ['/api/cloud-connections'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/cloud-resources'] });
   };
 
   if (resourcesLoading || connectionsLoading) {
@@ -385,6 +395,12 @@ export default function CloudInfrastructure() {
           )}
         </TabsContent>
       </Tabs>
+
+      <CloudConnectionDialog
+        open={isConnectionDialogOpen}
+        onOpenChange={setIsConnectionDialogOpen}
+        onConnectionCreated={handleConnectionCreated}
+      />
     </div>
   );
 }
