@@ -51,6 +51,8 @@ export function AIAssistant() {
         }]);
       } else {
         console.error('Failed to create session:', response.status);
+        const errorData = await response.json();
+        console.error('Session creation error:', errorData);
       }
     } catch (error) {
       console.error('Error creating session:', error);
@@ -58,12 +60,17 @@ export function AIAssistant() {
   };
 
   const sendMessage = async () => {
+    console.log('Send message clicked, input:', inputMessage);
     if (!inputMessage.trim() || isLoading) return;
     
     // Create session if it doesn't exist
     if (!sessionId) {
+      console.log('No session ID, creating session...');
       await createSession();
-      if (!sessionId) return;
+      if (!sessionId) {
+        console.log('Failed to create session, aborting message send');
+        return;
+      }
     }
 
     const userMessage: Message = {

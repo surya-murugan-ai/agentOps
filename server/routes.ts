@@ -1004,7 +1004,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conversationalAgent = agentManager.getAgent('conversational-ai-001');
       console.log('Conversational agent found:', !!conversationalAgent);
       if (!conversationalAgent) {
-        console.log('Available agents:', Array.from(agentManager.getAllAgents().map(a => a.id)));
+        const allAgents = agentManager.getAllAgents();
+        console.log('Available agents:', allAgents.map(a => ({ id: a.id, name: a.name })));
         return res.status(503).json({ error: 'Conversational AI agent not available' });
       }
       const sessionId = await (conversationalAgent as any).createSession(req.body.userId);
