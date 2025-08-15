@@ -215,7 +215,7 @@ export class AnomalyDetectorAgent implements Agent {
       detectionMethod
     );
 
-    // Create alert if one doesn't already exist for this issue
+    // Create alert if one doesn't already exist for this specific server + metric combination
     const existingAlerts = await storage.getActiveAlerts();
     const existingAlert = existingAlerts.find(
       alert => alert.serverId === serverId && 
@@ -242,6 +242,17 @@ export class AnomalyDetectorAgent implements Agent {
       wsManager.broadcastAlert(alert);
       
       console.log(`${this.name}: Created ${severity} alert for ${metricType} on server ${serverId}`);
+    } else {
+      // Update existing alert if severity has changed
+      if (existingAlert.severity !== severity) {
+        await storage.updateAlert(existingAlert.id, {
+          severity: severity as any,
+          metricValue: actualValue.toString(),
+          description,
+          updatedAt: new Date()
+        });
+        console.log(`${this.name}: Updated ${existingAlert.severity} to ${severity} alert for ${metricType} on server ${serverId}`);
+      }
     }
   }
 
