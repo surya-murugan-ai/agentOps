@@ -163,6 +163,22 @@ export class RecommendationEngineAgent implements Agent {
       this.lastFullRun = now;
       
       console.log(`${this.name}: Processed ${processedCount} new/changed alerts (skipped ${alertsNeedingRemediation.length - newOrChangedAlerts.length} unchanged)`);
+      
+      // Log recommendation processing activity
+      if (processedCount > 0) {
+        await storage.createAuditLog({
+          agentId: this.id,
+          action: "Recommendation Analysis",
+          details: `Analyzed ${processedCount} new alerts and generated ${this.recommendationsGenerated} total recommendations`,
+          status: "success",
+          metadata: {
+            processedAlerts: processedCount,
+            skippedAlerts: alertsNeedingRemediation.length - newOrChangedAlerts.length,
+            totalRecommendations: this.recommendationsGenerated,
+            method: "ai_powered_analysis"
+          }
+        });
+      }
     } catch (error) {
       console.error(`${this.name}: Error generating recommendations:`, error);
       this.errorCount++;

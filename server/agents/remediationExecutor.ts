@@ -100,6 +100,20 @@ export class RemediationExecutorAgent implements Agent {
 
       if (approvedActions.length > 0) {
         console.log(`${this.name}: Executed ${approvedActions.length} approved actions`);
+        
+        // Log execution activity
+        await storage.createAuditLog({
+          agentId: this.id,
+          action: "Remediation Execution",
+          details: `Successfully executed ${approvedActions.length} approved remediation actions`,
+          status: "success",
+          metadata: {
+            actionsExecuted: approvedActions.length,
+            successfulActions: this.successfulActions,
+            failedActions: this.failedActions,
+            method: "automated_execution"
+          }
+        });
       }
     } catch (error) {
       console.error(`${this.name}: Error executing approved actions:`, error);

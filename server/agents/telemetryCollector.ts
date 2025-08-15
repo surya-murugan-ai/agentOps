@@ -90,6 +90,19 @@ export class TelemetryCollectorAgent implements Agent {
       const latestMetrics = await storage.getLatestMetrics();
       wsManager.broadcastMetricsUpdate(latestMetrics);
 
+      // Log telemetry collection activity
+      await storage.createAuditLog({
+        agentId: this.id,
+        action: "Telemetry Collection",
+        details: `Successfully collected telemetry data from ${servers.length} servers with ${this.processedCount} total metrics`,
+        status: "success",
+        metadata: {
+          serversProcessed: servers.length,
+          totalMetrics: this.processedCount,
+          method: "real_time_collection"
+        }
+      });
+
       console.log(`${this.name}: Collected telemetry for ${servers.length} servers`);
     } catch (error) {
       console.error(`${this.name}: Error collecting telemetry:`, error);
