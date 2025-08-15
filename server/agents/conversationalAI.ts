@@ -47,25 +47,32 @@ export class ConversationalAIAgent {
     this.isRunning = true;
 
     try {
-      // Register this agent in the database
-      await this.storage.createAgent({
-        id: this.id,
-        name: this.name,
-        type: this.type as any,
-        status: 'active',
-        config: {
-          model: 'gpt-4o',
-          maxTokens: 2000,
-          temperature: 0.7,
-          capabilities: [
-            'data_analysis',
-            'report_generation', 
-            'help_assistance',
-            'platform_insights',
-            'agent_coordination'
-          ]
-        },
-      });
+      // Check if agent already exists to avoid duplicate key error
+      const existingAgent = await this.storage.getAgent(this.id);
+      if (!existingAgent) {
+        // Register this agent in the database
+        await this.storage.createAgent({
+          id: this.id,
+          name: this.name,
+          type: this.type as any,
+          status: 'active',
+          config: {
+            model: 'gpt-4o',
+            maxTokens: 2000,
+            temperature: 0.7,
+            capabilities: [
+              'data_analysis',
+              'report_generation', 
+              'help_assistance',
+              'platform_insights',
+              'agent_coordination'
+            ]
+          },
+        });
+      } else {
+        // Update existing agent status
+        await this.storage.updateAgent(this.id, { status: 'active' });
+      }
 
       console.log('Conversational AI: Agent started successfully');
     } catch (error) {

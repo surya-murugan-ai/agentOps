@@ -140,7 +140,7 @@ export function AIAssistant() {
 
       {/* Chat Window */}
       {isOpen && (
-        <Card className="fixed bottom-24 right-6 w-96 h-[500px] shadow-xl z-40">
+        <Card className="fixed bottom-24 right-6 w-80 h-[450px] shadow-xl z-40 bg-background border">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
               <Bot className="h-5 w-5 text-primary" />
@@ -152,9 +152,9 @@ export function AIAssistant() {
             </CardTitle>
           </CardHeader>
           
-          <CardContent className="flex flex-col h-full pb-4">
+          <CardContent className="flex flex-col h-[380px] pb-4">
             {/* Messages Area */}
-            <ScrollArea className="flex-1 pr-4">
+            <ScrollArea className="flex-1 pr-4 mb-4">
               <div className="space-y-4">
                 {messages.map((message) => (
                   <div
@@ -210,7 +210,7 @@ export function AIAssistant() {
             </ScrollArea>
 
             {/* Input Area */}
-            <div className="flex gap-2 mt-4">
+            <div className="flex gap-2 mt-auto pt-2 border-t">
               <Input
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
