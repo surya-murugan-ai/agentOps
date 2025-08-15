@@ -14,6 +14,10 @@ export class AnomalyDetectorAgent implements Agent {
   private processedCount = 0;
   private anomaliesDetected = 0;
   private errorCount = 0;
+  
+  // Alert management limits
+  private readonly MAX_ALERTS_PER_SERVER = 3;
+  private readonly MAX_TOTAL_ALERTS = 15;
 
   async start(): Promise<void> {
     if (this.running) return;
@@ -223,8 +227,23 @@ export class AnomalyDetectorAgent implements Agent {
       detectionMethod
     );
 
-    // Create alert if one doesn't already exist for this specific server + metric combination
+    // Enhanced deduplication and alert limits
     const existingAlerts = await storage.getActiveAlerts();
+    
+    // Check global alert limit
+    if (existingAlerts.length >= this.MAX_TOTAL_ALERTS) {
+      console.log(`${this.name}: Global alert limit reached (${this.MAX_TOTAL_ALERTS}), skipping new alert`);
+      return;
+    }
+    
+    // Check per-server alert limit
+    const serverAlerts = existingAlerts.filter(alert => alert.serverId === serverId);
+    if (serverAlerts.length >= this.MAX_ALERTS_PER_SERVER) {
+      console.log(`${this.name}: Server alert limit reached for ${serverId} (${this.MAX_ALERTS_PER_SERVER}), skipping new alert`);
+      return;
+    }
+    
+    // Check for existing alert with same server + metric combination
     const existingAlert = existingAlerts.find(
       alert => alert.serverId === serverId && 
                alert.metricType === metricType && 
@@ -307,8 +326,23 @@ export class AnomalyDetectorAgent implements Agent {
     try {
       const mappedSeverity = this.mapSeverity(anomaly.severity);
       
-      // Check if alert already exists for this issue
+      // Enhanced AI alert deduplication and limits
       const existingAlerts = await storage.getActiveAlerts();
+      
+      // Check global alert limit
+      if (existingAlerts.length >= this.MAX_TOTAL_ALERTS) {
+        console.log(`${this.name}: Global alert limit reached, skipping AI alert`);
+        return;
+      }
+      
+      // Check per-server alert limit
+      const serverAlerts = existingAlerts.filter(alert => alert.serverId === anomaly.serverId);
+      if (serverAlerts.length >= this.MAX_ALERTS_PER_SERVER) {
+        console.log(`${this.name}: Server alert limit reached for ${anomaly.serverId}, skipping AI alert`);
+        return;
+      }
+      
+      // Check for existing alert with same server + metric combination
       const existingAlert = existingAlerts.find(
         alert => alert.serverId === anomaly.serverId && 
                  alert.metricType === anomaly.metricType && 
