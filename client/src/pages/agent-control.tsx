@@ -18,7 +18,8 @@ import {
   RefreshCw,
   Play,
   Pause,
-  Square
+  Square,
+  BarChart3
 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -204,9 +205,19 @@ export default function AgentControlPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6" data-testid="agent-control-page">
-      <div className="flex items-center space-x-2 mb-6">
-        <Settings className="h-6 w-6" />
-        <h1 className="text-2xl font-bold">Agent Control Center</h1>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-2">
+          <Settings className="h-6 w-6" />
+          <h1 className="text-2xl font-bold">Agent Control Center</h1>
+        </div>
+        <Button 
+          variant="outline" 
+          onClick={() => window.location.href = '/'}
+          data-testid="dashboard-nav-button"
+        >
+          <BarChart3 className="h-4 w-4 mr-2" />
+          Back to Dashboard
+        </Button>
       </div>
 
       {/* Dashboard Overview */}
