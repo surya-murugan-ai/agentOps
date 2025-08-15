@@ -105,13 +105,23 @@ export class RecommendationEngineAgent implements Agent {
         storage.getPendingRemediationActions()
       ]);
       
-      // Enhanced deduplication: Filter out alerts that already have ANY remediation actions
+      // ULTRA-STRICT deduplication: Filter out alerts that already have ANY remediation actions
       const alertsNeedingRemediation = activeAlerts.filter(alert => {
-        const hasExistingAction = existingActions.some(action => 
-          action.alertId === alert.id || 
-          (action.serverId === alert.serverId && action.title && alert.metricType && action.title.includes(alert.metricType.toUpperCase()))
+        // Check for exact alert ID match first (most important)
+        const hasExactMatch = existingActions.some(action => action.alertId === alert.id);
+        if (hasExactMatch) {
+          return false;
+        }
+        
+        // Check for same server + metric type combination 
+        const hasSimilarAction = existingActions.some(action => 
+          action.serverId === alert.serverId && 
+          alert.metricType && 
+          (action.title?.toLowerCase().includes(alert.metricType.toLowerCase()) ||
+           action.actionType?.toLowerCase().includes(alert.metricType.toLowerCase()))
         );
-        return !hasExistingAction;
+        
+        return !hasSimilarAction;
       });
 
       if (alertsNeedingRemediation.length === 0) {

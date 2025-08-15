@@ -37,6 +37,8 @@ export function APICreditsNotification({ onDismiss }: APICreditsNotificationProp
           
           // Show notification if any API has issues
           const hasIssues = 
+            (status.openai.consecutiveErrors >= 3) || 
+            (status.anthropic.consecutiveErrors >= 3) ||
             status.openai.status !== 'active' || 
             status.anthropic.status !== 'active';
           
@@ -93,8 +95,8 @@ export function APICreditsNotification({ onDismiss }: APICreditsNotificationProp
     return null;
   }
 
-  const hasOpenAIIssues = apiStatus.openai.status !== 'active';
-  const hasAnthropicIssues = apiStatus.anthropic.status !== 'active';
+  const hasOpenAIIssues = apiStatus.openai.status !== 'active' || apiStatus.openai.consecutiveErrors >= 3;
+  const hasAnthropicIssues = apiStatus.anthropic.status !== 'active' || apiStatus.anthropic.consecutiveErrors >= 3;
 
   return (
     <div className="fixed top-4 right-4 z-50 w-96" data-testid="api-credits-notification">
