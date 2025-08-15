@@ -84,7 +84,7 @@ export default function AgentControlPage() {
   // Mutations for agent control
   const toggleMonitoringMutation = useMutation({
     mutationFn: async ({ agentId, enabled }: { agentId: string; enabled: boolean }) => {
-      return apiRequest(`/api/agents/${agentId}/toggle-monitoring`, {
+      return apiRequest(`/api/agents/${agentId}/enable-monitoring`, {
         method: 'POST',
         body: JSON.stringify({ enabled }),
       });
@@ -92,6 +92,9 @@ export default function AgentControlPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/agents'] });
       queryClient.invalidateQueries({ queryKey: ['/api/agent-control/dashboard'] });
+      if (selectedAgent) {
+        queryClient.invalidateQueries({ queryKey: ['/api/agents', selectedAgent, 'control-settings'] });
+      }
       toast({ title: "Monitoring setting updated successfully" });
     },
     onError: () => {
@@ -101,7 +104,7 @@ export default function AgentControlPage() {
 
   const setFrequencyMutation = useMutation({
     mutationFn: async ({ agentId, frequencySeconds }: { agentId: string; frequencySeconds: number }) => {
-      return apiRequest(`/api/agents/${agentId}/frequency`, {
+      return apiRequest(`/api/agents/${agentId}/monitoring-frequency`, {
         method: 'POST',
         body: JSON.stringify({ frequencySeconds }),
       });
@@ -109,6 +112,9 @@ export default function AgentControlPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/agents'] });
       queryClient.invalidateQueries({ queryKey: ['/api/agent-control/dashboard'] });
+      if (selectedAgent) {
+        queryClient.invalidateQueries({ queryKey: ['/api/agents', selectedAgent, 'control-settings'] });
+      }
       toast({ title: "Monitoring frequency updated successfully" });
     },
     onError: () => {
@@ -126,6 +132,9 @@ export default function AgentControlPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/agents'] });
       queryClient.invalidateQueries({ queryKey: ['/api/agent-control/dashboard'] });
+      if (selectedAgent) {
+        queryClient.invalidateQueries({ queryKey: ['/api/agents', selectedAgent, 'control-settings'] });
+      }
       toast({ title: "Agent settings updated successfully" });
     },
     onError: () => {

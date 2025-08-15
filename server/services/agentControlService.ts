@@ -33,7 +33,7 @@ export class AgentControlService {
     await this.applyControlSettings(agentId, updatedSettings);
     
     // Notify clients of settings change
-    wsManager.broadcastToAll({
+    wsManager.broadcast({
       type: 'agent_control_updated',
       data: { agentId, settings: updatedSettings }
     });
@@ -115,7 +115,7 @@ export class AgentControlService {
       this.monitoringIntervals.delete(agentId);
     }
 
-    wsManager.broadcastToAll({
+    wsManager.broadcast({
       type: 'agent_status_changed',
       data: { agentId, status: 'paused' }
     });
@@ -130,7 +130,7 @@ export class AgentControlService {
       await this.applyControlSettings(agentId, settings);
     }
 
-    wsManager.broadcastToAll({
+    wsManager.broadcast({
       type: 'agent_status_changed',
       data: { agentId, status: 'active' }
     });
@@ -146,7 +146,7 @@ export class AgentControlService {
     // Resume
     await this.resumeAgent(agentId);
 
-    wsManager.broadcastToAll({
+    wsManager.broadcast({
       type: 'agent_restarted',
       data: { agentId, timestamp: new Date() }
     });

@@ -52,7 +52,7 @@ export function registerAgentControlRoutes(app: Express) {
   });
 
   // Toggle realtime monitoring
-  app.post("/api/agents/:agentId/toggle-monitoring", async (req, res) => {
+  app.post("/api/agents/:agentId/enable-monitoring", async (req, res) => {
     try {
       const { agentId } = req.params;
       const { enabled } = req.body;
@@ -73,8 +73,8 @@ export function registerAgentControlRoutes(app: Express) {
     }
   });
 
-  // Set monitoring frequency
-  app.post("/api/agents/:agentId/frequency", async (req, res) => {
+  // Set monitoring frequency  
+  app.post("/api/agents/:agentId/monitoring-frequency", async (req, res) => {
     try {
       const { agentId } = req.params;
       const { frequencySeconds } = req.body;
