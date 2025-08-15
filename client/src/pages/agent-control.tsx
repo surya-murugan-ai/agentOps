@@ -84,10 +84,8 @@ export default function AgentControlPage() {
   // Mutations for agent control
   const toggleMonitoringMutation = useMutation({
     mutationFn: async ({ agentId, enabled }: { agentId: string; enabled: boolean }) => {
-      return apiRequest(`/api/agents/${agentId}/enable-monitoring`, {
-        method: 'POST',
-        body: JSON.stringify({ enabled }),
-      });
+      const response = await apiRequest('POST', `/api/agents/${agentId}/enable-monitoring`, { enabled });
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/agents'] });
@@ -104,10 +102,8 @@ export default function AgentControlPage() {
 
   const setFrequencyMutation = useMutation({
     mutationFn: async ({ agentId, frequencySeconds }: { agentId: string; frequencySeconds: number }) => {
-      return apiRequest(`/api/agents/${agentId}/monitoring-frequency`, {
-        method: 'POST',
-        body: JSON.stringify({ frequencySeconds }),
-      });
+      const response = await apiRequest('POST', `/api/agents/${agentId}/monitoring-frequency`, { frequencySeconds });
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/agents'] });
@@ -144,9 +140,8 @@ export default function AgentControlPage() {
 
   const agentActionMutation = useMutation({
     mutationFn: async ({ agentId, action }: { agentId: string; action: 'pause' | 'resume' | 'restart' }) => {
-      return apiRequest(`/api/agents/${agentId}/${action}`, {
-        method: 'POST',
-      });
+      const response = await apiRequest('POST', `/api/agents/${agentId}/${action}`);
+      return response.json();
     },
     onSuccess: (_, { action }) => {
       queryClient.invalidateQueries({ queryKey: ['/api/agents'] });
