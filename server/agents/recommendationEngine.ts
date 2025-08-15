@@ -20,6 +20,12 @@ export class RecommendationEngineAgent implements Agent {
   private lastFullRun = 0; // timestamp of last full analysis
   private readonly CACHE_TTL = 30 * 60 * 1000; // 30 minutes
   private readonly MIN_RUN_INTERVAL = 10 * 60 * 1000; // 10 minutes minimum between full runs
+  
+  // EMERGENCY CIRCUIT BREAKER - Prevent excessive action creation
+  private actionsCreatedToday = 0;
+  private lastDayReset = Date.now();
+  private readonly MAX_ACTIONS_PER_DAY = 50; // Hard limit to prevent mass creation
+  private readonly CIRCUIT_BREAKER_ENABLED = true;
 
   async start(): Promise<void> {
     if (this.running) return;
@@ -71,6 +77,21 @@ export class RecommendationEngineAgent implements Agent {
 
     try {
       const now = Date.now();
+      
+      // EMERGENCY CIRCUIT BREAKER CHECK
+      if (this.CIRCUIT_BREAKER_ENABLED) {
+        // Reset daily counter
+        if (now - this.lastDayReset > 24 * 60 * 60 * 1000) {
+          this.actionsCreatedToday = 0;
+          this.lastDayReset = now;
+        }
+        
+        // Check if we've hit the daily limit
+        if (this.actionsCreatedToday >= this.MAX_ACTIONS_PER_DAY) {
+          console.log(`${this.name}: CIRCUIT BREAKER ACTIVATED - Daily limit of ${this.MAX_ACTIONS_PER_DAY} actions reached`);
+          return;
+        }
+      }
       
       // Rate limiting: Skip if we ran too recently
       if (now - this.lastFullRun < this.MIN_RUN_INTERVAL) {
@@ -252,8 +273,8 @@ export class RecommendationEngineAgent implements Agent {
     const existingActions = await storage.getPendingRemediationActions();
     const existingAction = existingActions.find(
       action => action.serverId === serverId && 
-                action.title.includes(metricType.toUpperCase()) &&
-                action.title.includes("PROACTIVE")
+                action.title && action.title.includes(metricType.toUpperCase()) &&
+                action.title && action.title.includes("PROACTIVE")
     );
     
     if (existingAction) return;
@@ -295,7 +316,7 @@ export class RecommendationEngineAgent implements Agent {
         estimatedDowntime: recommendation.estimatedDowntime,
         requiresApproval: recommendation.requiresApproval,
         command: recommendation.command,
-        parameters: recommendation.parameters,
+        parameters: JSON.stringify(recommendation.parameters || {}),
       });
 
       wsManager.broadcastRemediationUpdate(action);
@@ -348,8 +369,19 @@ export class RecommendationEngineAgent implements Agent {
         recommendations = this.generateRuleBasedRecommendations(alert);
       }
       
-      // Create remediation actions
+      // CIRCUIT BREAKER: Check before creating any new actions
+      if (this.CIRCUIT_BREAKER_ENABLED && 
+          this.actionsCreatedToday + recommendations.length > this.MAX_ACTIONS_PER_DAY) {
+        console.log(`${this.name}: CIRCUIT BREAKER - Would exceed daily limit, creating only ${this.MAX_ACTIONS_PER_DAY - this.actionsCreatedToday} actions`);
+        recommendations.splice(this.MAX_ACTIONS_PER_DAY - this.actionsCreatedToday);
+      }
+      
+      // Create remediation actions (with circuit breaker protection)
       for (const rec of recommendations) {
+        if (this.CIRCUIT_BREAKER_ENABLED && this.actionsCreatedToday >= this.MAX_ACTIONS_PER_DAY) {
+          break;
+        }
+        
         await storage.createRemediationAction({
           alertId: alert.id,
           serverId,
@@ -363,6 +395,8 @@ export class RecommendationEngineAgent implements Agent {
           command: rec.command,
           parameters: rec.parameters,
         });
+        
+        this.actionsCreatedToday++;
       }
       
       this.recommendationsGenerated += recommendations.length;
@@ -374,6 +408,12 @@ export class RecommendationEngineAgent implements Agent {
 
   private async createRemediationFromCache(alert: any, cachedRecommendations: any[]) {
     for (const rec of cachedRecommendations) {
+      // CIRCUIT BREAKER: Check before creating cached actions
+      if (this.CIRCUIT_BREAKER_ENABLED && this.actionsCreatedToday >= this.MAX_ACTIONS_PER_DAY) {
+        console.log(`${this.name}: CIRCUIT BREAKER - Skipping cached action creation, daily limit reached`);
+        break;
+      }
+      
       await storage.createRemediationAction({
         alertId: alert.id,
         serverId: alert.serverId,
@@ -387,6 +427,8 @@ export class RecommendationEngineAgent implements Agent {
         command: rec.command,
         parameters: rec.parameters,
       });
+      
+      this.actionsCreatedToday++;
     }
     this.recommendationsGenerated += cachedRecommendations.length;
   }
