@@ -1,191 +1,63 @@
 # AgentOps - AI Server Monitoring Platform
 
 ## Overview
-
-AgentOps is an AI-powered server health monitoring and automated remediation platform designed for financial institutions, insurance companies, and trading firms. The system provides proactive monitoring of mission-critical servers through real-time telemetry collection, anomaly detection, predictive analytics, and automated remediation workflows. It features a comprehensive dashboard for visualizing server health, managing alerts, and overseeing AI agent operations.
-
-## Recent Changes (January 15, 2025)
-
-- **CRITICAL PERFORMANCE CRISIS RESOLVED**: Successfully identified and eliminated massive cost issue where agents were creating thousands of duplicate remediation actions
-- **Emergency Circuit Breaker Deployed**: Implemented hard limit of 50 actions per day per agent with automatic daily reset to prevent mass creation and API cost overruns
-- **Database Cleanup Complete**: Removed all excessive remediation actions from system, database now clean with zero pending duplicates
-- **Optimization System Fully Operational**: All 5 optimization rules working perfectly - smart caching (30-min TTL), change detection, rate limiting (10-min intervals), batch processing, and duplicate prevention
-- **AI Fallback System Verified**: System gracefully handles Anthropic API credit depletion with intelligent rule-based recommendations ensuring continuous operation
-- **Recommendation Engine Completely Overhauled**: Rewrote entire engine with comprehensive safeguards to prevent future mass action creation
-- **Cost Control Success**: Massive reduction in API calls achieved through multiple layers of protection - caching, deduplication, frequency reduction, and hard limits
-- **Performance Monitoring Enhanced**: Added comprehensive circuit breaker metrics and intelligent resource management
-- **Alert Processing Optimized**: Only processes alerts that have actually changed since last analysis, preventing unnecessary duplicate processing
-- **System Stability Confirmed**: Agents now operating within safe parameters with verified protection against excessive resource consumption
-
-## Recent Changes (January 14, 2025)
-
-- **AI Command Generation Documentation Complete**: Significantly expanded help system with comprehensive explanations of how AI agents generate automated remediation commands
-- **Detailed Agent Workflow Documentation**: Added complete process documentation showing how the 8 AI agents work together from alert detection to command execution
-- **Remediation Card Explanations**: Created detailed breakdowns of remediation cards including confidence scoring, downtime estimates, technical command details, and approval workflows
-- **Step-by-Step Process Documentation**: Documented complete "Alert to Action" workflow showing 6-step process from detection to resolution with specific command examples
-- **Technical Command Examples**: Added real command examples for different issue types (memory: sync && echo 3, services: systemctl restart, disk: find/delete, CPU: renice)
-- **Risk Assessment Documentation**: Explained how the system calculates confidence scores and routes approvals based on risk levels
-- **Comprehensive Help System Complete**: Created extensive help documentation system as explicitly requested by user
-- **Help Center Implementation**: Built complete help page with structured documentation covering platform usage, features, configuration steps, and processes
-- **Multi-Section Help Organization**: Organized help into three main tabs - Overview, Features, and User Guides with collapsible sections
-- **Complete Feature Documentation**: Detailed documentation for all 10 major platform sections (Dashboard, Servers, Agents, Alerts, Remediation, Workflows, Analytics, Data Management, Configuration, Troubleshooting)
-- **Navigation Integration**: Added Help Center to sidebar navigation and routing system with HelpCircle icon
-- **Searchable Documentation**: Implemented search functionality to quickly find relevant help topics
-- **Quick Start Guide**: Created step-by-step quick start guide for new users
-- **Interactive Navigation**: Added proper "Back to Dashboard" button and complete navigation flow
-
-- **Complex Multi-Step Approval Workflows Complete**: Implemented comprehensive workflow management system as explicitly requested by user
-- **Database Schema Extension**: Added 4 new workflow tables (remediation_workflows, approval_chains, workflow_steps, workflow_approvals) with full relations
-- **Advanced Workflow Service**: Built sophisticated WorkflowService with risk-based approval routing, organizational hierarchy logic, and automated escalation
-- **Smart Approval Chains**: Dynamic approval chain generation based on risk scores, environment criticality, and server importance
-- **Role-Based Workflow UI**: Created comprehensive workflow management interface with role selection, bulk operations, and real-time approval processing
-- **Workflow Navigation Integration**: Added Workflows page to main navigation with GitBranch icon and proper routing
-- **API Infrastructure Complete**: Full RESTful workflow API with statistics, history tracking, and event streaming capabilities
-- **Risk Assessment Engine**: Automatic risk scoring for remediation actions with intelligent approval routing logic
-
-- **Data Agent Enhancement Complete**: Successfully implemented comprehensive data normalization and cleaning features including duplicate removal, missing value handling, and data quality validation as requested by the user
-- **Storage Layer Expansion**: Added missing database methods (updateServer, deleteServers, updateMetric, deleteMetrics, updateAlert) to support advanced data cleaning operations
-- **API Infrastructure**: Created dedicated dataCleaningRoutes.ts with REST endpoints for data normalization, duplicate detection, and cleaning functionality  
-- **Data Cleaning Implementation**: Built advanced dataAgent.ts with sophisticated algorithms for data normalization, duplicate detection, missing value handling, and data quality validation
-- **Technical Debt Resolution**: Fixed TypeScript errors and database method inconsistencies across the storage layer
-- **Template-Based Data Tables Complete**: Updated all data table structures to match user-provided Excel templates
-- **Alert Table Structure**: Columns now display hostname, title, description, severity, metricType, metricValue, threshold per template
-- **Remediation Actions Table**: Updated to show hostname, title, description, actionType, confidence, estimatedDowntime, status structure
-- **Audit Logs Table**: Restructured with hostname, agentName, action, details, status, impact, timestamp columns
-- **Smart Upload System Enhanced**: AI system properly detects and maps template structures with 95% confidence
-- **Database Schema Updated**: Core tables now support both template fields and internal system functionality
-- **Data Consistency Complete**: Eliminated all hardcoded values across the entire platform for authentic data representation
-- **Dynamic Dashboard**: System Performance, Analytics, and all metrics now calculate from real database data instead of cached values
-
-## Previous Changes (January 13, 2025)
-
-- **Navigation System Completed**: Fixed all navigation links using Wouter routing with proper page highlighting
-- **Database Schema Finalized**: Migrated memory usage column to decimal type and resolved foreign key constraints  
-- **Complete Page Set**: Added Servers, Agents, Alerts, Remediations, Audit Logs, and Analytics pages with full functionality
-- **Demo Data Populated**: 5 servers with realistic metrics, alerts, and remediation actions for demonstration
-- **AI Agent System Operational**: All 7 agents running successfully with proper approval workflows
-- **Real-time Updates**: WebSocket integration providing live dashboard updates and notifications
-- **Live Data Integration**: Complete data upload system for testing agents with real infrastructure data
-- **Data Management Console**: Comprehensive table-based interface for viewing and managing all system data
-- **CSV/Excel Upload Feature**: Added comprehensive file upload support with automatic data type detection
-- **Comprehensive Test Suite**: Created 126 test cases covering all system aspects with detailed execution results
-- **Synthetic Test Data**: Generated realistic production-grade test data for thorough system validation
-- **Performance Validation**: Successfully tested system with multiple concurrent operations and data processing
+AgentOps is an AI-powered server health monitoring and automated remediation platform. It provides proactive monitoring of mission-critical servers for financial institutions, insurance companies, and trading firms through real-time telemetry, anomaly detection, predictive analytics, and automated remediation. The platform includes a comprehensive dashboard for visualizing server health, managing alerts, and overseeing AI agent operations. Its primary purpose is to ensure high availability and performance of critical server infrastructure while reducing operational costs and potential downtime.
 
 ## User Preferences
-
 Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
 ### Full-Stack Architecture
-The application follows a modern full-stack architecture with a React frontend and Express.js backend, connected through REST APIs and WebSocket for real-time communication.
-
-**Frontend Stack:**
-- React 18 with TypeScript for type safety
-- Vite as the build tool and development server
-- TanStack Query for server state management and caching
-- Wouter for lightweight client-side routing
-- Tailwind CSS with shadcn/ui components for consistent styling
-- Chart.js for data visualization and metrics display
-
-**Backend Stack:**
-- Express.js with TypeScript for the API server
-- WebSocket integration for real-time updates and notifications
-- Modular agent system with 7 specialized AI agents for different monitoring tasks
-- RESTful API design with proper error handling and logging middleware
+The application features a modern full-stack architecture. The frontend is built with React 18 and TypeScript, using Vite for development and TanStack Query for state management. Styling is handled by Tailwind CSS with shadcn/ui components, and data visualization uses Chart.js. The backend is an Express.js server with TypeScript, utilizing WebSocket for real-time communication and a modular system of specialized AI agents.
 
 ### Database Design
-The system uses PostgreSQL with Drizzle ORM for type-safe database operations and migrations.
-
-**Core Tables:**
-- `servers` - Server inventory with status and metadata
-- `server_metrics` - Time-series telemetry data (CPU, memory, disk, network)
-- `agents` - AI agent registry and status tracking
-- `alerts` - Alert management with severity levels and acknowledgment
-- `remediation_actions` - Automated remediation workflow tracking
-- `anomalies` - Anomaly detection results storage
-- `predictions` - Predictive analytics outcomes
-- `audit_logs` - Complete audit trail for compliance
-
-**Data Models:**
-The schema includes enums for standardized status values (severity levels, alert statuses, remediation statuses) and uses JSONB for flexible metadata storage.
+The system uses PostgreSQL with Drizzle ORM for type-safe operations. Core tables include `servers`, `server_metrics`, `agents`, `alerts`, `remediation_actions`, `anomalies`, `predictions`, and `audit_logs`. The schema uses enums for standardized status values and JSONB for flexible metadata storage.
 
 ### AI Agent System
-A microservices-inspired agent architecture handles different aspects of monitoring:
+A microservices-inspired architecture comprises eight independent AI agents:
+1.  **Telemetry Collector**: Gathers server metrics.
+2.  **Anomaly Detector**: Identifies unusual server behavior patterns.
+3.  **Predictive Analytics**: Forecasts potential issues.
+4.  **Recommendation Engine**: Suggests remediation actions.
+5.  **Approval & Compliance**: Manages workflow approvals for sensitive operations.
+6.  **Remediation Executor**: Executes approved automated fixes.
+7.  **Audit & Reporting**: Maintains compliance logs and generates reports.
+8.  **Data Agent**: Handles comprehensive data cleaning, normalization, duplicate detection/removal, missing value handling, and quality validation.
 
-**Agent Types:**
-1. **Telemetry Collector** - Gathers server metrics every 30 seconds
-2. **Anomaly Detector** - Identifies unusual patterns in server behavior
-3. **Predictive Analytics** - Forecasts potential issues using historical data
-4. **Recommendation Engine** - Suggests remediation actions based on detected issues
-5. **Approval & Compliance** - Manages approval workflows for sensitive operations
-6. **Remediation Executor** - Executes approved automated fixes
-7. **Audit & Reporting** - Maintains compliance logs and generates reports
-8. **Data Agent** - Provides comprehensive data cleaning, normalization, and quality validation capabilities
-
-Each agent runs independently with configurable intervals and maintains its own status and metrics.
-
-**Data Agent Features:**
-- **Duplicate Detection and Removal** - Identifies and removes duplicate servers, metrics, and alerts based on key fields
-- **Missing Value Handling** - Automatically fills in missing data with appropriate defaults or calculated values
-- **Outlier Detection** - Identifies and corrects data outliers (e.g., CPU usage > 100%)
-- **Data Quality Scoring** - Calculates quality scores for different data types to track improvement
-- **Comprehensive Cleaning** - Performs full data cleaning across all data types with detailed reporting
+Each agent operates independently with configurable intervals, maintaining its own status and metrics.
 
 ### Real-Time Communication
-WebSocket integration provides live updates for:
-- New alert notifications with severity-based styling
-- Remediation action status changes
-- Agent health monitoring
-- Dashboard metrics refreshing
-
-The WebSocket manager handles client connections, message routing, and automatic reconnection.
+WebSocket integration enables live updates for new alerts, remediation action status changes, agent health monitoring, and dashboard metrics.
 
 ### State Management
-The frontend uses TanStack Query for:
-- Automatic caching and background refetching
-- Real-time data synchronization
-- Optimistic updates for user interactions
-- Error handling and retry logic
-
-Query invalidation ensures data consistency when actions are performed (like approving remediation actions).
+The frontend leverages TanStack Query for automatic caching, background refetching, real-time data synchronization, optimistic updates, and error handling.
 
 ### UI/UX Architecture
-The dashboard follows a dark theme design optimized for monitoring environments:
-- Fixed sidebar navigation with real-time status indicators
-- Responsive grid layout for metrics and charts
-- Toast notifications for user feedback
-- Loading states and skeleton screens for better perceived performance
+The dashboard features a dark theme optimized for monitoring environments. It includes fixed sidebar navigation with status indicators, a responsive grid layout for metrics and charts, toast notifications, and loading states for enhanced user experience.
 
 ## External Dependencies
 
 ### Database Services
-- **Neon Database**: Serverless PostgreSQL database for production deployment
-- **Drizzle ORM**: Type-safe database toolkit with automatic migrations
-- **connect-pg-simple**: Session store for PostgreSQL integration
+-   **Neon Database**: Serverless PostgreSQL for production.
+-   **Drizzle ORM**: Type-safe database toolkit.
+-   **connect-pg-simple**: PostgreSQL session store.
 
 ### UI Component Libraries
-- **Radix UI**: Accessible, unstyled component primitives for complex UI elements
-- **shadcn/ui**: Pre-built component library built on Radix UI and Tailwind CSS
-- **Lucide React**: Consistent icon library for the entire interface
-
-### Development Tools
-- **Vite**: Fast development server with hot module replacement
-- **TypeScript**: Type safety across the entire codebase
-- **ESBuild**: Fast JavaScript bundler for production builds
-- **PostCSS**: CSS processing with Tailwind CSS integration
+-   **Radix UI**: Accessible, unstyled component primitives.
+-   **shadcn/ui**: Pre-built components based on Radix UI and Tailwind CSS.
+-   **Lucide React**: Icon library.
 
 ### Data Visualization
-- **Chart.js**: Flexible charting library for metrics visualization
-- **react-chartjs-2**: React wrapper for Chart.js integration
+-   **Chart.js**: Flexible charting library.
+-   **react-chartjs-2**: React wrapper for Chart.js.
 
 ### Form Management
-- **React Hook Form**: Performant form library with minimal re-renders
-- **Hookform/resolvers**: Validation resolvers for various schema libraries
-- **Zod**: Runtime type validation for API requests and responses
+-   **React Hook Form**: Performant form library.
+-   **Hookform/resolvers**: Validation resolvers.
+-   **Zod**: Runtime type validation.
 
 ### Utility Libraries
-- **date-fns**: Date manipulation and formatting utilities
-- **clsx**: Conditional className utility for dynamic styling
-- **nanoid**: Secure unique ID generation for database records
+-   **date-fns**: Date manipulation.
+-   **clsx**: Conditional className utility.
+-   **nanoid**: Secure unique ID generation.
