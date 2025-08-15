@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Settings2, TestTube, Trash2, Eye, EyeOff, Key, Shield, Check, X, Database, Brain, Bell, Server, Lock } from "lucide-react";
+import { Plus, Settings2, TestTube, Trash2, Eye, EyeOff, Key, Shield, Check, X, Database, Brain, Bell, Server, Lock, ArrowLeft, BarChart3 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 interface SystemSetting {
@@ -238,12 +238,24 @@ export default function Settings() {
       {/* Left Navigation Sidebar */}
       <div className="w-80 border-r border-dark-border bg-dark-surface/50">
         <div className="p-6 border-b border-dark-border">
-          <div className="flex items-center gap-3">
-            <Settings2 className="h-8 w-8 text-primary" />
-            <div>
-              <h1 className="text-2xl font-bold" data-testid="page-title">Settings</h1>
-              <p className="text-sm text-muted-foreground">System configuration</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Settings2 className="h-8 w-8 text-primary" />
+              <div>
+                <h1 className="text-2xl font-bold" data-testid="page-title">Settings</h1>
+                <p className="text-sm text-muted-foreground">System configuration</p>
+              </div>
             </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => window.location.href = '/'}
+              className="flex items-center gap-2 border-dark-border hover:bg-dark-surface"
+              data-testid="button-dashboard-nav"
+            >
+              <BarChart3 className="h-4 w-4" />
+              Dashboard
+            </Button>
           </div>
         </div>
         
@@ -288,6 +300,20 @@ export default function Settings() {
       <div className="flex-1 overflow-hidden">
         <ScrollArea className="h-full">
           <div className="p-8 space-y-6">
+            {/* Breadcrumb Navigation */}
+            <div className="flex items-center gap-2 text-sm text-slate-400 mb-6">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => window.location.href = '/'}
+                className="text-slate-400 hover:text-white p-0 h-auto font-normal"
+                data-testid="breadcrumb-dashboard"
+              >
+                Dashboard
+              </Button>
+              <span>/</span>
+              <span className="text-white">Settings</span>
+            </div>
 
             {/* API Keys Section */}
             {activeSection === "api-keys" && (
