@@ -55,6 +55,7 @@ class AgentManager {
         
         this.agents.set(agent.id, agent);
         await agent.start();
+        await storage.updateAgentStatus(agent.id, "active");
         console.log(`Started agent: ${agent.name}`);
       } catch (error) {
         console.error(`Failed to start agent ${agent.name}:`, error);
@@ -91,6 +92,8 @@ class AgentManager {
       for (const [id, agent] of this.agents) {
         try {
           const status = agent.getStatus();
+          
+          // Update agent metrics
           await storage.updateAgentMetrics(
             id,
             status.cpuUsage || "0",
@@ -98,10 +101,19 @@ class AgentManager {
             status.processedCount || 0
           );
 
+          // Update agent status to active if it's running properly
+          await storage.updateAgentStatus(id, "active");
+
           // Broadcast agent status update
           wsManager.broadcastAgentStatus(id, status);
         } catch (error) {
           console.error(`Error updating status for agent ${agent.name}:`, error);
+          // Set agent status to error if there's an issue
+          try {
+            await storage.updateAgentStatus(id, "error");
+          } catch (dbError) {
+            console.error(`Error updating agent status to error:`, dbError);
+          }
         }
       }
     }, 30000); // Update every 30 seconds
