@@ -8,6 +8,7 @@ import ActiveAlerts from '@/components/dashboard/ActiveAlerts';
 import RemediationActions from '@/components/dashboard/RemediationActions';
 import AuditLog from '@/components/dashboard/AuditLog';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { APICreditsNotification } from '@/components/notifications/APICreditsNotification';
 
 export default function Dashboard() {
   const { isConnected } = useWebSocket();
@@ -40,6 +41,9 @@ export default function Dashboard() {
           <AuditLog />
         </main>
       </div>
+      
+      {/* API Credits Notification */}
+      <APICreditsNotification />
     </div>
   );
 }

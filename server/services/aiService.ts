@@ -149,6 +149,14 @@ Respond in JSON format with:
       const endTime = Date.now();
       const duration = endTime - startTime;
       
+      // Track API error for notifications
+      try {
+        const { trackAPIError } = await import('../routes/system');
+        trackAPIError('openai', error instanceof Error ? error.message : 'Unknown error');
+      } catch (importError) {
+        console.log('Could not track API error:', importError);
+      }
+      
       // Track failed usage
       await llmUsageService.trackUsage({
         agentId,
@@ -364,6 +372,14 @@ Predict values for next 1 hour, 6 hours, and 24 hours.`;
 
       return JSON.parse(response.choices[0].message.content || '{"predictions": [], "recommendedActions": []}');
     } catch (error) {
+      // Track API error for notifications
+      try {
+        const { trackAPIError } = await import('../routes/system');
+        trackAPIError('openai', error instanceof Error ? error.message : 'Unknown error');
+      } catch (importError) {
+        console.log('Could not track API error:', importError);
+      }
+      
       console.error('AI Prediction Error:', error);
       return { predictions: [], recommendedActions: [] };
     }
@@ -426,6 +442,14 @@ Provide risk score (0-100) and approval recommendation.`;
       }
       return JSON.parse(responseText);
     } catch (error) {
+      // Track API error for notifications
+      try {
+        const { trackAPIError } = await import('../routes/system');
+        trackAPIError('anthropic', error instanceof Error ? error.message : 'Unknown error');
+      } catch (importError) {
+        console.log('Could not track API error:', importError);
+      }
+      
       console.error('AI Risk Assessment Error:', error);
       return {
         riskScore: 100,
@@ -486,6 +510,14 @@ Provide compliance analysis covering:
       }
       return JSON.parse(responseText);
     } catch (error) {
+      // Track API error for notifications
+      try {
+        const { trackAPIError } = await import('../routes/system');
+        trackAPIError('anthropic', error instanceof Error ? error.message : 'Unknown error');
+      } catch (importError) {
+        console.log('Could not track API error:', importError);
+      }
+      
       console.error('AI Audit Analysis Error:', error);
       return {
         summary: "AI analysis temporarily unavailable",
