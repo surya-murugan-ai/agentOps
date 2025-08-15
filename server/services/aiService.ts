@@ -362,7 +362,25 @@ Predict values for next 1 hour, 6 hours, and 24 hours.`;
         messages: [
           {
             role: "system",
-            content: "You are a data scientist specializing in infrastructure forecasting. Provide accurate predictions with confidence intervals. Respond in JSON format."
+            content: `You are a data scientist specializing in infrastructure forecasting. Analyze the provided metrics and generate predictions.
+
+REQUIRED JSON FORMAT:
+{
+  "predictions": [
+    {
+      "metricType": "cpu|memory|disk|network",
+      "currentValue": 45.2,
+      "predictedValue": 52.1,
+      "timeframe": "1 hour",
+      "confidence": 85,
+      "trendAnalysis": "Increasing trend observed",
+      "riskLevel": "low|medium|high|critical"
+    }
+  ],
+  "recommendedActions": ["Action 1", "Action 2"]
+}
+
+Always include the predictions array even if empty. Base predictions on historical patterns and trends.`
           },
           { role: "user", content: prompt }
         ],

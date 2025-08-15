@@ -79,38 +79,44 @@ export class PredictiveAnalyticsAgent implements Agent {
           
           // Validate AI response structure
           if (aiPredictions && aiPredictions.predictions && Array.isArray(aiPredictions.predictions)) {
-            // Process AI predictions
-            for (const prediction of aiPredictions.predictions) {
-              await this.createAIPrediction(server.id, prediction);
-              
-              // Create predictive alerts for high-risk predictions
-              if (prediction.riskLevel === 'critical' || prediction.riskLevel === 'high') {
-                await this.createPredictiveAlert(
-                  server.id,
-                  prediction.metricType,
-                  prediction.currentValue,
-                  prediction.predictedValue,
-                  prediction.riskLevel === 'critical' ? 'critical' : 'warning',
-                  `AI predicts ${prediction.metricType} will reach ${prediction.predictedValue.toFixed(1)}% in ${prediction.timeframe} (confidence: ${prediction.confidence}%)`
-                );
+            // Process AI predictions if any were generated
+            if (aiPredictions.predictions.length > 0) {
+              for (const prediction of aiPredictions.predictions) {
+                await this.createAIPrediction(server.id, prediction);
+                
+                // Create predictive alerts for high-risk predictions
+                if (prediction.riskLevel === 'critical' || prediction.riskLevel === 'high') {
+                  await this.createPredictiveAlert(
+                    server.id,
+                    prediction.metricType,
+                    prediction.currentValue,
+                    prediction.predictedValue,
+                    prediction.riskLevel === 'critical' ? 'critical' : 'warning',
+                    `AI predicts ${prediction.metricType} will reach ${prediction.predictedValue.toFixed(1)}% in ${prediction.timeframe} (confidence: ${prediction.confidence}%)`
+                  );
+                }
               }
+
+              // Log successful AI analysis
+              await storage.createAuditLog({
+                agentId: this.id,
+                serverId: server.id,
+                action: "AI Predictive Analysis",
+                details: `AI analyzed ${historicalMetrics.length} metrics and generated ${aiPredictions.predictions.length} predictions`,
+                status: "success",
+                metadata: { 
+                  aiMethod: "openai_prediction",
+                  predictionCount: aiPredictions.predictions.length,
+                  serverHostname: await this.getServerHostname(server.id)
+                },
+              });
+
+              console.log(`${this.name}: AI generated ${aiPredictions.predictions.length} predictions for server ${server.id}`);
+            } else {
+              // AI returned valid structure but no predictions, use fallback silently
+              console.log(`${this.name}: AI returned no predictions for server ${server.id}, using fallback methods`);
+              throw new Error('AI returned empty predictions, using fallback');
             }
-
-            // Log successful AI analysis
-            await storage.createAuditLog({
-              agentId: this.id,
-              serverId: server.id,
-              action: "AI Predictive Analysis",
-              details: `AI analyzed ${historicalMetrics.length} metrics and generated ${aiPredictions.predictions.length} predictions`,
-              status: "success",
-              metadata: { 
-                aiMethod: "openai_prediction",
-                predictionCount: aiPredictions.predictions.length,
-                serverHostname: await this.getServerHostname(server.id)
-              },
-            });
-
-            console.log(`${this.name}: AI generated ${aiPredictions.predictions.length} predictions for server ${server.id}`);
           } else {
             throw new Error('Invalid AI response format - predictions array not found');
           }
