@@ -14,6 +14,15 @@ export default function TopBar({ isConnected }: TopBarProps) {
     refetchInterval: 30000,
   });
 
+  // Get actual monitoring status from agent control dashboard
+  const { data: agentControlData } = useQuery({
+    queryKey: ['/api/agent-control/dashboard'],
+    refetchInterval: 30000,
+  });
+
+  // Determine if real-time monitoring is actually enabled
+  const isMonitoringActive = agentControlData?.activeMonitoring > 0;
+
   const handleRefresh = () => {
     queryClient.invalidateQueries();
   };
@@ -46,9 +55,9 @@ export default function TopBar({ isConnected }: TopBarProps) {
         
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2 text-sm" data-testid="connection-status">
-            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-success' : 'bg-error'}`}></div>
+            <div className={`w-2 h-2 rounded-full ${isMonitoringActive ? 'bg-success' : 'bg-yellow-500'}`}></div>
             <span className="text-slate-300">
-              {isConnected ? 'Real-time monitoring' : 'Connecting...'}
+              {isMonitoringActive ? 'Real-time monitoring' : 'Monitoring disabled'}
             </span>
           </div>
           
