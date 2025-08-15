@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -63,12 +64,81 @@ export default function AdvancedAnalytics() {
   const [selectedDashboard, setSelectedDashboard] = useState<string>('default');
   const [selectedTimeRange, setSelectedTimeRange] = useState('24h');
   const [isEditing, setIsEditing] = useState(false);
+  const [generatingReport, setGeneratingReport] = useState<string | null>(null);
+  const { toast } = useToast();
   
   // Filter states
   const [selectedServers, setSelectedServers] = useState<string[]>([]);
   const [selectedEnvironment, setSelectedEnvironment] = useState('all');
   const [selectedSeverity, setSelectedSeverity] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
+
+  // Report generation function
+  const generateReport = async (reportType: 'performance' | 'security' | 'trends') => {
+    setGeneratingReport(reportType);
+    try {
+      const response = await fetch(`/api/reports/${reportType}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ timeRange: selectedTimeRange }),
+      });
+
+      if (response.ok) {
+        const report = await response.json();
+        
+        // Create downloadable report
+        const reportContent = `
+${report.title}
+Generated: ${new Date(report.generatedAt).toLocaleString()}
+Time Range: ${report.timeRange}
+
+SUMMARY
+${Object.entries(report.summary).map(([key, value]) => 
+  `${key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}: ${value}`
+).join('\n')}
+
+${report.sections.map((section: any) => `
+${section.title.toUpperCase()}
+${section.content}
+
+${section.data.length > 0 ? 
+  section.data.slice(0, 10).map((item: any) => 
+    Object.entries(item).map(([k, v]) => `${k}: ${v}`).join(', ')
+  ).join('\n') : 'No data available'}
+`).join('\n')}
+
+Report ID: ${report.id}
+`;
+
+        // Download the report
+        const blob = new Blob([reportContent], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${report.type}-report-${new Date().toISOString().split('T')[0]}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        toast({
+          title: 'Report Generated',
+          description: `${report.title} has been downloaded successfully.`,
+        });
+      } else {
+        throw new Error('Failed to generate report');
+      }
+    } catch (error) {
+      console.error('Error generating report:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to generate report. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setGeneratingReport(null);
+    }
+  };
   
   const [dashboards, setDashboards] = useState<CustomDashboard[]>([
     {
@@ -735,17 +805,41 @@ export default function AdvancedAnalytics() {
                       <Card className="p-4">
                         <h4 className="font-medium mb-2">Performance Report</h4>
                         <p className="text-sm text-slate-400 mb-4">CPU, memory, and response time analysis</p>
-                        <Button size="sm" className="w-full">Generate</Button>
+                        <Button 
+                          size="sm" 
+                          className="w-full" 
+                          onClick={() => generateReport('performance')}
+                          disabled={generatingReport === 'performance'}
+                          data-testid="button-generate-performance-report"
+                        >
+                          {generatingReport === 'performance' ? 'Generating...' : 'Generate'}
+                        </Button>
                       </Card>
                       <Card className="p-4">
                         <h4 className="font-medium mb-2">Security Report</h4>
                         <p className="text-sm text-slate-400 mb-4">Security alerts and compliance status</p>
-                        <Button size="sm" className="w-full">Generate</Button>
+                        <Button 
+                          size="sm" 
+                          className="w-full" 
+                          onClick={() => generateReport('security')}
+                          disabled={generatingReport === 'security'}
+                          data-testid="button-generate-security-report"
+                        >
+                          {generatingReport === 'security' ? 'Generating...' : 'Generate'}
+                        </Button>
                       </Card>
                       <Card className="p-4">
                         <h4 className="font-medium mb-2">Trend Analysis</h4>
                         <p className="text-sm text-slate-400 mb-4">Historical trends and forecasting</p>
-                        <Button size="sm" className="w-full">Generate</Button>
+                        <Button 
+                          size="sm" 
+                          className="w-full" 
+                          onClick={() => generateReport('trends')}
+                          disabled={generatingReport === 'trends'}
+                          data-testid="button-generate-trends-report"
+                        >
+                          {generatingReport === 'trends' ? 'Generating...' : 'Generate'}
+                        </Button>
                       </Card>
                     </div>
                   </div>

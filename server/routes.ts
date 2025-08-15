@@ -997,6 +997,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Cloud infrastructure routes
   app.use("/api", cloudRoutes);
 
+  // Report generation routes
+  const { createReportRoutes } = await import("./routes/reportRoutes");
+  app.use("/api/reports", createReportRoutes(storage));
+
   // Conversational AI Routes - Create a simple mock AI for testing
   app.post('/api/ai-chat/session', async (req, res) => {
     try {
