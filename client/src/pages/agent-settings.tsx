@@ -108,6 +108,12 @@ export default function AgentSettings() {
     queryKey: ["/api/agent-settings"],
   });
 
+  // Get agent control data to show actual monitoring status
+  const { data: agentControlData } = useQuery({
+    queryKey: ['/api/agent-control-settings'],
+    refetchInterval: 30000,
+  });
+
   const updateSettingsMutation = useMutation({
     mutationFn: async (config: Partial<AgentConfig>) => {
       return apiRequest("/api/agent-settings", {
@@ -210,6 +216,8 @@ export default function AgentSettings() {
             {AGENTS.map((agent) => {
               const Icon = agent.icon;
               const config = settings.find((s: AgentConfig) => s.agentId === agent.id);
+              const controlSettings = agentControlData?.find((cs: any) => cs.agentId === agent.id);
+              const isMonitoringActive = controlSettings?.realtimeMonitoringEnabled !== false;
               const isActive = config?.isActive !== false;
               
               return (
@@ -228,8 +236,8 @@ export default function AgentSettings() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="font-medium text-sm truncate">{agent.name}</p>
-                        <Badge variant={isActive ? "default" : "secondary"} className="text-xs">
-                          {isActive ? "Active" : "Inactive"}
+                        <Badge variant={isMonitoringActive ? "default" : "secondary"} className="text-xs">
+                          {isMonitoringActive ? "Monitoring" : "Disabled"}
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">{agent.description}</p>
