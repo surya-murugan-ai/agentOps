@@ -13,6 +13,13 @@ export class RecommendationEngineAgent implements Agent {
   private processedCount = 0;
   private recommendationsGenerated = 0;
   private errorCount = 0;
+  
+  // Optimization caches
+  private lastProcessedAlerts = new Map<string, string>(); // alertId -> alert hash
+  private llmCache = new Map<string, any>(); // cache key -> LLM response
+  private lastFullRun = 0; // timestamp of last full analysis
+  private readonly CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+  private readonly MIN_RUN_INTERVAL = 10 * 60 * 1000; // 10 minutes minimum between full runs
 
   async start(): Promise<void> {
     if (this.running) return;
@@ -20,10 +27,10 @@ export class RecommendationEngineAgent implements Agent {
     console.log(`Starting ${this.name}...`);
     this.running = true;
     
-    // Generate recommendations every 2 minutes
+    // Generate recommendations every 10 minutes (reduced frequency for optimization)
     this.intervalId = setInterval(() => {
       this.generateRecommendations();
-    }, 120000);
+    }, 600000);
 
     // Initial recommendation check
     await this.generateRecommendations();
@@ -63,24 +70,63 @@ export class RecommendationEngineAgent implements Agent {
     if (!this.running) return;
 
     try {
-      // Get active alerts that need remediation
-      const activeAlerts = await storage.getActiveAlerts();
+      const now = Date.now();
       
-      for (const alert of activeAlerts) {
-        // Check if there's already a pending remediation for this alert
-        const existingActions = await storage.getPendingRemediationActions();
-        const existingAction = existingActions.find(action => action.alertId === alert.id);
-        
-        if (!existingAction) {
-          await this.generateRemediationRecommendation(alert);
-          this.processedCount++;
-        }
+      // Rate limiting: Skip if we ran too recently
+      if (now - this.lastFullRun < this.MIN_RUN_INTERVAL) {
+        console.log(`${this.name}: Skipping run - too soon since last analysis`);
+        return;
       }
 
-      // Also check for proactive recommendations based on trends
-      await this.generateProactiveRecommendations();
+      // Get active alerts and pending actions in a single batch
+      const [activeAlerts, existingActions] = await Promise.all([
+        storage.getActiveAlerts(),
+        storage.getPendingRemediationActions()
+      ]);
+      
+      // Filter out alerts that already have remediation actions
+      const alertsNeedingRemediation = activeAlerts.filter(alert => 
+        !existingActions.some(action => action.alertId === alert.id)
+      );
 
-      console.log(`${this.name}: Processed ${activeAlerts.length} alerts for recommendations`);
+      if (alertsNeedingRemediation.length === 0) {
+        console.log(`${this.name}: No new alerts need remediation`);
+        return;
+      }
+
+      // Change detection: Only process alerts that have actually changed
+      const newOrChangedAlerts = alertsNeedingRemediation.filter(alert => {
+        const alertHash = this.generateAlertHash(alert);
+        const lastHash = this.lastProcessedAlerts.get(alert.id);
+        
+        if (lastHash !== alertHash) {
+          this.lastProcessedAlerts.set(alert.id, alertHash);
+          return true;
+        }
+        return false;
+      });
+
+      if (newOrChangedAlerts.length === 0) {
+        console.log(`${this.name}: No alerts have changed since last analysis`);
+        return;
+      }
+
+      // Process alerts with caching and deduplication
+      let processedCount = 0;
+      for (const alert of newOrChangedAlerts) {
+        try {
+          await this.generateRemediationRecommendationWithCache(alert);
+          processedCount++;
+        } catch (error) {
+          console.error(`${this.name}: Error processing alert ${alert.id}:`, error);
+          this.errorCount++;
+        }
+      }
+      
+      this.processedCount += processedCount;
+      this.lastFullRun = now;
+      
+      console.log(`${this.name}: Processed ${processedCount} new/changed alerts (skipped ${alertsNeedingRemediation.length - newOrChangedAlerts.length} unchanged)`);
     } catch (error) {
       console.error(`${this.name}: Error generating recommendations:`, error);
       this.errorCount++;
@@ -289,29 +335,10 @@ export class RecommendationEngineAgent implements Agent {
   }
 
   private async generateProactiveRecommendations() {
-    // Get recent predictions that suggest future issues
-    const servers = await storage.getAllServers();
-    
-    for (const server of servers) {
-      const predictions = await storage.getRecentPredictions(server.id);
-      
-      for (const prediction of predictions) {
-        const predictedValue = parseFloat(prediction.predictedValue);
-        const confidence = parseFloat(prediction.confidence);
-        
-        // Only act on high-confidence predictions
-        if (confidence < 85) continue;
-        
-        // Check if prediction time is within next 2 hours
-        const predictionTime = new Date(prediction.predictionTime);
-        const now = new Date();
-        const timeDiff = predictionTime.getTime() - now.getTime();
-        
-        if (timeDiff > 0 && timeDiff < 7200000) { // Within 2 hours
-          await this.generateProactiveRecommendation(server.id, prediction, predictedValue);
-        }
-      }
-    }
+    // DISABLED FOR OPTIMIZATION - Proactive recommendations were creating excessive duplicates
+    // This method is temporarily disabled to prevent massive API costs and duplicate remediation actions
+    console.log(`${this.name}: Proactive recommendations disabled for cost optimization`);
+    return;
   }
 
   private async generateProactiveRecommendation(serverId: string, prediction: any, predictedValue: number) {
@@ -374,5 +401,146 @@ export class RecommendationEngineAgent implements Agent {
 
   private getRandomBetween(min: number, max: number): string {
     return (Math.random() * (max - min) + min).toFixed(1);
+  }
+
+  // New optimization helper methods
+  private generateAlertHash(alert: any): string {
+    return `${alert.serverId}-${alert.metricType}-${alert.severity}-${alert.metricValue}`;
+  }
+
+  private async generateRemediationRecommendationWithCache(alert: any) {
+    // Create cache key
+    const cacheKey = `${alert.serverId}-${alert.metricType}-${alert.severity}`;
+    
+    // Check cache first
+    const cached = this.llmCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp) < this.CACHE_TTL) {
+      console.log(`${this.name}: Using cached recommendation for ${cacheKey}`);
+      await this.createRemediationFromCache(alert, cached.data);
+      return;
+    }
+
+    // Skip LLM call if API is unavailable, use fallback logic
+    try {
+      const { serverId, metricType, metricValue, severity } = alert;
+      
+      // Get server context
+      const server = await storage.getServer(serverId);
+      const historicalMetrics = await storage.getServerMetrics(serverId, 20);
+      
+      // Try AI first, but fallback to rule-based if it fails
+      let recommendations;
+      try {
+        const aiRecommendations = await aiService.generateRecommendations(alert, server, historicalMetrics, this.id);
+        recommendations = aiRecommendations.recommendations;
+        
+        // Cache successful result
+        this.llmCache.set(cacheKey, {
+          data: recommendations,
+          timestamp: Date.now()
+        });
+      } catch (aiError) {
+        console.log(`${this.name}: AI unavailable, using rule-based recommendations`);
+        recommendations = this.generateRuleBasedRecommendations(alert);
+      }
+      
+      // Create remediation actions
+      for (const rec of recommendations) {
+        await storage.createRemediationAction({
+          alertId: alert.id,
+          serverId,
+          agentId: this.id,
+          title: rec.title,
+          description: rec.description,
+          actionType: rec.actionType,
+          confidence: rec.confidence,
+          estimatedDowntime: rec.estimatedDowntime,
+          requiresApproval: rec.requiresApproval,
+          command: rec.command,
+          parameters: rec.parameters,
+        });
+      }
+      
+      this.recommendationsGenerated += recommendations.length;
+    } catch (error) {
+      console.error(`${this.name}: Error in cached recommendation generation:`, error);
+      throw error;
+    }
+  }
+
+  private async createRemediationFromCache(alert: any, cachedRecommendations: any[]) {
+    for (const rec of cachedRecommendations) {
+      await storage.createRemediationAction({
+        alertId: alert.id,
+        serverId: alert.serverId,
+        agentId: this.id,
+        title: rec.title,
+        description: rec.description,
+        actionType: rec.actionType,
+        confidence: rec.confidence,
+        estimatedDowntime: rec.estimatedDowntime,
+        requiresApproval: rec.requiresApproval,
+        command: rec.command,
+        parameters: rec.parameters,
+      });
+    }
+    this.recommendationsGenerated += cachedRecommendations.length;
+  }
+
+  private generateRuleBasedRecommendations(alert: any): any[] {
+    const { metricType, metricValue, severity } = alert;
+    const value = parseFloat(metricValue || "0");
+    
+    // Rule-based fallback recommendations
+    if (metricType === "cpuUsage" && value > 85) {
+      return [{
+        title: "High CPU Usage Mitigation",
+        description: "CPU usage is critically high. Immediate action required to prevent system failure.",
+        actionType: "process_optimization",
+        confidence: 75,
+        estimatedDowntime: 2,
+        requiresApproval: value > 95,
+        command: "renice -n 10 $(ps -eo pid --sort=-%cpu | head -5 | tail -4)",
+        parameters: { threshold: value }
+      }];
+    }
+    
+    if (metricType === "memoryUsage" && value > 85) {
+      return [{
+        title: "Memory Usage Optimization",
+        description: "Memory usage is critically high. System cache and buffers need clearing.",
+        actionType: "memory_cleanup",
+        confidence: 80,
+        estimatedDowntime: 1,
+        requiresApproval: value > 95,
+        command: "sync && echo 3 > /proc/sys/vm/drop_caches",
+        parameters: { threshold: value }
+      }];
+    }
+    
+    if (metricType === "diskUsage" && value > 80) {
+      return [{
+        title: "Disk Space Cleanup",
+        description: "Disk usage is critically high. Cleanup of temporary files needed.",
+        actionType: "disk_cleanup",
+        confidence: 70,
+        estimatedDowntime: 5,
+        requiresApproval: true,
+        command: "find /tmp -type f -atime +7 -delete && find /var/log -name '*.log' -size +100M -delete",
+        parameters: { threshold: value }
+      }];
+    }
+    
+    // Default recommendation
+    return [{
+      title: "System Monitoring",
+      description: `${metricType} requires attention. Manual investigation recommended.`,
+      actionType: "investigation",
+      confidence: 50,
+      estimatedDowntime: 0,
+      requiresApproval: true,
+      command: "echo 'Manual investigation required'",
+      parameters: { metricType, value }
+    }];
   }
 }

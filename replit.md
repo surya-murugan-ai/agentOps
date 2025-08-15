@@ -4,6 +4,18 @@
 
 AgentOps is an AI-powered server health monitoring and automated remediation platform designed for financial institutions, insurance companies, and trading firms. The system provides proactive monitoring of mission-critical servers through real-time telemetry collection, anomaly detection, predictive analytics, and automated remediation workflows. It features a comprehensive dashboard for visualizing server health, managing alerts, and overseeing AI agent operations.
 
+## Recent Changes (January 15, 2025)
+
+- **Performance Optimization Implementation Complete**: Addressed critical issue where agents were making excessive LLM API calls every 30-60 seconds, creating massive costs and duplicates - now optimized with comprehensive caching and change detection
+- **Recommendation Engine Overhaul**: Completely rewrote the recommendation engine to prevent excessive remediation action creation that was occurring every 2 minutes for all alerts
+- **Smart Caching & Deduplication Deployed**: Implemented LLM result caching with 30-minute TTL, change detection logic, and duplicate prevention across all agents
+- **Rate Limiting Implementation**: Reduced recommendation engine frequency from 2 minutes to 10 minutes, added minimum 10-minute intervals between full analysis runs
+- **Proactive Recommendations Disabled**: Temporarily disabled proactive recommendation generation to prevent massive duplicate creation and API cost overruns
+- **Alert Cleanup Automation**: Added intelligent alert lifecycle management with automatic resolution when metrics return to normal and cleanup of stale alerts older than 24 hours
+- **AI Fallback System**: Enhanced agents to gracefully handle Anthropic API unavailability with rule-based fallback recommendations
+- **Change Detection Logic**: Only process alerts that have actually changed since last analysis, preventing unnecessary duplicate processing
+- **Batch Processing Ready**: Infrastructure prepared for processing multiple similar alerts in single LLM calls (future enhancement)
+
 ## Recent Changes (January 14, 2025)
 
 - **AI Command Generation Documentation Complete**: Significantly expanded help system with comprehensive explanations of how AI agents generate automated remediation commands
