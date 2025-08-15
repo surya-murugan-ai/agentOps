@@ -217,12 +217,12 @@ When users ask about:
         predictions,
         remediationActions
       ] = await Promise.all([
-        this.storage.getServers(),
-        this.storage.getAlerts(),
-        this.storage.getAgents(),
+        this.storage.getAllServers(),
+        this.storage.getAllAlerts(),
+        this.storage.getAllAgents(),
         this.getRecentMetrics(),
-        this.storage.getCloudResources(),
-        this.storage.getCloudConnections(),
+        this.storage.getAllCloudResources(),
+        this.storage.getAllCloudConnections(),
         this.getRecentAuditLogs(),
         this.getRecentPredictions(),
         this.getRecentRemediationActions()
@@ -289,7 +289,8 @@ When users ask about:
     try {
       // Get metrics from the last hour
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-      return await this.storage.getMetricsInTimeRange(oneHourAgo, new Date().toISOString());
+      const allMetrics = await this.storage.getAllMetrics();
+      return allMetrics.filter(m => m.timestamp >= oneHourAgo);
     } catch (error) {
       console.error('Error getting recent metrics:', error);
       return [];
@@ -298,8 +299,8 @@ When users ask about:
 
   private async getRecentAuditLogs(): Promise<any[]> {
     try {
-      const logs = await this.storage.getAuditLogs();
-      return logs.slice(0, 10); // Get last 10 audit logs
+      const logs = await this.storage.getAuditLogs(10);
+      return logs; // Get last 10 audit logs
     } catch (error) {
       console.error('Error getting recent audit logs:', error);
       return [];
@@ -310,7 +311,7 @@ When users ask about:
     try {
       // Get predictions from the last 24 hours
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const predictions = await this.storage.getPredictions();
+      const predictions = await this.storage.getRecentPredictions();
       return predictions.filter((p: any) => p.predictedAt >= oneDayAgo);
     } catch (error) {
       console.error('Error getting recent predictions:', error);

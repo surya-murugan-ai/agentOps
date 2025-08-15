@@ -15,7 +15,7 @@ The application features a modern full-stack architecture. The frontend is built
 The system uses PostgreSQL with Drizzle ORM for type-safe operations. Core tables include `servers`, `server_metrics`, `agents`, `alerts`, `remediation_actions`, `anomalies`, `predictions`, and `audit_logs`. The schema uses enums for standardized status values and JSONB for flexible metadata storage.
 
 ### AI Agent System
-A microservices-inspired architecture comprises eight independent AI agents:
+A microservices-inspired architecture comprises nine independent AI agents:
 1.  **Telemetry Collector**: Gathers server metrics.
 2.  **Anomaly Detector**: Identifies unusual server behavior patterns.
 3.  **Predictive Analytics**: Forecasts potential issues.
@@ -23,7 +23,8 @@ A microservices-inspired architecture comprises eight independent AI agents:
 5.  **Approval & Compliance**: Manages workflow approvals for sensitive operations.
 6.  **Remediation Executor**: Executes approved automated fixes.
 7.  **Audit & Reporting**: Maintains compliance logs and generates reports.
-8.  **Data Agent**: Handles comprehensive data cleaning, normalization, duplicate detection/removal, missing value handling, and quality validation.
+8.  **Cloud Collector**: Monitors AWS, Azure, and GCP cloud infrastructure resources.
+9.  **Conversational AI**: Interactive chat assistant powered by OpenAI GPT-4o for analytics, reports, and help.
 
 Each agent operates independently with configurable intervals, maintaining its own status and metrics.
 
