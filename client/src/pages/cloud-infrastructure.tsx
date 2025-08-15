@@ -108,12 +108,21 @@ export default function CloudInfrastructure() {
       });
       
       if (response.ok) {
-        // Refresh the data after triggering discovery
-        window.location.reload();
+        const result = await response.json();
+        console.log('Discovery triggered:', result.message);
+        // Refresh the queries to get latest data
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
       }
     } catch (error) {
       console.error('Error triggering cloud discovery:', error);
     }
+  };
+
+  const handleAddConnection = () => {
+    // For now, show an alert with future functionality
+    alert('Cloud connection setup coming soon! You will be able to add AWS, Azure, and GCP connections here.');
   };
 
   if (resourcesLoading || connectionsLoading) {
@@ -149,7 +158,7 @@ export default function CloudInfrastructure() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Trigger Discovery
           </Button>
-          <Button data-testid="button-add-connection">
+          <Button onClick={handleAddConnection} data-testid="button-add-connection">
             <Plus className="h-4 w-4 mr-2" />
             Add Connection
           </Button>
@@ -234,7 +243,7 @@ export default function CloudInfrastructure() {
                 <p className="text-muted-foreground text-center mb-4">
                   Connect your cloud providers to start monitoring your infrastructure
                 </p>
-                <Button data-testid="button-setup-first-connection">
+                <Button onClick={handleAddConnection} data-testid="button-setup-first-connection">
                   <Plus className="h-4 w-4 mr-2" />
                   Setup First Connection
                 </Button>
@@ -312,7 +321,7 @@ export default function CloudInfrastructure() {
                 <p className="text-muted-foreground text-center mb-4">
                   Add your first cloud provider connection to start monitoring
                 </p>
-                <Button data-testid="button-add-first-connection">
+                <Button onClick={handleAddConnection} data-testid="button-add-first-connection">
                   <Plus className="h-4 w-4 mr-2" />
                   Add Connection
                 </Button>
