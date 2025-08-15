@@ -105,10 +105,14 @@ export class RecommendationEngineAgent implements Agent {
         storage.getPendingRemediationActions()
       ]);
       
-      // Filter out alerts that already have remediation actions
-      const alertsNeedingRemediation = activeAlerts.filter(alert => 
-        !existingActions.some(action => action.alertId === alert.id)
-      );
+      // Enhanced deduplication: Filter out alerts that already have ANY remediation actions
+      const alertsNeedingRemediation = activeAlerts.filter(alert => {
+        const hasExistingAction = existingActions.some(action => 
+          action.alertId === alert.id || 
+          (action.serverId === alert.serverId && action.title && alert.metricType && action.title.includes(alert.metricType.toUpperCase()))
+        );
+        return !hasExistingAction;
+      });
 
       if (alertsNeedingRemediation.length === 0) {
         console.log(`${this.name}: No new alerts need remediation`);
@@ -313,10 +317,10 @@ export class RecommendationEngineAgent implements Agent {
         description: recommendation.description,
         actionType: recommendation.actionType,
         confidence: recommendation.confidence.toString(),
-        estimatedDowntime: recommendation.estimatedDowntime,
+        estimatedDowntime: recommendation.estimatedDowntime.toString(),
         requiresApproval: recommendation.requiresApproval,
         command: recommendation.command,
-        parameters: JSON.stringify(recommendation.parameters || {}),
+        parameters: recommendation.parameters || {},
       });
 
       wsManager.broadcastRemediationUpdate(action);
@@ -382,19 +386,30 @@ export class RecommendationEngineAgent implements Agent {
           break;
         }
         
-        await storage.createRemediationAction({
-          alertId: alert.id,
-          serverId,
-          agentId: this.id,
-          title: rec.title,
-          description: rec.description,
-          actionType: rec.actionType,
-          confidence: rec.confidence.toString(),
-          estimatedDowntime: rec.estimatedDowntime,
-          requiresApproval: rec.requiresApproval,
-          command: rec.command,
-          parameters: rec.parameters,
-        });
+        // Final deduplication check before creating action
+        const allActions = await storage.getRemediationActions();
+        const existingAction = allActions.find(action => 
+          action.serverId === serverId && 
+          action.alertId === alert.id &&
+          action.status !== 'completed' && 
+          action.status !== 'failed'
+        );
+        
+        if (!existingAction) {
+          await storage.createRemediationAction({
+            alertId: alert.id,
+            serverId,
+            agentId: this.id,
+            title: rec.title,
+            description: rec.description,
+            actionType: rec.actionType,
+            confidence: rec.confidence.toString(),
+            estimatedDowntime: rec.estimatedDowntime.toString(),
+            requiresApproval: rec.requiresApproval,
+            command: rec.command,
+            parameters: rec.parameters,
+          });
+        }
         
         this.actionsCreatedToday++;
       }
