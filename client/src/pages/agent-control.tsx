@@ -71,6 +71,11 @@ export default function AgentControlPage() {
     queryKey: ['/api/agents'],
   });
 
+  // Fetch all agent control settings to show monitoring status
+  const { data: allControlSettings = [] } = useQuery<AgentControlSettings[]>({
+    queryKey: ['/api/agent-control-settings'],
+  });
+
   // Fetch agent control settings for selected agent
   const { data: controlSettings, isLoading: settingsLoading } = useQuery<AgentControlSettings>({
     queryKey: ['/api/agents', selectedAgent, 'control-settings'],
@@ -283,33 +288,39 @@ export default function AgentControlPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {agents.map((agent) => (
-              <div
-                key={agent.id}
-                className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                  selectedAgent === agent.id 
-                    ? 'border-primary bg-primary/5' 
-                    : 'border-border hover:bg-muted/50'
-                }`}
-                onClick={() => setSelectedAgent(agent.id)}
-                data-testid={`agent-item-${agent.id}`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    {getStatusIcon(agent.status)}
-                    <div>
-                      <p className="font-medium">{agent.name}</p>
-                      <p className="text-sm text-muted-foreground">{agent.type}</p>
+            {agents.map((agent) => {
+              const agentControlSettings = allControlSettings.find(settings => settings.agentId === agent.id);
+              const isMonitoringEnabled = agentControlSettings?.realtimeMonitoringEnabled !== false;
+              const monitoringStatus = isMonitoringEnabled ? 'active' : 'inactive';
+              
+              return (
+                <div
+                  key={agent.id}
+                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                    selectedAgent === agent.id 
+                      ? 'border-primary bg-primary/5' 
+                      : 'border-border hover:bg-muted/50'
+                  }`}
+                  onClick={() => setSelectedAgent(agent.id)}
+                  data-testid={`agent-item-${agent.id}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      {getStatusIcon(monitoringStatus)}
+                      <div>
+                        <p className="font-medium">{agent.name}</p>
+                        <p className="text-sm text-muted-foreground">{agent.type}</p>
+                      </div>
                     </div>
+                    {getStatusBadge(monitoringStatus)}
                   </div>
-                  {getStatusBadge(agent.status)}
-                </div>
                 <div className="mt-2 text-xs text-muted-foreground">
                   <p>CPU: {agent.cpuUsage}% | Memory: {agent.memoryUsage}MB</p>
                   <p>Processed: {agent.processedCount} | Errors: {agent.errorCount}</p>
                 </div>
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </CardContent>
         </Card>
 
