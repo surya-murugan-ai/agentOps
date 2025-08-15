@@ -691,16 +691,20 @@ export default function AdvancedAnalytics() {
                       safePredictions.slice(0, 5).map((prediction: any, index: number) => (
                         <div key={index} className="p-4 bg-slate-800 rounded-lg border border-slate-700">
                           <div className="flex items-center justify-between mb-2">
-                            <div className="font-medium text-white">{prediction.hostname}</div>
-                            <Badge variant={prediction.confidence > 0.8 ? "default" : "secondary"}>
-                              {Math.round(prediction.confidence * 100)}% confidence
+                            <div className="font-medium text-white">
+                              {safeServers.find(s => s.id === prediction.serverId)?.hostname || `Server ${prediction.serverId}`}
+                            </div>
+                            <Badge variant={parseFloat(prediction.confidence) > 80 ? "default" : "secondary"}>
+                              {Math.round(parseFloat(prediction.confidence))}% confidence
                             </Badge>
                           </div>
-                          <p className="text-slate-300 text-sm">{prediction.prediction}</p>
+                          <p className="text-slate-300 text-sm">
+                            Predicting {prediction.metricType} will {parseFloat(prediction.predictedValue) > parseFloat(prediction.currentValue) ? 'increase' : 'decrease'} to {parseFloat(prediction.predictedValue).toFixed(1)}%
+                          </p>
                           <div className="flex items-center gap-2 mt-2 text-xs text-slate-400">
-                            <span>Impact: {prediction.impact}</span>
+                            <span>Impact: {parseFloat(prediction.predictedValue) > parseFloat(prediction.currentValue) * 1.2 ? 'High' : parseFloat(prediction.predictedValue) > parseFloat(prediction.currentValue) * 1.1 ? 'Medium' : 'Low'}</span>
                             <span>•</span>
-                            <span>Timeframe: {prediction.timeframe}</span>
+                            <span>Timeframe: {new Date(prediction.predictionTime) > new Date(Date.now() + 24*60*60*1000) ? 'Next 24h' : 'Next hour'}</span>
                           </div>
                         </div>
                       ))
