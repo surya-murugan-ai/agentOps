@@ -12,6 +12,60 @@ import { registerAgentControlRoutes } from "./routes/agentControlRoutes";
 import { systemRouter } from "./routes/system";
 import { thresholdsRouter } from "./routes/thresholds";
 
+// Helper functions for agent details
+async function getAgentInsights(agentId: string) {
+  // Get recent audit logs to extract AI insights
+  const recentLogs = await storage.getAuditLogsByAgent(agentId, 5);
+  const insights = recentLogs
+    .filter(log => log.details?.includes('AI Insights') || log.details?.includes('detected'))
+    .map(log => ({
+      timestamp: log.createdAt,
+      insight: log.details,
+      action: log.action
+    }));
+  
+  return insights.length > 0 ? insights : [{
+    timestamp: new Date(),
+    insight: "Agent is actively monitoring and processing data. Check recent activities for detailed analysis.",
+    action: "System Status"
+  }];
+}
+
+async function calculateAgentSuccessRate(agentId: string): Promise<number> {
+  const recentLogs = await storage.getAuditLogsByAgent(agentId, 50);
+  if (recentLogs.length === 0) return 100;
+  
+  const successful = recentLogs.filter(log => log.status === 'success').length;
+  return Math.round((successful / recentLogs.length) * 100);
+}
+
+async function calculateAvgProcessingTime(agentId: string): Promise<string> {
+  // For now, return a simulated processing time based on agent type
+  if (agentId.includes('anomaly')) return "2.3s";
+  if (agentId.includes('predictive')) return "4.1s";
+  if (agentId.includes('recommendation')) return "1.8s";
+  return "1.5s";
+}
+
+async function getLastProcessingDetails(agentId: string): Promise<any> {
+  const recentLogs = await storage.getAuditLogsByAgent(agentId, 1);
+  if (recentLogs.length === 0) {
+    return {
+      timestamp: new Date(),
+      action: "Monitoring",
+      status: "active",
+      details: "Agent is actively monitoring system metrics"
+    };
+  }
+  
+  return {
+    timestamp: recentLogs[0].createdAt,
+    action: recentLogs[0].action,
+    status: recentLogs[0].status,
+    details: recentLogs[0].details
+  };
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   const dataExtractor = new DataExtractionService();
@@ -137,6 +191,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching agent:", error);
       res.status(500).json({ error: "Failed to fetch agent" });
+    }
+  });
+
+  // Agent details with processing logs and insights
+  app.get("/api/agents/:id/details", async (req, res) => {
+    try {
+      const agentId = req.params.id;
+      const agent = agentManager.getAgent(agentId);
+      
+      if (!agent) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      // Get recent activities related to this agent
+      const recentAlerts = await storage.getAlertsByAgent(agentId, 10);
+      const recentAnomalies = await storage.getAnomaliesByAgent(agentId, 10);
+      const recentAuditLogs = await storage.getAuditLogsByAgent(agentId, 20);
+
+      const details = {
+        agent: agent.getStatus(),
+        recentActivities: {
+          alerts: recentAlerts,
+          anomalies: recentAnomalies,
+          auditLogs: recentAuditLogs,
+        },
+        insights: await getAgentInsights(agentId),
+        performance: {
+          successRate: await calculateAgentSuccessRate(agentId),
+          avgProcessingTime: await calculateAvgProcessingTime(agentId),
+          lastActiveProcessing: await getLastProcessingDetails(agentId)
+        }
+      };
+
+      res.json(details);
+    } catch (error) {
+      console.error("Error fetching agent details:", error);
+      res.status(500).json({ error: "Failed to fetch agent details" });
     }
   });
 

@@ -53,6 +53,11 @@ export interface IStorage {
 
   // Agent Control Settings
   getAgentControlSettings(agentId: string): Promise<AgentControlSettings | null>;
+
+  // Agent-specific queries
+  getAlertsByAgent(agentId: string, limit?: number): Promise<Alert[]>;
+  getAnomaliesByAgent(agentId: string, limit?: number): Promise<Anomaly[]>;
+  getAuditLogsByAgent(agentId: string, limit?: number): Promise<AuditLog[]>;
   createAgentControlSettings(settings: InsertAgentControlSettings): Promise<AgentControlSettings>;
   updateAgentControlSettings(agentId: string, updates: Partial<InsertAgentControlSettings>): Promise<AgentControlSettings>;
   getAllAgentControlSettings(): Promise<AgentControlSettings[]>;
@@ -339,6 +344,33 @@ export class DatabaseStorage implements IStorage {
 
   async getAgents(): Promise<Agent[]> {
     return await db.select().from(agents).orderBy(agents.name);
+  }
+
+  // Get alerts by specific agent
+  async getAlertsByAgent(agentId: string, limit: number = 10): Promise<Alert[]> {
+    return await db.select()
+      .from(alerts)
+      .where(eq(alerts.agentId, agentId))
+      .orderBy(desc(alerts.createdAt))
+      .limit(limit);
+  }
+
+  // Get anomalies by specific agent
+  async getAnomaliesByAgent(agentId: string, limit: number = 10): Promise<Anomaly[]> {
+    return await db.select()
+      .from(anomalies)
+      .where(eq(anomalies.agentId, agentId))
+      .orderBy(desc(anomalies.createdAt))
+      .limit(limit);
+  }
+
+  // Get audit logs by specific agent
+  async getAuditLogsByAgent(agentId: string, limit: number = 20): Promise<AuditLog[]> {
+    return await db.select()
+      .from(auditLogs)
+      .where(eq(auditLogs.agentId, agentId))
+      .orderBy(desc(auditLogs.createdAt))
+      .limit(limit);
   }
 
   async updateAgent(id: string, updates: Partial<InsertAgent>): Promise<void> {
