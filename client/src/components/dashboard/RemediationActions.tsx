@@ -23,12 +23,24 @@ const statusStyles = {
   rejected: { bg: "bg-slate/20 text-slate-400", label: "Rejected" },
 };
 
+interface RemediationAction {
+  id: string;
+  title: string;
+  description: string;
+  actionType: string;
+  confidence: string;
+  estimatedDowntime: string;
+  status: 'pending' | 'approved' | 'executing' | 'completed' | 'failed' | 'rejected';
+  server?: { hostname: string };
+  createdAt?: string;
+}
+
 export default function RemediationActions() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: actions, isLoading } = useQuery({
-    queryKey: ['/api/remediation-actions', { pending: true }],
+  const { data: actions = [], isLoading } = useQuery<RemediationAction[]>({
+    queryKey: ['/api/remediation-actions'],
     refetchInterval: 15000,
   });
 
@@ -125,14 +137,14 @@ export default function RemediationActions() {
         </div>
       </CardHeader>
       <CardContent className="p-6">
-        {!actions || actions.length === 0 ? (
+        {actions.length === 0 ? (
           <div className="text-center py-8 text-slate-400" data-testid="no-actions">
             <Settings size={48} className="mx-auto mb-4 opacity-50" />
             <p>No pending remediation actions</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {actions.map((action: any) => {
+            {actions.map((action: RemediationAction) => {
               const IconComponent = actionIcons[action.actionType as keyof typeof actionIcons] || Settings;
               const statusStyle = statusStyles[action.status as keyof typeof statusStyles] || statusStyles.pending;
               
@@ -163,10 +175,10 @@ export default function RemediationActions() {
                             Server: {action.server?.hostname || 'Unknown'}
                           </span>
                           <span data-testid={`action-confidence-${action.id}`}>
-                            Confidence: {action.confidence}%
+                            Confidence: {action.confidence}
                           </span>
                           <span data-testid={`action-downtime-${action.id}`}>
-                            Est. Downtime: {action.estimatedDowntime}s
+                            Est. Downtime: {action.estimatedDowntime}
                           </span>
                         </div>
                       </div>

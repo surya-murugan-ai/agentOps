@@ -27,9 +27,18 @@ const alertStyles = {
   },
 };
 
+interface Alert {
+  id: string;
+  title: string;
+  description: string;
+  severity: 'critical' | 'warning' | 'info';
+  server?: { hostname: string };
+  createdAt: string;
+}
+
 export default function ActiveAlerts() {
-  const { data: alerts, isLoading } = useQuery({
-    queryKey: ['/api/alerts', { active: true }],
+  const { data: alerts = [], isLoading } = useQuery<Alert[]>({
+    queryKey: ['/api/alerts'],
     refetchInterval: 30000,
   });
 
@@ -72,13 +81,13 @@ export default function ActiveAlerts() {
         </div>
       </CardHeader>
       <CardContent className="p-6 space-y-4">
-        {!alerts || alerts.length === 0 ? (
+        {alerts.length === 0 ? (
           <div className="text-center py-8 text-slate-400" data-testid="no-alerts">
             <AlertCircle size={48} className="mx-auto mb-4 opacity-50" />
             <p>No active alerts</p>
           </div>
         ) : (
-          alerts.slice(0, 5).map((alert: any) => {
+          alerts.slice(0, 5).map((alert: Alert) => {
             const severity = alert.severity as keyof typeof alertIcons;
             const IconComponent = alertIcons[severity] || AlertCircle;
             const styles = alertStyles[severity] || alertStyles.info;
@@ -116,7 +125,7 @@ export default function ActiveAlerts() {
           })
         )}
         
-        {alerts && alerts.length > 0 && (
+        {alerts.length > 0 && (
           <div className="pt-4 border-t border-dark-border">
             <Button 
               variant="ghost" 
