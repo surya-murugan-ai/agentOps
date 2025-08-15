@@ -22,6 +22,7 @@ import AgentControlPage from "@/pages/agent-control";
 import CloudInfrastructurePage from "@/pages/cloud-infrastructure";
 import HelpPage from "@/pages/help";
 import NotFound from "@/pages/not-found";
+import { AIAssistant } from "@/components/chat/AIAssistant";
 
 function Router() {
   return (
@@ -57,6 +58,7 @@ function App() {
         <div className="dark">
           <Toaster />
           <Router />
+          <AIAssistant />
         </div>
       </TooltipProvider>
     </QueryClientProvider>

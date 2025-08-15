@@ -997,5 +997,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Cloud infrastructure routes
   app.use("/api", cloudRoutes);
 
+  // Conversational AI Routes
+  app.post('/api/ai-chat/session', async (req, res) => {
+    try {
+      const conversationalAgent = agentManager.getAgent('conversational-ai-001');
+      if (!conversationalAgent) {
+        return res.status(503).json({ error: 'Conversational AI agent not available' });
+      }
+      const sessionId = await (conversationalAgent as any).createSession(req.body.userId);
+      res.json({ sessionId });
+    } catch (error) {
+      console.error('Error creating AI chat session:', error);
+      res.status(500).json({ error: 'Failed to create chat session' });
+    }
+  });
+
+  app.post('/api/ai-chat/message', async (req, res) => {
+    try {
+      const { sessionId, message } = req.body;
+      if (!sessionId || !message) {
+        return res.status(400).json({ error: 'Session ID and message are required' });
+      }
+      const conversationalAgent = agentManager.getAgent('conversational-ai-001');
+      if (!conversationalAgent) {
+        return res.status(503).json({ error: 'Conversational AI agent not available' });
+      }
+      const response = await (conversationalAgent as any).processMessage(sessionId, message);
+      res.json({ response, timestamp: new Date().toISOString() });
+    } catch (error) {
+      console.error('Error processing AI chat message:', error);
+      res.status(500).json({ error: 'Failed to process message' });
+    }
+  });
+
+  app.get('/api/ai-chat/session/:sessionId/messages', async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      const conversationalAgent = agentManager.getAgent('conversational-ai-001');
+      if (!conversationalAgent) {
+        return res.status(503).json({ error: 'Conversational AI agent not available' });
+      }
+      const messages = await (conversationalAgent as any).getSessionMessages(sessionId);
+      res.json({ messages });
+    } catch (error) {
+      console.error('Error getting AI chat messages:', error);
+      res.status(500).json({ error: 'Failed to get conversation history' });
+    }
+  });
+
   return httpServer;
 }
