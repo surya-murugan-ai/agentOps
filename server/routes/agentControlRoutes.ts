@@ -61,11 +61,12 @@ export function registerAgentControlRoutes(app: Express) {
         return res.status(400).json({ error: "enabled must be a boolean" });
       }
 
-      await agentControlService.enableRealtimeMonitoring(agentId, enabled);
+      const settings = await agentControlService.enableRealtimeMonitoring(agentId, enabled);
       
       res.json({ 
         success: true, 
-        message: `Realtime monitoring ${enabled ? 'enabled' : 'disabled'} for agent ${agentId}` 
+        message: `Realtime monitoring ${enabled ? 'enabled' : 'disabled'} for agent ${agentId}`,
+        settings
       });
     } catch (error) {
       console.error("Error toggling agent monitoring:", error);

@@ -64,10 +64,19 @@ export class AgentControlService {
     return await storage.createAgentControlSettings(defaultSettings);
   }
 
-  async enableRealtimeMonitoring(agentId: string, enabled: boolean): Promise<void> {
-    await this.updateAgentControlSettings(agentId, { 
-      realtimeMonitoringEnabled: enabled 
+  async enableRealtimeMonitoring(agentId: string, enabled: boolean): Promise<AgentControlSettings> {
+    // Ensure settings exist first
+    let settings = await this.getAgentControlSettings(agentId);
+    if (!settings) {
+      settings = await this.createDefaultControlSettings(agentId);
+    }
+    
+    const updatedSettings = await this.updateAgentControlSettings(agentId, {
+      realtimeMonitoringEnabled: enabled
     });
+    
+    await this.applyControlSettings(agentId, updatedSettings);
+    return updatedSettings;
   }
 
   async setMonitoringFrequency(agentId: string, frequencySeconds: number): Promise<void> {
