@@ -79,7 +79,7 @@ export function SystemNotifications() {
   ].filter(Boolean).length;
 
   return (
-    <div className="fixed top-4 right-20 z-30" data-testid="system-notifications">
+    <div className="relative" data-testid="system-notifications">
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <Button

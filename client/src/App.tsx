@@ -58,7 +58,6 @@ function App() {
       <TooltipProvider>
         <div className="dark">
           <Toaster />
-          <SystemNotifications />
           <Router />
           <AIAssistant />
         </div>

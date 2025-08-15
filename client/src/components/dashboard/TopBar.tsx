@@ -4,6 +4,7 @@ import { Switch } from '@/components/ui/switch';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
+import { SystemNotifications } from '@/components/notifications/SystemNotifications';
 
 interface TopBarProps {
   isConnected: boolean;
@@ -118,6 +119,8 @@ export default function TopBar({ isConnected }: TopBarProps) {
             <RefreshCw className="mr-2" size={16} />
             Refresh
           </Button>
+          
+          <SystemNotifications />
           
           <div className="flex items-center space-x-3" data-testid="user-profile">
             <div className="w-8 h-8 bg-gradient-to-br from-slate-600 to-slate-700 rounded-full flex items-center justify-center">
