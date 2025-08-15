@@ -115,6 +115,7 @@ export class RecommendationEngineAgent implements Agent {
       let processedCount = 0;
       for (const alert of newOrChangedAlerts) {
         try {
+          // Use optimized caching method instead of old method
           await this.generateRemediationRecommendationWithCache(alert);
           processedCount++;
         } catch (error) {
@@ -134,107 +135,10 @@ export class RecommendationEngineAgent implements Agent {
   }
 
   private async generateRemediationRecommendation(alert: any) {
-    const { serverId, metricType, metricValue, severity } = alert;
-    
-    try {
-      // Get server context for AI analysis
-      const server = await storage.getServer(serverId);
-      const historicalMetrics = await storage.getServerMetrics(serverId, 20);
-      
-      // Use AI to generate intelligent recommendations
-      const aiRecommendations = await aiService.generateRecommendations(alert, server, historicalMetrics, this.id);
-      
-      // Process AI recommendations
-      for (const aiRec of aiRecommendations.recommendations) {
-        const action = await storage.createRemediationAction({
-          alertId: alert.id,
-          serverId,
-          agentId: this.id,
-          title: aiRec.title,
-          description: `${aiRec.description}\n\nAI Reasoning: ${aiRec.reasoning}`,
-          actionType: aiRec.actionType,
-          confidence: aiRec.confidence,
-          estimatedDowntime: aiRec.estimatedDowntime,
-          requiresApproval: aiRec.requiresApproval,
-          command: aiRec.command,
-          parameters: aiRec.parameters,
-        });
-
-        // Log the AI recommendation
-        await storage.createAuditLog({
-          agentId: this.id,
-          serverId,
-          action: "AI Generate Recommendation",
-          details: `AI generated ${aiRec.actionType} recommendation: ${aiRec.reasoning}`,
-          status: "success",
-          metadata: { 
-            alertId: alert.id, 
-            actionId: action.id,
-            aiConfidence: aiRec.confidence,
-            rootCause: aiRecommendations.rootCauseAnalysis,
-            riskAssessment: aiRec.riskAssessment
-          },
-        });
-
-        wsManager.broadcastRemediationUpdate(action);
-        this.recommendationsGenerated++;
-        
-        console.log(`${this.name}: AI generated ${aiRec.actionType} recommendation for ${metricType} alert on server ${serverId} (confidence: ${aiRec.confidence}%)`);
-      }
-
-      // Log root cause analysis
-      if (aiRecommendations.rootCauseAnalysis) {
-        await storage.createAuditLog({
-          agentId: this.id,
-          serverId,
-          action: "AI Root Cause Analysis",
-          details: aiRecommendations.rootCauseAnalysis,
-          status: "success",
-          metadata: { alertId: alert.id, analysisType: "claude_analysis" },
-        });
-      }
-
-    } catch (error) {
-      console.error(`${this.name}: AI recommendation failed, falling back to rule-based:`, error);
-      
-      // Fallback to rule-based recommendations
-      const value = parseFloat(metricValue);
-      let recommendation = null;
-
-      switch (metricType) {
-        case "cpu":
-          recommendation = this.generateCpuRecommendation(alert, value);
-          break;
-        case "memory":
-          recommendation = this.generateMemoryRecommendation(alert, value);
-          break;
-        case "disk":
-          recommendation = this.generateDiskRecommendation(alert, value);
-          break;
-        case "network":
-          recommendation = this.generateNetworkRecommendation(alert, value);
-          break;
-      }
-
-      if (recommendation) {
-        const action = await storage.createRemediationAction({
-          alertId: alert.id,
-          serverId,
-          agentId: this.id,
-          title: recommendation.title,
-          description: recommendation.description,
-          actionType: recommendation.actionType,
-          confidence: recommendation.confidence.toString(),
-          estimatedDowntime: recommendation.estimatedDowntime,
-          requiresApproval: recommendation.requiresApproval,
-          command: recommendation.command,
-          parameters: recommendation.parameters,
-        });
-
-        wsManager.broadcastRemediationUpdate(action);
-        this.recommendationsGenerated++;
-      }
-    }
+    // OPTIMIZATION: This old method has been completely disabled to prevent excessive duplicate creation
+    // All recommendation generation now uses the optimized caching method
+    console.log(`${this.name}: Old method disabled - redirecting to optimized version`);
+    await this.generateRemediationRecommendationWithCache(alert);
   }
 
   private generateCpuRecommendation(alert: any, cpuUsage: number) {
@@ -453,7 +357,7 @@ export class RecommendationEngineAgent implements Agent {
           title: rec.title,
           description: rec.description,
           actionType: rec.actionType,
-          confidence: rec.confidence,
+          confidence: rec.confidence.toString(),
           estimatedDowntime: rec.estimatedDowntime,
           requiresApproval: rec.requiresApproval,
           command: rec.command,
@@ -497,7 +401,7 @@ export class RecommendationEngineAgent implements Agent {
         title: "High CPU Usage Mitigation",
         description: "CPU usage is critically high. Immediate action required to prevent system failure.",
         actionType: "process_optimization",
-        confidence: 75,
+        confidence: "75",
         estimatedDowntime: 2,
         requiresApproval: value > 95,
         command: "renice -n 10 $(ps -eo pid --sort=-%cpu | head -5 | tail -4)",
@@ -510,7 +414,7 @@ export class RecommendationEngineAgent implements Agent {
         title: "Memory Usage Optimization",
         description: "Memory usage is critically high. System cache and buffers need clearing.",
         actionType: "memory_cleanup",
-        confidence: 80,
+        confidence: "80",
         estimatedDowntime: 1,
         requiresApproval: value > 95,
         command: "sync && echo 3 > /proc/sys/vm/drop_caches",
@@ -523,7 +427,7 @@ export class RecommendationEngineAgent implements Agent {
         title: "Disk Space Cleanup",
         description: "Disk usage is critically high. Cleanup of temporary files needed.",
         actionType: "disk_cleanup",
-        confidence: 70,
+        confidence: "70",
         estimatedDowntime: 5,
         requiresApproval: true,
         command: "find /tmp -type f -atime +7 -delete && find /var/log -name '*.log' -size +100M -delete",
