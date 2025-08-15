@@ -34,12 +34,13 @@ export function AIAssistant() {
       const response = await fetch('/api/ai-chat/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ userId: 'demo-user' }),
       });
       
       if (response.ok) {
         const data = await response.json();
         setSessionId(data.sessionId);
+        console.log('Session created:', data.sessionId);
         
         // Add welcome message
         setMessages([{
@@ -48,6 +49,8 @@ export function AIAssistant() {
           content: "Hello! I'm your AI assistant for AgentOps. I can help you analyze platform data, generate reports, explain agent behaviors, and answer questions about your infrastructure. What would you like to know?",
           timestamp: new Date().toISOString()
         }]);
+      } else {
+        console.error('Failed to create session:', response.status);
       }
     } catch (error) {
       console.error('Error creating session:', error);
@@ -55,7 +58,13 @@ export function AIAssistant() {
   };
 
   const sendMessage = async () => {
-    if (!inputMessage.trim() || !sessionId || isLoading) return;
+    if (!inputMessage.trim() || isLoading) return;
+    
+    // Create session if it doesn't exist
+    if (!sessionId) {
+      await createSession();
+      if (!sessionId) return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -109,9 +118,11 @@ export function AIAssistant() {
     }
   };
 
-  const toggleChat = () => {
-    if (!isOpen && !sessionId) {
-      createSession();
+  const toggleChat = async () => {
+    if (!isOpen) {
+      if (!sessionId) {
+        await createSession();
+      }
     }
     setIsOpen(!isOpen);
   };
@@ -216,13 +227,13 @@ export function AIAssistant() {
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Ask about your infrastructure..."
-                disabled={isLoading || !sessionId}
+                disabled={isLoading}
                 className="flex-1"
                 data-testid="input-ai-message"
               />
               <Button
                 onClick={sendMessage}
-                disabled={isLoading || !inputMessage.trim() || !sessionId}
+                disabled={isLoading || !inputMessage.trim()}
                 size="icon"
                 data-testid="button-send-message"
               >
