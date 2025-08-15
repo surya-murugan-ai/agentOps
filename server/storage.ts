@@ -369,7 +369,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select()
       .from(auditLogs)
       .where(eq(auditLogs.agentId, agentId))
-      .orderBy(desc(auditLogs.createdAt))
+      .orderBy(desc(auditLogs.timestamp))
       .limit(limit);
   }
 
