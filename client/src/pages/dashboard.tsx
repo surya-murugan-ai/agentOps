@@ -8,7 +8,7 @@ import ActiveAlerts from '@/components/dashboard/ActiveAlerts';
 import RemediationActions from '@/components/dashboard/RemediationActions';
 import AuditLog from '@/components/dashboard/AuditLog';
 import { useWebSocket } from '@/hooks/useWebSocket';
-import { APICreditsNotification } from '@/components/notifications/APICreditsNotification';
+// Removed APICreditsNotification - replaced with SystemNotifications
 
 export default function Dashboard() {
   const { isConnected } = useWebSocket();
@@ -42,8 +42,7 @@ export default function Dashboard() {
         </main>
       </div>
       
-      {/* API Credits Notification */}
-      <APICreditsNotification />
+      {/* API Credits Notification replaced with SystemNotifications in App.tsx */}
     </div>
   );
 }

@@ -23,6 +23,7 @@ import CloudInfrastructurePage from "@/pages/cloud-infrastructure";
 import HelpPage from "@/pages/help";
 import NotFound from "@/pages/not-found";
 import { AIAssistant } from "@/components/chat/AIAssistant";
+import { SystemNotifications } from "@/components/notifications/SystemNotifications";
 
 function Router() {
   return (
@@ -57,6 +58,7 @@ function App() {
       <TooltipProvider>
         <div className="dark">
           <Toaster />
+          <SystemNotifications />
           <Router />
           <AIAssistant />
         </div>
