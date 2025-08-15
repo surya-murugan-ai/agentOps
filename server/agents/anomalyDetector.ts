@@ -62,19 +62,32 @@ export class AnomalyDetectorAgent implements Agent {
     if (!this.running) return;
 
     try {
+      // Clean up old resolved alerts first to prevent accumulation
+      await this.cleanupOldAlerts();
+
       // Get recent metrics for all servers
       const latestMetrics = await storage.getLatestMetrics();
       
       // Get historical data for AI analysis
       const historicalData = await storage.getAllMetrics(200); // Last 200 readings
       
-      // Use AI for intelligent anomaly detection
-      const aiAnalysis = await aiService.analyzeAnomalies(latestMetrics, historicalData, this.id);
-      
-      // Process AI-detected anomalies
-      for (const anomaly of aiAnalysis.anomalies) {
-        await this.createAIAnomaly(anomaly);
-        this.anomaliesDetected++;
+      // Use AI for intelligent anomaly detection (with error handling for API issues)
+      try {
+        const aiAnalysis = await aiService.analyzeAnomalies(latestMetrics, historicalData, this.id);
+        
+        // Process AI-detected anomalies
+        for (const anomaly of aiAnalysis.anomalies) {
+          await this.createAIAnomaly(anomaly);
+          this.anomaliesDetected++;
+        }
+
+        console.log(`${this.name}: AI analyzed ${latestMetrics.length} metrics, found ${aiAnalysis.anomalies.length} anomalies`);
+        if (aiAnalysis.insights) {
+          console.log(`${this.name}: AI Insights: ${aiAnalysis.insights}`);
+        }
+      } catch (aiError) {
+        console.log(`${this.name}: AI analysis unavailable, using threshold detection only`);
+        // Continue with threshold detection even if AI fails
       }
 
       // Also run traditional threshold detection as backup
@@ -83,10 +96,6 @@ export class AnomalyDetectorAgent implements Agent {
         this.processedCount++;
       }
 
-      console.log(`${this.name}: AI analyzed ${latestMetrics.length} metrics, found ${aiAnalysis.anomalies.length} anomalies`);
-      if (aiAnalysis.insights) {
-        console.log(`${this.name}: AI Insights: ${aiAnalysis.insights}`);
-      }
     } catch (error) {
       console.error(`${this.name}: Error detecting anomalies:`, error);
       this.errorCount++;
@@ -278,6 +287,20 @@ export class AnomalyDetectorAgent implements Agent {
   private async createAIAnomaly(anomaly: any) {
     try {
       const mappedSeverity = this.mapSeverity(anomaly.severity);
+      
+      // Check if alert already exists for this issue
+      const existingAlerts = await storage.getActiveAlerts();
+      const existingAlert = existingAlerts.find(
+        alert => alert.serverId === anomaly.serverId && 
+                 alert.metricType === anomaly.metricType && 
+                 alert.status === "active"
+      );
+
+      if (existingAlert) {
+        console.log(`${this.name}: Skipping duplicate AI alert for ${anomaly.metricType} on server ${anomaly.serverId}`);
+        return;
+      }
+
       // Create anomaly record
       await storage.createAnomaly({
         serverId: anomaly.serverId,
@@ -292,7 +315,7 @@ export class AnomalyDetectorAgent implements Agent {
 
       // Create corresponding alert
       const server = await storage.getServer(anomaly.serverId);
-      await storage.createAlert({
+      const alert = await storage.createAlert({
         serverId: anomaly.serverId,
         hostname: server?.hostname || anomaly.serverId,
         agentId: this.id,
@@ -303,6 +326,9 @@ export class AnomalyDetectorAgent implements Agent {
         metricValue: anomaly.confidence.toString(),
         threshold: "0.0",
       });
+
+      // Broadcast new alert
+      wsManager.broadcastAlert(alert);
 
       // Log the AI detection
       await storage.createAuditLog({
@@ -325,5 +351,50 @@ export class AnomalyDetectorAgent implements Agent {
 
   private getRandomBetween(min: number, max: number): string {
     return (Math.random() * (max - min) + min).toFixed(1);
+  }
+
+  private async cleanupOldAlerts() {
+    try {
+      // Auto-resolve alerts that are no longer relevant (metrics have returned to normal)
+      const activeAlerts = await storage.getActiveAlerts();
+      const latestMetrics = await storage.getLatestMetrics();
+      
+      for (const alert of activeAlerts) {
+        if (alert.agentId === this.id && alert.metricType) {
+          // Find current metric for this server and type
+          const currentMetric = latestMetrics.find(m => m.serverId === alert.serverId);
+          if (currentMetric) {
+            const currentValue = parseFloat(currentMetric[alert.metricType as keyof typeof currentMetric] as string || "0");
+            const threshold = parseFloat(alert.threshold || "0");
+            
+            // If metric has returned to normal levels, auto-resolve the alert
+            let shouldResolve = false;
+            if (alert.metricType === "cpuUsage" && currentValue < 80) {
+              shouldResolve = true;
+            } else if (alert.metricType === "memoryUsage" && currentValue < 80) {
+              shouldResolve = true;
+            } else if (alert.metricType === "diskUsage" && currentValue < 75) {
+              shouldResolve = true;
+            }
+            
+            if (shouldResolve) {
+              await storage.resolveAlert(alert.id, "system");
+              console.log(`${this.name}: Auto-resolved alert ${alert.id} - ${alert.metricType} returned to normal`);
+            }
+          }
+        }
+      }
+      
+      // Also clean up very old alerts (older than 24 hours) that are still active
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      for (const alert of activeAlerts) {
+        if (alert.createdAt < oneDayAgo) {
+          await storage.resolveAlert(alert.id, "system");
+          console.log(`${this.name}: Auto-resolved old alert ${alert.id} - created over 24 hours ago`);
+        }
+      }
+    } catch (error) {
+      console.error(`${this.name}: Error cleaning up old alerts:`, error);
+    }
   }
 }
