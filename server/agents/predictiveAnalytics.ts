@@ -77,39 +77,43 @@ export class PredictiveAnalyticsAgent implements Agent {
           // Use AI for intelligent predictions
           const aiPredictions = await aiService.generatePredictions(server.id, historicalMetrics);
           
-          // Process AI predictions
-          for (const prediction of aiPredictions.predictions) {
-            await this.createAIPrediction(server.id, prediction);
-            
-            // Create predictive alerts for high-risk predictions
-            if (prediction.riskLevel === 'critical' || prediction.riskLevel === 'high') {
-              await this.createPredictiveAlert(
-                server.id,
-                prediction.metricType,
-                prediction.currentValue,
-                prediction.predictedValue,
-                prediction.riskLevel === 'critical' ? 'critical' : 'warning',
-                `AI predicts ${prediction.metricType} will reach ${prediction.predictedValue.toFixed(1)}% in ${prediction.timeframe} (confidence: ${prediction.confidence}%)`
-              );
+          // Validate AI response structure
+          if (aiPredictions && aiPredictions.predictions && Array.isArray(aiPredictions.predictions)) {
+            // Process AI predictions
+            for (const prediction of aiPredictions.predictions) {
+              await this.createAIPrediction(server.id, prediction);
+              
+              // Create predictive alerts for high-risk predictions
+              if (prediction.riskLevel === 'critical' || prediction.riskLevel === 'high') {
+                await this.createPredictiveAlert(
+                  server.id,
+                  prediction.metricType,
+                  prediction.currentValue,
+                  prediction.predictedValue,
+                  prediction.riskLevel === 'critical' ? 'critical' : 'warning',
+                  `AI predicts ${prediction.metricType} will reach ${prediction.predictedValue.toFixed(1)}% in ${prediction.timeframe} (confidence: ${prediction.confidence}%)`
+                );
+              }
             }
-          }
 
-          // Log AI insights
-          if (aiPredictions.recommendedActions.length > 0) {
+            // Log successful AI analysis
             await storage.createAuditLog({
               agentId: this.id,
               serverId: server.id,
-              action: "AI Predictive Recommendations",
-              details: `AI recommends: ${aiPredictions.recommendedActions.join(', ')}`,
+              action: "AI Predictive Analysis",
+              details: `AI analyzed ${historicalMetrics.length} metrics and generated ${aiPredictions.predictions.length} predictions`,
               status: "success",
               metadata: { 
                 aiMethod: "openai_prediction",
-                predictionCount: aiPredictions.predictions.length
+                predictionCount: aiPredictions.predictions.length,
+                serverHostname: await this.getServerHostname(server.id)
               },
             });
-          }
 
-          console.log(`${this.name}: AI generated ${aiPredictions.predictions.length} predictions for server ${server.id}`);
+            console.log(`${this.name}: AI generated ${aiPredictions.predictions.length} predictions for server ${server.id}`);
+          } else {
+            throw new Error('Invalid AI response format - predictions array not found');
+          }
           
         } catch (aiError) {
           console.error(`${this.name}: AI prediction failed for server ${server.id}, using fallback:`, aiError);
@@ -118,6 +122,20 @@ export class PredictiveAnalyticsAgent implements Agent {
           await this.predictCpuUsage(server.id, historicalMetrics);
           await this.predictMemoryUsage(server.id, historicalMetrics);
           await this.predictDiskUsage(server.id, historicalMetrics);
+          
+          // Log fallback usage
+          await storage.createAuditLog({
+            agentId: this.id,
+            serverId: server.id,
+            action: "Fallback Prediction Analysis",
+            details: `AI prediction failed, using statistical fallback methods for ${historicalMetrics.length} metrics`,
+            status: "warning",
+            metadata: { 
+              fallbackReason: aiError instanceof Error ? aiError.message : 'Unknown error',
+              serverHostname: await this.getServerHostname(server.id),
+              predictionMethod: "statistical_fallback"
+            },
+          });
         }
         
         this.processedCount++;
@@ -381,5 +399,14 @@ export class PredictiveAnalyticsAgent implements Agent {
 
   private getRandomBetween(min: number, max: number): string {
     return (Math.random() * (max - min) + min).toFixed(1);
+  }
+
+  private async getServerHostname(serverId: string): Promise<string> {
+    try {
+      const server = await storage.getServer(serverId);
+      return server?.hostname || 'unknown';
+    } catch {
+      return 'unknown';
+    }
   }
 }
