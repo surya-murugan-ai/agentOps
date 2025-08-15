@@ -12,8 +12,11 @@ import {
   Zap,
   AlertCircle,
   CheckCircle,
-  BarChart3
+  BarChart3,
+  Home
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Link } from "wouter";
 
 interface LlmUsageSummary {
   period: string;
@@ -100,13 +103,21 @@ export default function LlmAnalytics() {
 
   return (
     <div className="p-6 space-y-6" data-testid="llm-analytics-page">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white" data-testid="page-title">
-          LLM Analytics & Usage Monitoring
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">
-          Track AI API costs, token usage, and performance across all agents
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white" data-testid="page-title">
+            LLM Analytics & Usage Monitoring
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">
+            Track AI API costs, token usage, and performance across all agents
+          </p>
+        </div>
+        <Link to="/dashboard">
+          <Button variant="outline" size="sm" data-testid="button-dashboard">
+            <Home className="w-4 h-4 mr-2" />
+            Dashboard
+          </Button>
+        </Link>
       </div>
 
       {/* Key Metrics Overview */}
