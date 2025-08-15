@@ -15,9 +15,9 @@ export class AnomalyDetectorAgent implements Agent {
   private anomaliesDetected = 0;
   private errorCount = 0;
   
-  // Alert management limits
-  private readonly MAX_ALERTS_PER_SERVER = 3;
-  private readonly MAX_TOTAL_ALERTS = 15;
+  // Alert management limits - EMERGENCY STRICT circuit breaker protection
+  private readonly MAX_ALERTS_PER_SERVER = 2;  // Reduced to 2 per server
+  private readonly MAX_TOTAL_ALERTS = 8;       // Emergency reduction to 8 total
 
   async start(): Promise<void> {
     if (this.running) return;
@@ -67,6 +67,13 @@ export class AnomalyDetectorAgent implements Agent {
     if (!this.running) return;
 
     try {
+      // CRITICAL: Circuit breaker - check alert limits before ANY processing
+      const existingAlerts = await storage.getActiveAlerts();
+      if (existingAlerts.length >= this.MAX_TOTAL_ALERTS) {
+        console.log(`${this.name}: CIRCUIT BREAKER ACTIVATED - Global alert limit reached (${existingAlerts.length}/${this.MAX_TOTAL_ALERTS}), stopping ALL anomaly detection`);
+        return;
+      }
+
       // Clean up old resolved alerts first to prevent accumulation
       await this.cleanupOldAlerts();
 
@@ -78,10 +85,22 @@ export class AnomalyDetectorAgent implements Agent {
       
       // Use AI for intelligent anomaly detection (with error handling for API issues)
       try {
+        // Double-check limit before AI analysis
+        const preAIAlerts = await storage.getActiveAlerts();
+        if (preAIAlerts.length >= this.MAX_TOTAL_ALERTS) {
+          console.log(`${this.name}: Skipping AI analysis - alert limit reached`);
+          return;
+        }
+
         const aiAnalysis = await aiService.analyzeAnomalies(latestMetrics, historicalData, this.id);
         
-        // Process AI-detected anomalies
+        // Process AI-detected anomalies with per-anomaly limit checking
         for (const anomaly of aiAnalysis.anomalies) {
+          const currentAlerts = await storage.getActiveAlerts();
+          if (currentAlerts.length >= this.MAX_TOTAL_ALERTS) {
+            console.log(`${this.name}: Global limit reached while processing AI anomalies, stopping`);
+            break;
+          }
           await this.createAIAnomaly(anomaly);
           this.anomaliesDetected++;
         }
@@ -95,8 +114,13 @@ export class AnomalyDetectorAgent implements Agent {
         // Continue with threshold detection even if AI fails
       }
 
-      // Also run traditional threshold detection as backup
+      // Also run traditional threshold detection as backup with limit checking
       for (const metric of latestMetrics) {
+        const currentAlerts = await storage.getActiveAlerts();
+        if (currentAlerts.length >= this.MAX_TOTAL_ALERTS) {
+          console.log(`${this.name}: Global limit reached during threshold detection, stopping`);
+          break;
+        }
         await this.applyThresholdDetection(metric);
         this.processedCount++;
       }
