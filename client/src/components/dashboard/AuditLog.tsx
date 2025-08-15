@@ -14,23 +14,34 @@ const statusStyles = {
   pending: "bg-primary/20 text-primary",
 };
 
+interface AuditLogEntry {
+  id: string;
+  action: string;
+  details: string;
+  status: string;
+  impact?: string;
+  timestamp: string;
+  agentName?: string;
+  hostname?: string;
+}
+
 export default function AuditLog() {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(0);
   const itemsPerPage = 10;
 
-  const { data: auditLogs, isLoading } = useQuery({
+  const { data: auditLogs = [], isLoading } = useQuery<AuditLogEntry[]>({
     queryKey: ['/api/audit-logs'],
     refetchInterval: 60000,
   });
 
-  const filteredLogs = auditLogs?.filter((log: any) => 
+  const filteredLogs = auditLogs.filter((log: AuditLogEntry) => 
     searchTerm === '' || 
     log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
     log.details.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.agent?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.server?.hostname.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+    log.agentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    log.hostname?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const paginatedLogs = filteredLogs.slice(
     currentPage * itemsPerPage, 

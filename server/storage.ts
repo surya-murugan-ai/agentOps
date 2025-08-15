@@ -516,27 +516,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Audit Logs
-  async getAuditLogs(limit = 50): Promise<(AuditLog & { agent?: Agent; server?: Server; user?: User })[]> {
+  async getAuditLogs(limit = 50): Promise<AuditLog[]> {
     return await db
-      .select({
-        id: auditLogs.id,
-        agentId: auditLogs.agentId,
-        serverId: auditLogs.serverId,
-        userId: auditLogs.userId,
-        action: auditLogs.action,
-        details: auditLogs.details,
-        status: auditLogs.status,
-        impact: auditLogs.impact,
-        metadata: auditLogs.metadata,
-        timestamp: auditLogs.timestamp,
-        agent: agents,
-        server: servers,
-        user: users,
-      })
+      .select()
       .from(auditLogs)
-      .leftJoin(agents, eq(auditLogs.agentId, agents.id))
-      .leftJoin(servers, eq(auditLogs.serverId, servers.id))
-      .leftJoin(users, eq(auditLogs.userId, users.id))
       .orderBy(desc(auditLogs.timestamp))
       .limit(limit);
   }
@@ -681,9 +664,6 @@ export class DatabaseStorage implements IStorage {
           id: users.id,
           username: users.username,
           role: users.role,
-          email: users.email,
-          isActive: users.isActive,
-          approvalLimits: users.approvalLimits,
           createdAt: users.createdAt
         }
       })
