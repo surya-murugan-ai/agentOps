@@ -73,6 +73,7 @@ export interface IStorage {
   // Remediation Actions
   getPendingRemediationActions(): Promise<(RemediationAction & { server: Server; alert?: Alert })[]>;
   getRemediationAction(id: string): Promise<RemediationAction | undefined>;
+  getRemediationActions(): Promise<RemediationAction[]>;
   createRemediationAction(action: InsertRemediationAction): Promise<RemediationAction>;
   approveRemediationAction(id: string, userId: string): Promise<void>;
   rejectRemediationAction(id: string): Promise<void>;
@@ -511,6 +512,10 @@ export class DatabaseStorage implements IStorage {
   async getRemediationAction(id: string): Promise<RemediationAction | undefined> {
     const [action] = await db.select().from(remediationActions).where(eq(remediationActions.id, id));
     return action || undefined;
+  }
+
+  async getRemediationActions(): Promise<RemediationAction[]> {
+    return await db.select().from(remediationActions).orderBy(desc(remediationActions.createdAt));
   }
 
   async createRemediationAction(action: InsertRemediationAction): Promise<RemediationAction> {
