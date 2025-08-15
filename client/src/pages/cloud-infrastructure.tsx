@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { 
   Cloud, 
   Plus, 
@@ -128,6 +129,13 @@ export default function CloudInfrastructure() {
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb Navigation */}
+      <Breadcrumb 
+        items={[
+          { label: "Cloud Infrastructure" }
+        ]} 
+      />
+      
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
