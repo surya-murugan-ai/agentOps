@@ -1,0 +1,12 @@
+{"data": [
+"srv-001,10.217.185.164,prod,us-east-1,service=core-banking;tier=bronze",
+"srv-002,10.239.249.171,staging,eu-west-1,service=risk;tier=silver",
+"srv-003,10.215.119.175,staging,us-east-1,service=analytics;tier=silver",
+"srv-004,10.103.100.74,dev,ap-south-1,service=trading;tier=silver",
+"srv-005,10.91.210.90,dev,us-east-1,service=core-banking;tier=silver",
+"srv-006,10.166.160.151,prod,eu-west-1,service=payments;tier=silver",
+"srv-007,10.136.142.76,prod,eu-west-1,service=core-banking;tier=bronze",
+"srv-008,10.8.184.242,prod,ap-south-1,service=trading;tier=silver",
+"srv-009,10.48.11.123,staging,eu-west-1,service=payments;tier=gold",
+"srv-010,10.57.252.95,prod,us-east-1,service=analytics;tier=silver"
+]}
