@@ -48,15 +48,24 @@ export default function DataViewPage() {
   });
 
   const { data: alerts, isLoading: alertsLoading } = useQuery({
-    queryKey: ["/api/alerts"]
+    queryKey: ["/api/alerts"],
+    refetchInterval: 10000,
+    staleTime: 0,
+    cacheTime: 5000
   });
 
   const { data: remediations, isLoading: remediationsLoading } = useQuery({
-    queryKey: ["/api/remediation-actions"]
+    queryKey: ["/api/remediation-actions"],
+    refetchInterval: 10000,
+    staleTime: 0,
+    cacheTime: 5000
   });
 
   const { data: auditLogs, isLoading: auditLoading } = useQuery({
-    queryKey: ["/api/audit-logs"]
+    queryKey: ["/api/audit-logs"],
+    refetchInterval: 10000,
+    staleTime: 0,
+    cacheTime: 5000
   });
 
   const getStatusColor = (status: string) => {
