@@ -788,6 +788,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin endpoints for data management
+  app.delete("/api/metrics/clear", async (req, res) => {
+    try {
+      await storage.clearAllMetrics();
+      res.json({ success: true, message: "All metrics data cleared successfully" });
+    } catch (error) {
+      console.error("Error clearing metrics:", error);
+      res.status(500).json({ error: "Failed to clear metrics data" });
+    }
+  });
+
+  app.post("/api/admin/clear-metrics", async (req, res) => {
+    try {
+      await storage.clearAllMetrics();
+      console.log("✅ All metrics data cleared from database");
+      res.json({ success: true, message: "All metrics data cleared" });
+    } catch (error) {
+      console.error("Error clearing metrics:", error);
+      res.status(500).json({ error: "Failed to clear metrics" });
+    }
+  });
+
   app.post("/api/agents/test", async (req, res) => {
     try {
       // Trigger a test cycle for all agents
