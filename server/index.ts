@@ -3,7 +3,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Increased limit for large data uploads
 app.use(express.urlencoded({ extended: false }));
 
 app.use((req, res, next) => {
