@@ -298,37 +298,80 @@ export default function DataUploadPage() {
     const firstRow = data[0];
     const columns = Object.keys(firstRow).map(col => col.toLowerCase());
     
-    // More flexible matching for metrics data
-    const hasHostname = columns.some(col => col.includes('hostname') || col.includes('host') || col.includes('server'));
-    const hasCpu = columns.some(col => col.includes('cpu') || col.includes('processor'));
-    const hasMemory = columns.some(col => col.includes('memory') || col.includes('mem') || col.includes('ram'));
+    console.log('Detecting data type for columns:', columns);
     
-    // More flexible matching for servers data  
+    // Enhanced matching for servers data
+    const hasServerId = columns.some(col => col.includes('serverid') || col.includes('server_id') || col.includes('id'));
+    const hasHostname = columns.some(col => col.includes('hostname') || col.includes('host') || col.includes('server'));
+    const hasLocation = columns.some(col => col.includes('location') || col.includes('region') || col.includes('datacenter'));
+    const hasOwner = columns.some(col => col.includes('owner') || col.includes('team') || col.includes('group'));
+    const hasSla = columns.some(col => col.includes('sla') || col.includes('tier') || col.includes('priority'));
     const hasIpAddress = columns.some(col => col.includes('ip') || col.includes('address'));
     const hasEnvironment = columns.some(col => col.includes('env') || col.includes('environment'));
     
-    // More flexible matching for alerts data
+    // Enhanced matching for metrics data
+    const hasCpu = columns.some(col => col.includes('cpu') || col.includes('processor'));
+    const hasMemory = columns.some(col => col.includes('memory') || col.includes('mem') || col.includes('ram'));
+    const hasUsage = columns.some(col => col.includes('usage') || col.includes('percent') || col.includes('%'));
+    const hasTimestamp = columns.some(col => col.includes('timestamp') || col.includes('time') || col.includes('date'));
+    
+    // Enhanced matching for alerts data
     const hasTitle = columns.some(col => col.includes('title') || col.includes('message') || col.includes('description'));
     const hasSeverity = columns.some(col => col.includes('severity') || col.includes('level') || col.includes('priority'));
+    const hasAlert = columns.some(col => col.includes('alert') || col.includes('incident'));
     
-    // More flexible matching for remediation actions
+    // Enhanced matching for remediation actions
     const hasActionType = columns.some(col => col.includes('action') || col.includes('type'));
     const hasConfidence = columns.some(col => col.includes('confidence') || col.includes('score'));
+    const hasRemediation = columns.some(col => col.includes('remediation') || col.includes('fix'));
     
-    // More flexible matching for audit logs
+    // Enhanced matching for audit logs
     const hasStatus = columns.some(col => col.includes('status') || col.includes('result'));
     const hasImpact = columns.some(col => col.includes('impact') || col.includes('effect'));
+    const hasAudit = columns.some(col => col.includes('audit') || col.includes('log'));
     
-    if (hasHostname && (hasCpu || hasMemory)) return 'metrics';
-    if (hasHostname && hasIpAddress) return 'servers';  
-    if (hasTitle && hasSeverity) return 'alerts';
-    if (hasTitle && hasActionType && hasConfidence) return 'remediations';
-    if (hasActionType && hasStatus) return 'audit-logs';
+    // Server detection - prioritize server-specific patterns
+    if ((hasServerId || hasHostname) && (hasLocation || hasOwner || hasSla || hasIpAddress || hasEnvironment)) {
+      console.log('Detected as servers data');
+      return 'servers';
+    }
     
-    // Additional detection patterns
-    if (columns.includes('status') && hasHostname) return 'servers';
-    if (columns.includes('timestamp') && hasCpu) return 'metrics';
+    // Metrics detection - must have performance indicators
+    if ((hasHostname || hasServerId) && (hasCpu || hasMemory || hasUsage) && hasTimestamp) {
+      console.log('Detected as metrics data');
+      return 'metrics';
+    }
     
+    // Alert detection
+    if ((hasTitle || hasAlert) && hasSeverity) {
+      console.log('Detected as alerts data');
+      return 'alerts';
+    }
+    
+    // Remediation detection
+    if ((hasTitle || hasRemediation) && (hasActionType || hasConfidence)) {
+      console.log('Detected as remediations data');
+      return 'remediations';
+    }
+    
+    // Audit logs detection
+    if ((hasActionType || hasAudit) && hasStatus) {
+      console.log('Detected as audit-logs data');
+      return 'audit-logs';
+    }
+    
+    // Additional fallback detection patterns
+    if (hasStatus && (hasHostname || hasServerId)) {
+      console.log('Detected as servers data (fallback)');
+      return 'servers';
+    }
+    
+    if (hasTimestamp && (hasCpu || hasMemory)) {
+      console.log('Detected as metrics data (fallback)');
+      return 'metrics';
+    }
+    
+    console.log('Could not detect data type, returning unknown');
     return 'unknown';
   };
 
