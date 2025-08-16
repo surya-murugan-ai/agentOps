@@ -14,6 +14,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, count, sql, inArray } from "drizzle-orm";
+import { nanoid } from "nanoid";
 
 export interface IStorage {
   // Users
@@ -32,6 +33,7 @@ export interface IStorage {
   // Server Metrics
   getServerMetrics(serverId: string, limit?: number): Promise<ServerMetrics[]>;
   addServerMetrics(metrics: InsertServerMetrics): Promise<ServerMetrics>;
+  bulkInsertMetrics(metrics: InsertServerMetrics[]): Promise<void>;
   getLatestMetrics(): Promise<(ServerMetrics & { server: Server })[]>;
   getMetricsInTimeRange(startTime: Date, endTime: Date): Promise<ServerMetrics[]>;
   clearAllMetrics(): Promise<void>;
@@ -320,6 +322,20 @@ export class DatabaseStorage implements IStorage {
   async addServerMetrics(metrics: InsertServerMetrics): Promise<ServerMetrics> {
     const [newMetrics] = await db.insert(serverMetrics).values(metrics).returning();
     return newMetrics;
+  }
+
+  async bulkInsertMetrics(metrics: InsertServerMetrics[]): Promise<void> {
+    if (metrics.length === 0) return;
+    
+    // Add IDs and timestamps to all metrics
+    const metricsWithDefaults = metrics.map(m => ({
+      ...m,
+      id: m.id || nanoid(),
+      timestamp: m.timestamp || new Date()
+    }));
+    
+    // Batch insert all metrics at once - much faster than individual inserts
+    await db.insert(serverMetrics).values(metricsWithDefaults);
   }
 
   // Alias for consistency with bulk upload

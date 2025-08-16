@@ -564,37 +564,160 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      // Process extracted data based on detected type
-      for (const item of extractionResult.extractedData) {
-        processed++;
+      // OPTIMIZED BATCH PROCESSING - Process in chunks of 100 for better performance
+      const BATCH_SIZE = 100;
+      const batches = [];
+      for (let i = 0; i < extractionResult.extractedData.length; i += BATCH_SIZE) {
+        batches.push(extractionResult.extractedData.slice(i, i + BATCH_SIZE));
+      }
+      
+      console.log(`🚀 OPTIMIZED BATCH UPLOAD: Processing ${total} records in ${batches.length} batches of ${BATCH_SIZE}`);
+      
+      for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+        const batch = batches[batchIndex];
+        const batchStartTime = Date.now();
         
-        // Broadcast progress every 5% or every 100 records (whichever is smaller) for large uploads
-        const progressThreshold = Math.min(Math.floor(total / 20), 100);
-        if (total > 50 && processed - lastProgressBroadcast >= progressThreshold) {
-          const progressPercent = Math.round((processed / total) * 100);
-          const timeElapsed = Date.now() - startTime;
-          const estimatedTotal = total > 0 ? (timeElapsed / processed) * total : 0;
-          const timeRemaining = Math.max(0, estimatedTotal - timeElapsed);
+        // Process entire batch based on detected type
+        if (extractionResult.dataType === 'metrics') {
+          // BATCH PROCESS METRICS - Much faster than individual inserts
+          const metricsToInsert = [];
           
-          wsManager.broadcast({
-            type: 'upload_progress',
-            data: {
-              progress: progressPercent,
-              processed,
-              total,
-              successful: count,
-              failed: processed - count,
-              serversCreated,
-              dataType: extractionResult.dataType,
-              status: 'processing',
-              timeElapsed: Math.round(timeElapsed / 1000),
-              timeRemaining: Math.round(timeRemaining / 1000)
+          for (const item of batch) {
+            let serverId = item.serverId || item.serverid || item.server_id;
+            let targetServer = null;
+            
+            if (item.hostname) {
+              targetServer = serverByHostname.get(item.hostname);
             }
-          });
+            
+            if (!targetServer && serverId && serverId.startsWith('SRV-')) {
+              const numberPart = serverId.replace('SRV-', '');
+              const serverNumber = parseInt(numberPart, 10).toString();
+              const expectedHostname = `server${serverNumber}`;
+              targetServer = serverByHostname.get(expectedHostname);
+              
+              if (!targetServer) {
+                try {
+                  const newServer = await storage.createServer({
+                    hostname: expectedHostname,
+                    ipAddress: `192.168.1.${100 + parseInt(serverNumber)}`,
+                    environment: 'production',
+                    status: 'healthy',
+                    location: 'datacenter-1'
+                  });
+                  serverByHostname.set(expectedHostname, newServer);
+                  targetServer = newServer;
+                  serversCreated++;
+                } catch (error) {
+                  continue;
+                }
+              }
+            }
+            
+            if (targetServer) {
+              metricsToInsert.push({
+                serverId: targetServer.id,
+                cpuUsage: (parseFloat(item.cpu_usage || item.cpuUsage) || 0).toString(),
+                memoryUsage: (parseFloat(item.memory_usage || item.memoryUsage) || 0).toString(),
+                diskUsage: (parseFloat(item.disk_usage || item.diskUsage) || 0).toString(),
+                memoryTotal: parseInt(item.memoryTotal) || 1024,
+                diskTotal: parseInt(item.diskTotal) || 1024,
+                processCount: parseInt(item.process_count || item.processCount) || 10,
+                networkLatency: item.network_latency || item.networkLatency || null,
+                networkThroughput: item.networkThroughput || null
+              });
+            }
+          }
           
-          console.log(`Progress: ${processed}/${total} records processed (${progressPercent}%), ${count} successful so far`);
-          lastProgressBroadcast = processed;
+          // BATCH INSERT ALL METRICS AT ONCE
+          if (metricsToInsert.length > 0) {
+            try {
+              await storage.bulkInsertMetrics(metricsToInsert);
+              count += metricsToInsert.length;
+            } catch (error) {
+              console.error('Batch metrics insert failed:', error);
+            }
+          }
+          
+        } else {
+          // Individual processing for other types (servers, alerts)
+          for (const item of batch) {
+            processed++;
+            try {
+              if (extractionResult.dataType === 'servers') {
+                const existingServer = item.hostname ? await storage.getServerByHostname(item.hostname) : null;
+                if (!existingServer) {
+                  await storage.createServer({
+                    hostname: item.hostname,
+                    ipAddress: item.ipAddress,
+                    environment: item.environment || 'production',
+                    status: item.status || 'healthy',
+                    location: item.location
+                  });
+                  count++;
+                }
+              } else if (extractionResult.dataType === 'alerts') {
+                // Handle alerts normally as they have complex validation
+                let serverId = item.serverId || item.ServerID || item.server_id;
+                
+                if (!serverId && item.hostname) {
+                  const server = await storage.getServerByHostname(item.hostname);
+                  if (server) serverId = server.id;
+                }
+        
+                if (serverId) {
+                  let severity = (item.severity || item.Severity || 'warning').toLowerCase();
+                  if (!['critical', 'warning', 'info'].includes(severity)) {
+                    severity = 'warning';
+                  }
+        
+                  await storage.createAlert({
+                    serverId: serverId,
+                    metricType: item.metricType || item.Metric || item.metric || 'system',
+                    metricValue: item.metricValue || item.Value || item.value || 0,
+                    threshold: item.threshold || item.Threshold || null,
+                    severity: severity,
+                    description: item.description || item.Description || item.title || 'Alert from uploaded data',
+                    title: item.title || item.Description || item.description || 'System Alert',
+                    status: 'active'
+                  });
+                  count++;
+                }
+              }
+            } catch (error) {
+              errors.push(`Failed to process item: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            }
+          }
         }
+        
+        processed = (batchIndex + 1) * BATCH_SIZE;
+        if (processed > total) processed = total;
+        
+        // Progress updates per batch (much less frequent)
+        const progressPercent = Math.round((processed / total) * 100);
+        const timeElapsed = Date.now() - startTime;
+        const batchTime = Date.now() - batchStartTime;
+        
+        wsManager.broadcast({
+          type: 'upload_progress',
+          data: {
+            progress: progressPercent,
+            processed,
+            total,
+            successful: count,
+            failed: processed - count,
+            serversCreated,
+            dataType: extractionResult.dataType,
+            status: 'processing',
+            timeElapsed: Math.round(timeElapsed / 1000),
+            batchNumber: batchIndex + 1,
+            totalBatches: batches.length,
+            batchTime: Math.round(batchTime)
+          }
+        });
+        
+        console.log(`⚡ Batch ${batchIndex + 1}/${batches.length} completed in ${batchTime}ms - ${count} successful records so far`);
+      }
         try {
           if (extractionResult.dataType === 'servers') {
             // Check if server already exists
