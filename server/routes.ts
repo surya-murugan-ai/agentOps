@@ -592,7 +592,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             } else {
               const identifier = item.hostname || serverId || 'unknown';
               errors.push(`Metrics for ${identifier}: Server not found in database`);
-              console.log(`✗ Could not find server for identifier: ${identifier}`);
+              console.log(`✗ Could not find server for identifier: ${identifier}. Available servers:`, 
+                await storage.getAllServers().then(servers => servers.map(s => `${s.hostname}(${s.id.slice(0,8)})`).join(', ')));
             }
           } else if (extractionResult.dataType === 'alerts') {
             // Handle different serverId field names (ServerID, serverId, server_id)
