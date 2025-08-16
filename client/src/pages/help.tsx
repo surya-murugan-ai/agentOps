@@ -25,8 +25,10 @@ import {
   Home,
   Upload,
   BarChart3,
-  Monitor
+  Monitor,
+  ArrowLeft
 } from 'lucide-react';
+import { Link } from 'wouter';
 
 export default function HelpCenter() {
   const [activeSection, setActiveSection] = useState('overview');
@@ -58,6 +60,17 @@ export default function HelpCenter() {
         {/* Sidebar Navigation */}
         <div className="w-80 bg-dark-surface border-r border-dark-border h-screen sticky top-0">
           <div className="p-6">
+            {/* Navigation Back to Dashboard */}
+            <Link 
+              href="/" 
+              className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-4 group"
+              data-testid="link-back-to-dashboard"
+            >
+              <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+              <span>Back to Dashboard</span>
+            </Link>
+            <Separator className="mb-6" />
+            
             <div className="flex items-center gap-3 mb-6">
               <HelpCircle className="h-6 w-6 text-primary" />
               <h1 className="text-xl font-bold">Help Center</h1>
@@ -98,9 +111,59 @@ export default function HelpCenter() {
                 <Book className="h-8 w-8 text-primary" />
                 <h1 className="text-3xl font-bold">AgentOps Documentation</h1>
               </div>
-              <p className="text-slate-400 text-lg">
+              <p className="text-slate-400 text-lg mb-6">
                 Complete guide to using the AI-powered server monitoring and automated remediation platform
               </p>
+              
+              {/* Quick Navigation to Platform Sections */}
+              <Card className="bg-dark-surface border-dark-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Monitor className="h-5 w-5 text-blue-400" />
+                    Quick Navigation to Platform
+                  </CardTitle>
+                  <CardDescription>Jump directly to different sections of the AgentOps platform</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <Link 
+                      href="/" 
+                      className="flex items-center gap-2 p-3 bg-dark-bg rounded-lg hover:bg-dark-bg/80 transition-colors group border border-dark-border"
+                      data-testid="nav-to-dashboard"
+                    >
+                      <Activity className="h-4 w-4 text-blue-400 group-hover:scale-110 transition-transform" />
+                      <span className="text-sm font-medium">Dashboard</span>
+                    </Link>
+                    
+                    <Link 
+                      href="/data-upload" 
+                      className="flex items-center gap-2 p-3 bg-dark-bg rounded-lg hover:bg-dark-bg/80 transition-colors group border border-dark-border"
+                      data-testid="nav-to-upload"
+                    >
+                      <Upload className="h-4 w-4 text-green-400 group-hover:scale-110 transition-transform" />
+                      <span className="text-sm font-medium">Upload Data</span>
+                    </Link>
+                    
+                    <Link 
+                      href="/agents" 
+                      className="flex items-center gap-2 p-3 bg-dark-bg rounded-lg hover:bg-dark-bg/80 transition-colors group border border-dark-border"
+                      data-testid="nav-to-agents"
+                    >
+                      <Bot className="h-4 w-4 text-purple-400 group-hover:scale-110 transition-transform" />
+                      <span className="text-sm font-medium">AI Agents</span>
+                    </Link>
+                    
+                    <Link 
+                      href="/analytics" 
+                      className="flex items-center gap-2 p-3 bg-dark-bg rounded-lg hover:bg-dark-bg/80 transition-colors group border border-dark-border"
+                      data-testid="nav-to-analytics"
+                    >
+                      <BarChart3 className="h-4 w-4 text-orange-400 group-hover:scale-110 transition-transform" />
+                      <span className="text-sm font-medium">Analytics</span>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
         {/* Quick Start Guide */}
