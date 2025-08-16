@@ -110,6 +110,11 @@ export default function Sidebar() {
             <span>Workflows</span>
           </Link>
           
+          <Link href="/threshold-management" className={getNavItemClass("/threshold-management")} data-testid="nav-threshold-management">
+            <Settings size={20} />
+            <span>Threshold Management</span>
+          </Link>
+          
           <Link href="/audit" className={getNavItemClass("/audit")} data-testid="nav-audit">
             <ClipboardList size={20} />
             <span>Audit Trail</span>

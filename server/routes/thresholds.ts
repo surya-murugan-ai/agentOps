@@ -1,182 +1,135 @@
-import express from "express";
-import { thresholdConfig } from "../config/thresholds";
+import { Router } from "express";
+import { thresholdConfig, DEFAULT_THRESHOLDS } from "../config/thresholds";
 
-const router = express.Router();
+export const thresholdsRouter = Router();
 
-/**
- * Get current threshold configurations
- */
-router.get("/", (req, res) => {
+// Get all threshold configurations
+thresholdsRouter.get("/", async (req, res) => {
   try {
     const allThresholds = thresholdConfig.getAllThresholds();
-    res.json({
-      success: true,
-      thresholds: allThresholds,
-      message: "Current threshold configurations retrieved successfully"
-    });
+    res.json(allThresholds);
   } catch (error) {
-    console.error("Error getting thresholds:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to retrieve threshold configurations"
-    });
+    console.error("Error fetching thresholds:", error);
+    res.status(500).json({ error: "Failed to fetch thresholds" });
   }
 });
 
-/**
- * Get thresholds for a specific environment
- */
-router.get("/:environment", (req, res) => {
+// Get thresholds for a specific environment
+thresholdsRouter.get("/:environment", async (req, res) => {
   try {
     const { environment } = req.params;
     const thresholds = thresholdConfig.getThresholds(environment);
-    
-    res.json({
-      success: true,
-      environment,
-      thresholds,
-      message: `Thresholds for ${environment} environment retrieved successfully`
-    });
+    res.json(thresholds);
   } catch (error) {
-    console.error("Error getting environment thresholds:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to retrieve environment thresholds"
-    });
+    console.error("Error fetching environment thresholds:", error);
+    res.status(500).json({ error: "Failed to fetch environment thresholds" });
   }
 });
 
-/**
- * Update thresholds for a specific environment
- */
-router.put("/:environment", (req, res) => {
+// Update thresholds for a specific environment
+thresholdsRouter.put("/:environment", async (req, res) => {
   try {
     const { environment } = req.params;
-    const { thresholds } = req.body;
+    const thresholdUpdates = req.body;
 
-    if (!thresholds) {
-      return res.status(400).json({
-        success: false,
-        error: "Thresholds data is required"
-      });
+    // Validate the request body
+    if (!thresholdUpdates || typeof thresholdUpdates !== 'object') {
+      return res.status(400).json({ error: "Invalid threshold data" });
     }
 
-    // Validate threshold structure
-    const validMetrics = ['cpu', 'memory', 'disk', 'network'];
-    const validThresholdKeys = ['warning', 'critical', 'latencyWarning', 'latencyCritical', 'throughputWarning'];
-    
-    for (const metric in thresholds) {
-      if (!validMetrics.includes(metric)) {
-        return res.status(400).json({
-          success: false,
-          error: `Invalid metric type: ${metric}`
-        });
-      }
-      
-      for (const key in thresholds[metric]) {
-        if (!validThresholdKeys.includes(key)) {
-          return res.status(400).json({
-            success: false,
-            error: `Invalid threshold key: ${key} for metric: ${metric}`
-          });
-        }
-        
-        const value = thresholds[metric][key];
-        if (typeof value !== 'number' || value < 0 || value > 100) {
-          return res.status(400).json({
-            success: false,
-            error: `Invalid threshold value: ${value}. Must be a number between 0-100`
-          });
-        }
-      }
-    }
+    // Update the thresholds
+    thresholdConfig.updateThresholds(environment, thresholdUpdates);
 
-    // Update thresholds
-    thresholdConfig.updateThresholds(environment, thresholds);
-    
+    // Return the updated thresholds
     const updatedThresholds = thresholdConfig.getThresholds(environment);
     
     res.json({
-      success: true,
-      environment,
-      thresholds: updatedThresholds,
-      message: `Thresholds for ${environment} environment updated successfully`
+      message: `Thresholds updated for ${environment}`,
+      thresholds: updatedThresholds
     });
   } catch (error) {
     console.error("Error updating thresholds:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to update threshold configurations"
-    });
+    res.status(500).json({ error: "Failed to update thresholds" });
   }
 });
 
-/**
- * Reset thresholds for an environment to defaults
- */
-router.post("/:environment/reset", (req, res) => {
+// Reset thresholds to default for a specific environment
+thresholdsRouter.post("/:environment/reset", async (req, res) => {
   try {
     const { environment } = req.params;
     
-    // Clear cached thresholds to force reload from defaults
-    const service = thresholdConfig as any;
-    service.currentThresholds.delete(environment);
+    // Get default thresholds for this environment
+    const defaultThresholds = DEFAULT_THRESHOLDS[environment as keyof typeof DEFAULT_THRESHOLDS] 
+      || DEFAULT_THRESHOLDS.default;
     
-    const resetThresholds = thresholdConfig.getThresholds(environment);
+    // Reset to defaults
+    thresholdConfig.updateThresholds(environment, defaultThresholds);
     
     res.json({
-      success: true,
-      environment,
-      thresholds: resetThresholds,
-      message: `Thresholds for ${environment} environment reset to defaults`
+      message: `Thresholds reset to default for ${environment}`,
+      thresholds: defaultThresholds
     });
   } catch (error) {
     console.error("Error resetting thresholds:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to reset threshold configurations"
-    });
+    res.status(500).json({ error: "Failed to reset thresholds" });
   }
 });
 
-/**
- * Test threshold against a value
- */
-router.post("/test", (req, res) => {
+// Get current threshold status for all servers
+thresholdsRouter.get("/status/all", async (req, res) => {
   try {
-    const { metricType, value, environment = 'default' } = req.body;
+    const { storage } = await import("../storage");
     
-    if (!metricType || typeof value !== 'number') {
-      return res.status(400).json({
-        success: false,
-        error: "metricType and value are required"
-      });
-    }
+    const servers = await storage.getAllServers();
+    const latestMetrics = await storage.getLatestMetrics();
     
-    if (!['cpu', 'memory', 'disk'].includes(metricType)) {
-      return res.status(400).json({
-        success: false,
-        error: "metricType must be cpu, memory, or disk"
-      });
-    }
-    
-    const result = thresholdConfig.checkThreshold(metricType, value, environment);
-    
-    res.json({
-      success: true,
-      metricType,
-      value,
-      environment,
-      result,
-      message: `Threshold check completed: ${result.severity} level`
+    const serverStatuses = servers.map(server => {
+      const metrics = latestMetrics.find(m => m.serverId === server.id);
+      if (!metrics) {
+        return {
+          serverId: server.id,
+          hostname: server.hostname,
+          environment: server.environment || 'default',
+          status: 'no_data'
+        };
+      }
+
+      const environment = server.environment || 'default';
+      const thresholds = thresholdConfig.getThresholds(environment);
+      
+      const cpuUsage = parseFloat(metrics.cpuUsage);
+      const memoryUsage = parseFloat(metrics.memoryUsage);
+      const diskUsage = parseFloat(metrics.diskUsage);
+      
+      const cpuCheck = thresholdConfig.checkThreshold('cpu', cpuUsage, environment);
+      const memoryCheck = thresholdConfig.checkThreshold('memory', memoryUsage, environment);
+      const diskCheck = thresholdConfig.checkThreshold('disk', diskUsage, environment);
+      
+      // Determine overall status
+      const severities = [cpuCheck.severity, memoryCheck.severity, diskCheck.severity];
+      let overallStatus = 'normal';
+      if (severities.includes('critical')) overallStatus = 'critical';
+      else if (severities.includes('warning')) overallStatus = 'warning';
+      
+      return {
+        serverId: server.id,
+        hostname: server.hostname,
+        environment,
+        status: overallStatus,
+        metrics: {
+          cpu: { value: cpuUsage, status: cpuCheck.severity, threshold: cpuCheck.threshold },
+          memory: { value: memoryUsage, status: memoryCheck.severity, threshold: memoryCheck.threshold },
+          disk: { value: diskUsage, status: diskCheck.severity, threshold: diskCheck.threshold }
+        },
+        thresholds
+      };
     });
+    
+    res.json(serverStatuses);
   } catch (error) {
-    console.error("Error testing threshold:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to test threshold"
-    });
+    console.error("Error fetching threshold status:", error);
+    res.status(500).json({ error: "Failed to fetch threshold status" });
   }
 });
 
-export { router as thresholdsRouter };
+export default thresholdsRouter;

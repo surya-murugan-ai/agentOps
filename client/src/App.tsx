@@ -16,6 +16,7 @@ import LlmAnalyticsPage from "@/pages/llm-analytics";
 import DataUploadPage from "@/pages/data-upload";
 import DataViewPage from "@/pages/data-view";
 import DataManagementPage from "@/pages/data-management";
+import ThresholdManagementPage from "@/pages/threshold-management";
 import SettingsPage from "@/pages/Settings";
 import WorkflowPage from "@/pages/workflows-operational";
 import AgentControlPage from "@/pages/agent-control";
@@ -42,6 +43,7 @@ function Router() {
       <Route path="/data-view" component={DataViewPage} />
       <Route path="/data-upload" component={DataUploadPage} />
       <Route path="/data-management" component={DataManagementPage} />
+      <Route path="/threshold-management" component={ThresholdManagementPage} />
       <Route path="/workflows" component={WorkflowPage} />
       <Route path="/agent-control" component={AgentControlPage} />
       <Route path="/cloud-infrastructure" component={CloudInfrastructurePage} />
