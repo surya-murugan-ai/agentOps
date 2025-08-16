@@ -590,26 +590,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
               targetServer = serverByHostname.get(item.hostname);
             }
             
-            if (!targetServer && serverId && serverId.startsWith('SRV-')) {
-              const numberPart = serverId.replace('SRV-', '');
-              const serverNumber = parseInt(numberPart, 10).toString();
-              const expectedHostname = `server${serverNumber}`;
-              targetServer = serverByHostname.get(expectedHostname);
+            // Try direct server ID mapping (case-insensitive)
+            if (!targetServer && serverId) {
+              // Try exact match first
+              targetServer = serverByHostname.get(serverId);
               
+              // Try case-insensitive match
               if (!targetServer) {
-                try {
-                  const newServer = await storage.createServer({
-                    hostname: expectedHostname,
-                    ipAddress: `192.168.1.${100 + parseInt(serverNumber)}`,
-                    environment: 'production',
-                    status: 'healthy',
-                    location: 'datacenter-1'
-                  });
-                  serverByHostname.set(expectedHostname, newServer);
-                  targetServer = newServer;
-                  serversCreated++;
-                } catch (error) {
-                  continue;
+                for (const [hostname, server] of serverByHostname.entries()) {
+                  if (hostname.toLowerCase() === serverId.toLowerCase()) {
+                    targetServer = server;
+                    break;
+                  }
+                }
+              }
+              
+              // Try SRV-xxx → server pattern
+              if (!targetServer && serverId.toUpperCase().startsWith('SRV-')) {
+                const numberPart = serverId.replace(/SRV-/i, '');
+                const serverNumber = parseInt(numberPart, 10).toString();
+                const expectedHostname = `server${serverNumber}`;
+                targetServer = serverByHostname.get(expectedHostname);
+                
+                if (!targetServer) {
+                  try {
+                    const newServer = await storage.createServer({
+                      hostname: expectedHostname,
+                      ipAddress: `192.168.1.${100 + parseInt(serverNumber)}`,
+                      environment: 'production',
+                      status: 'healthy',
+                      location: 'datacenter-1'
+                    });
+                    serverByHostname.set(expectedHostname, newServer);
+                    targetServer = newServer;
+                    serversCreated++;
+                  } catch (error) {
+                    continue;
+                  }
                 }
               }
             }
