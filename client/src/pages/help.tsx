@@ -851,7 +851,15 @@ export default function HelpCenter() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-dark-bg p-4 rounded-lg font-mono text-sm">
-                  <div className="text-green-400 mb-2">GET /api/health</div>
+                  <a 
+                    href="/api/health" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-green-400 hover:text-green-300 underline mb-2 block"
+                    data-testid="api-ref-health"
+                  >
+                    GET /api/health
+                  </a>
                   <p className="text-slate-400 text-xs mb-2">Basic system status check</p>
                   <div className="text-slate-500 text-xs">
                     Returns: {`{ status: 'ok', timestamp: '...' }`}
@@ -859,7 +867,15 @@ export default function HelpCenter() {
                 </div>
                 
                 <div className="bg-dark-bg p-4 rounded-lg font-mono text-sm">
-                  <div className="text-blue-400 mb-2">GET /api/system/api-status</div>
+                  <a 
+                    href="/api/system/api-status" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-400 hover:text-blue-300 underline mb-2 block"
+                    data-testid="api-ref-status"
+                  >
+                    GET /api/system/api-status
+                  </a>
                   <p className="text-slate-400 text-xs mb-2">Detailed API health information</p>
                   <div className="text-slate-500 text-xs">
                     Returns: OpenAI status, rate limits, errors
@@ -867,7 +883,15 @@ export default function HelpCenter() {
                 </div>
                 
                 <div className="bg-dark-bg p-4 rounded-lg font-mono text-sm">
-                  <div className="text-purple-400 mb-2">GET /api/agents</div>
+                  <a 
+                    href="/api/agents" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-purple-400 hover:text-purple-300 underline mb-2 block"
+                    data-testid="api-ref-agents"
+                  >
+                    GET /api/agents
+                  </a>
                   <p className="text-slate-400 text-xs mb-2">List all AI agents and their status</p>
                   <div className="text-slate-500 text-xs">
                     Returns: Agent list with activity status
@@ -875,7 +899,15 @@ export default function HelpCenter() {
                 </div>
                 
                 <div className="bg-dark-bg p-4 rounded-lg font-mono text-sm">
-                  <div className="text-yellow-400 mb-2">GET /api/dashboard/metrics</div>
+                  <a 
+                    href="/api/dashboard/metrics" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-yellow-400 hover:text-yellow-300 underline mb-2 block"
+                    data-testid="api-ref-metrics"
+                  >
+                    GET /api/dashboard/metrics
+                  </a>
                   <p className="text-slate-400 text-xs mb-2">Dashboard summary metrics</p>
                   <div className="text-slate-500 text-xs">
                     Returns: Server counts, health status
@@ -903,17 +935,40 @@ export default function HelpCenter() {
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2">
                       <CheckCircle className="h-4 w-4 text-green-500" />
-                      <code className="text-green-400">/api/health</code>
+                      <a 
+                        href="/api/health" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-green-400 hover:text-green-300 underline"
+                        data-testid="link-api-health"
+                      >
+                        /api/health
+                      </a>
                       <span className="text-slate-400">- Basic system status</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <CheckCircle className="h-4 w-4 text-blue-500" />
-                      <code className="text-blue-400">/api/system/api-status</code>
+                      <a 
+                        href="/api/system/api-status" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:text-blue-300 underline"
+                        data-testid="link-api-status"
+                      >
+                        /api/system/api-status
+                      </a>
                       <span className="text-slate-400">- API health</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <CheckCircle className="h-4 w-4 text-purple-500" />
-                      <span className="text-slate-400">Agent Control Dashboard - Real-time monitoring</span>
+                      <button
+                        onClick={() => scrollToSection('agents')}
+                        className="text-purple-400 hover:text-purple-300 underline cursor-pointer"
+                        data-testid="link-agent-dashboard"
+                      >
+                        Agent Control Dashboard
+                      </button>
+                      <span className="text-slate-400">- Real-time monitoring</span>
                     </div>
                   </div>
                 </div>
@@ -923,17 +978,41 @@ export default function HelpCenter() {
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2">
                       <FileText className="h-4 w-4 text-blue-500" />
-                      <code className="text-blue-400">LOCAL_SETUP_GUIDE.md</code>
+                      <a 
+                        href="/LOCAL_SETUP_GUIDE.md" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:text-blue-300 underline"
+                        data-testid="link-setup-guide"
+                      >
+                        LOCAL_SETUP_GUIDE.md
+                      </a>
                       <span className="text-slate-400">- Installation</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <FileText className="h-4 w-4 text-green-500" />
-                      <code className="text-green-400">QUICK_START.md</code>
+                      <a 
+                        href="/QUICK_START.md" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-green-400 hover:text-green-300 underline"
+                        data-testid="link-quick-start"
+                      >
+                        QUICK_START.md
+                      </a>
                       <span className="text-slate-400">- Getting started</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <FileText className="h-4 w-4 text-yellow-500" />
-                      <code className="text-yellow-400">OPTIMIZATION_SUMMARY.md</code>
+                      <a 
+                        href="/OPTIMIZATION_SUMMARY.md" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-yellow-400 hover:text-yellow-300 underline"
+                        data-testid="link-optimization-summary"
+                      >
+                        OPTIMIZATION_SUMMARY.md
+                      </a>
                       <span className="text-slate-400">- Cost details</span>
                     </div>
                   </div>
