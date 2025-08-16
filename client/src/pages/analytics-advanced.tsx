@@ -152,24 +152,74 @@ Report ID: ${report.id}
     }
   ]);
 
-  // Fetch analytics data
+  // Build filter parameters for API calls
+  const buildFilterParams = () => {
+    const params = new URLSearchParams();
+    params.append('timeRange', selectedTimeRange);
+    
+    if (selectedEnvironment !== 'all') {
+      params.append('environment', selectedEnvironment);
+    }
+    
+    if (selectedStatus !== 'all') {
+      params.append('status', selectedStatus);
+    }
+    
+    if (selectedSeverity !== 'all') {
+      params.append('severity', selectedSeverity);
+    }
+    
+    if (selectedServers.length > 0) {
+      selectedServers.forEach(serverId => {
+        params.append('servers', serverId);
+      });
+    }
+    
+    return params.toString();
+  };
+
+  // Fetch analytics data with filters
   const { data: metricsData = {} } = useQuery({
-    queryKey: ['/api/analytics/metrics', selectedTimeRange],
+    queryKey: ['/api/analytics/metrics', selectedTimeRange, selectedEnvironment, selectedStatus, selectedSeverity, selectedServers],
+    queryFn: async () => {
+      const filterParams = buildFilterParams();
+      const response = await fetch(`/api/analytics/metrics/24h?${filterParams}`);
+      if (!response.ok) throw new Error('Failed to fetch metrics');
+      return response.json();
+    },
     refetchInterval: 30000,
   });
 
   const { data: trendsData = {} } = useQuery({
-    queryKey: ['/api/analytics/trends', selectedTimeRange],
+    queryKey: ['/api/analytics/trends', selectedTimeRange, selectedEnvironment, selectedStatus, selectedSeverity, selectedServers],
+    queryFn: async () => {
+      const filterParams = buildFilterParams();
+      const response = await fetch(`/api/analytics/trends/24h?${filterParams}`);
+      if (!response.ok) throw new Error('Failed to fetch trends');
+      return response.json();
+    },
     refetchInterval: 60000,
   });
 
   const { data: alertsAnalytics = {} } = useQuery({
-    queryKey: ['/api/analytics/alerts', selectedTimeRange],
+    queryKey: ['/api/analytics/alerts', selectedTimeRange, selectedEnvironment, selectedStatus, selectedSeverity, selectedServers],
+    queryFn: async () => {
+      const filterParams = buildFilterParams();
+      const response = await fetch(`/api/analytics/alerts/24h?${filterParams}`);
+      if (!response.ok) throw new Error('Failed to fetch alerts');
+      return response.json();
+    },
     refetchInterval: 30000,
   });
 
   const { data: performanceData = {} } = useQuery({
-    queryKey: ['/api/analytics/performance', selectedTimeRange],
+    queryKey: ['/api/analytics/performance', selectedTimeRange, selectedEnvironment, selectedStatus, selectedSeverity, selectedServers],
+    queryFn: async () => {
+      const filterParams = buildFilterParams();
+      const response = await fetch(`/api/analytics/performance/24h?${filterParams}`);
+      if (!response.ok) throw new Error('Failed to fetch performance');
+      return response.json();
+    },
     refetchInterval: 30000,
   });
 

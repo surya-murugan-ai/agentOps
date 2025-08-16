@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db';
 import { serverMetrics, alerts, servers, remediationActions, auditLogs } from '@shared/schema';
-import { sql, desc, asc, gte, lte, eq, and, count } from 'drizzle-orm';
+import { sql, desc, asc, gte, lte, eq, and, count, or, inArray } from 'drizzle-orm';
 
 const router = Router();
 
@@ -24,13 +24,45 @@ function parseTimeRange(range: string): Date {
   }
 }
 
+// Helper function to build filter conditions
+function buildFilterConditions(req: any) {
+  const conditions = [];
+  
+  // Environment filter
+  if (req.query.environment && req.query.environment !== 'all') {
+    conditions.push(eq(servers.environment, req.query.environment));
+  }
+  
+  // Status filter
+  if (req.query.status && req.query.status !== 'all') {
+    conditions.push(eq(servers.status, req.query.status));
+  }
+  
+  // Servers filter
+  if (req.query.servers) {
+    const serverIds = Array.isArray(req.query.servers) ? req.query.servers : [req.query.servers];
+    conditions.push(inArray(servers.id, serverIds));
+  }
+  
+  return conditions;
+}
+
 // Get comprehensive metrics data for analytics
 router.get('/metrics/:timeRange?', async (req, res) => {
   try {
     const timeRange = req.params.timeRange || '24h';
     const startTime = parseTimeRange(timeRange);
 
-    // Get metrics data grouped by time intervals
+    // Build filter conditions
+    const filterConditions = buildFilterConditions(req);
+    const whereConditions = [gte(serverMetrics.timestamp, startTime)];
+    
+    // Add filter conditions if any
+    if (filterConditions.length > 0) {
+      whereConditions.push(...filterConditions);
+    }
+
+    // Get metrics data with filtering
     const metricsData = await db
       .select({
         timestamp: serverMetrics.timestamp,
@@ -41,7 +73,8 @@ router.get('/metrics/:timeRange?', async (req, res) => {
         networkLatency: serverMetrics.networkLatency,
       })
       .from(serverMetrics)
-      .where(gte(serverMetrics.timestamp, startTime))
+      .innerJoin(servers, eq(serverMetrics.serverId, servers.id))
+      .where(and(...whereConditions))
       .orderBy(asc(serverMetrics.timestamp));
 
     // Process data for chart consumption
@@ -79,7 +112,16 @@ router.get('/trends/:timeRange?', async (req, res) => {
     const timeRange = req.params.timeRange || '7d';
     const startTime = parseTimeRange(timeRange);
 
-    // Get hourly aggregated data for trends
+    // Build filter conditions
+    const filterConditions = buildFilterConditions(req);
+    const whereConditions = [gte(serverMetrics.timestamp, startTime)];
+    
+    // Add filter conditions if any
+    if (filterConditions.length > 0) {
+      whereConditions.push(...filterConditions);
+    }
+
+    // Get hourly aggregated data for trends with filtering
     const trendsQuery = await db
       .select({
         hour: sql<string>`DATE_TRUNC('hour', ${serverMetrics.timestamp})`,
@@ -93,7 +135,8 @@ router.get('/trends/:timeRange?', async (req, res) => {
         peakLatency: sql<number>`MAX(${serverMetrics.networkLatency})`,
       })
       .from(serverMetrics)
-      .where(gte(serverMetrics.timestamp, startTime))
+      .innerJoin(servers, eq(serverMetrics.serverId, servers.id))
+      .where(and(...whereConditions))
       .groupBy(sql`DATE_TRUNC('hour', ${serverMetrics.timestamp})`)
       .orderBy(sql`DATE_TRUNC('hour', ${serverMetrics.timestamp})`);
 
@@ -130,17 +173,29 @@ router.get('/alerts/:timeRange?', async (req, res) => {
     const timeRange = req.params.timeRange || '24h';
     const startTime = parseTimeRange(timeRange);
 
-    // Get alert distribution by severity
+    // Build filter conditions
+    const filterConditions = buildFilterConditions(req);
+    const whereConditions = [gte(alerts.timestamp, startTime)];
+    
+    // Add severity filter if specified
+    if (req.query.severity && req.query.severity !== 'all') {
+      whereConditions.push(eq(alerts.severity, req.query.severity as string));
+    }
+
+    // Get alert distribution by severity with filtering
     const alertDistribution = await db
       .select({
         severity: alerts.severity,
         count: count(),
       })
       .from(alerts)
-      .where(gte(alerts.timestamp, startTime))
+      .innerJoin(servers, eq(alerts.serverId, servers.id))
+      .where(filterConditions.length > 0 ? 
+        and(...whereConditions, ...filterConditions) : 
+        and(...whereConditions))
       .groupBy(alerts.severity);
 
-    // Get alerts by server
+    // Get alerts by server with filtering
     const alertsByServer = await db
       .select({
         serverId: alerts.serverId,
@@ -151,7 +206,9 @@ router.get('/alerts/:timeRange?', async (req, res) => {
       })
       .from(alerts)
       .leftJoin(servers, eq(alerts.serverId, servers.id))
-      .where(gte(alerts.timestamp, startTime))
+      .where(filterConditions.length > 0 ? 
+        and(...whereConditions, ...filterConditions) : 
+        and(...whereConditions))
       .groupBy(alerts.serverId, servers.hostname);
 
     const labels = alertDistribution.map(a => a.severity);
@@ -181,7 +238,16 @@ router.get('/performance/:timeRange?', async (req, res) => {
     const timeRange = req.params.timeRange || '24h';
     const startTime = parseTimeRange(timeRange);
 
-    // Get correlation data (CPU vs Memory)
+    // Build filter conditions
+    const filterConditions = buildFilterConditions(req);
+    const whereConditions = [gte(serverMetrics.timestamp, startTime)];
+    
+    // Add filter conditions if any
+    if (filterConditions.length > 0) {
+      whereConditions.push(...filterConditions);
+    }
+
+    // Get correlation data (CPU vs Memory) with filtering
     const correlationData = await db
       .select({
         cpuUsage: serverMetrics.cpuUsage,
@@ -189,7 +255,10 @@ router.get('/performance/:timeRange?', async (req, res) => {
         serverId: serverMetrics.serverId,
       })
       .from(serverMetrics)
-      .where(gte(serverMetrics.timestamp, startTime))
+      .innerJoin(servers, eq(serverMetrics.serverId, servers.id))
+      .where(filterConditions.length > 0 ? 
+        and(...whereConditions, ...filterConditions) : 
+        and(...whereConditions))
       .limit(1000); // Limit for performance
 
     const correlation = correlationData.map(d => ({
