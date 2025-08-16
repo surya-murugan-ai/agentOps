@@ -446,33 +446,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Expected array of metrics" });
       }
 
-      let count = 0;
-      for (const metricData of metrics) {
-        try {
-          // Find server by hostname if serverId not provided
-          if (!metricData.serverId && metricData.hostname) {
-            const server = await storage.getServerByHostname(metricData.hostname);
-            if (server) {
-              metricData.serverId = server.id;
-            }
-          }
+      console.log(`🚀 OPTIMIZED BULK UPLOAD: Starting ${metrics.length} metrics`);
+      const startTime = Date.now();
 
-          if (metricData.serverId) {
-            await storage.createMetric({
-              ...metricData,
-              id: nanoid(),
+      // Batch size for optimal performance (reduced for better throughput)
+      const BATCH_SIZE = 250;
+      let totalProcessed = 0;
+
+      // Pre-fetch all servers once to avoid repeated DB calls
+      const allServers = await storage.getAllServers();
+      const serverMap = new Map();
+      allServers.forEach(server => {
+        serverMap.set(server.hostname, server.id);
+        serverMap.set(server.id, server.id);
+      });
+
+      // Process in optimized batches
+      for (let i = 0; i < metrics.length; i += BATCH_SIZE) {
+        const batch = metrics.slice(i, i + BATCH_SIZE);
+        const batchStartTime = Date.now();
+        
+        // Prepare batch with server ID mapping
+        const processedBatch = batch
+          .map(metricData => {
+            // Fast server ID lookup
+            const serverId = metricData.serverId || serverMap.get(metricData.hostname);
+            if (!serverId) return null;
+
+            return {
+              serverId,
+              cpuUsage: String(metricData.cpuUsage || metricData.cpu_usage || 0),
+              memoryUsage: String(metricData.memoryUsage || metricData.memory_usage || 0),
+              memoryTotal: Number(metricData.memoryTotal || metricData.memory_total || 8192),
+              diskUsage: String(metricData.diskUsage || metricData.disk_usage || 0),
+              diskTotal: Number(metricData.diskTotal || metricData.disk_total || 256),
+              networkLatency: String(metricData.networkLatency || metricData.network_latency || 0),
+              networkThroughput: String(metricData.networkThroughput || metricData.network_throughput || 0),
+              processCount: Number(metricData.processCount || metricData.process_count || 150),
               timestamp: metricData.timestamp ? new Date(metricData.timestamp) : new Date()
-            });
-            count++;
-          }
-        } catch (error) {
-          console.error("Error creating metric:", error);
+            };
+          })
+          .filter(Boolean);
+
+        // Single batch insert for maximum performance
+        if (processedBatch.length > 0) {
+          await storage.bulkInsertMetrics(processedBatch);
+          totalProcessed += processedBatch.length;
         }
+
+        const batchTime = Date.now() - batchStartTime;
+        console.log(`⚡ Batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(metrics.length/BATCH_SIZE)}: ${batchTime}ms - ${processedBatch.length} records`);
       }
 
-      res.json({ count, message: `Successfully uploaded ${count} metric records` });
+      const totalTime = Date.now() - startTime;
+      console.log(`🎯 UPLOAD COMPLETE: ${totalProcessed}/${metrics.length} metrics in ${totalTime}ms (${Math.round(totalProcessed/(totalTime/1000))} records/sec)`);
+
+      // Cache will auto-refresh within TTL - optimized for performance
+
+      res.json({ 
+        count: totalProcessed, 
+        message: `High-speed upload: ${totalProcessed} metrics in ${totalTime}ms`,
+        performance: {
+          totalRecords: totalProcessed,
+          timeMs: totalTime,
+          recordsPerSecond: Math.round(totalProcessed/(totalTime/1000))
+        }
+      });
     } catch (error) {
-      console.error("Error in bulk metrics upload:", error);
+      console.error("Error in optimized bulk metrics upload:", error);
       res.status(500).json({ error: "Failed to upload metrics" });
     }
   });
@@ -587,7 +628,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Process entire batch based on detected type
         if (extractionResult.dataType === 'metrics') {
-          // BATCH PROCESS METRICS - Much faster than individual inserts
+          // HIGH-SPEED BATCH PROCESS METRICS
           const metricsToInsert = [];
           
           for (const item of batch) {
@@ -598,16 +639,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               targetServer = serverByHostname.get(item.hostname);
             }
             
-            // Fast server ID mapping (case-insensitive)
+            // Fast server ID mapping
             if (!targetServer && serverId) {
-              // Try exact match first
               targetServer = serverByHostname.get(serverId);
-              
-              // Try case-insensitive match only if needed
               if (!targetServer) {
-                const lowerServerId = serverId.toLowerCase();
+                // Fallback case-insensitive search
                 for (const [hostname, server] of Array.from(serverByHostname.entries())) {
-                  if (hostname.toLowerCase() === lowerServerId) {
+                  if (hostname.toLowerCase() === serverId.toLowerCase()) {
                     targetServer = server;
                     break;
                   }
@@ -618,16 +656,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (targetServer) {
               metricsToInsert.push({
                 serverId: targetServer.id,
-                cpuUsage: (parseFloat(item.cpu_usage || item.cpuUsage) || 0).toString(),
-                memoryUsage: (parseFloat(item.memory_usage || item.memoryUsage) || 0).toString(),
-                diskUsage: (parseFloat(item.disk_usage || item.diskUsage) || 0).toString(),
-                memoryTotal: parseInt(item.memoryTotal) || 1024,
-                diskTotal: parseInt(item.diskTotal) || 1024,
-                processCount: parseInt(item.process_count || item.processCount) || 10,
-                networkLatency: item.network_latency || item.networkLatency || null,
-                networkThroughput: item.networkThroughput || null
+                cpuUsage: String(parseFloat(item.cpu_usage || item.cpuUsage) || 0),
+                memoryUsage: String(parseFloat(item.memory_usage || item.memoryUsage) || 0),
+                diskUsage: String(parseFloat(item.disk_usage || item.diskUsage) || 0),
+                memoryTotal: parseInt(item.memoryTotal) || 8192,
+                diskTotal: parseInt(item.diskTotal) || 256,
+                processCount: parseInt(item.process_count || item.processCount) || 150,
+                networkLatency: String(item.network_latency || item.networkLatency || 0),
+                networkThroughput: String(item.networkThroughput || 0),
+                timestamp: item.timestamp ? new Date(item.timestamp) : new Date()
               });
+              count++;
             }
+          }
+          
+          // SINGLE BATCH INSERT - Maximum performance
+          if (metricsToInsert.length > 0) {
+            await storage.bulkInsertMetrics(metricsToInsert);
           }
           
           // BATCH INSERT ALL METRICS AT ONCE
