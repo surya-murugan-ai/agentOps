@@ -67,11 +67,14 @@ export class AnomalyDetectorAgent implements Agent {
     if (!this.running) return;
 
     try {
-      // CRITICAL: Circuit breaker - check alert limits before ANY processing
+      // PRODUCTION SOLUTION: Intelligent alert management instead of stopping detection
+      await this.manageAlertOverflow();
+      
       const existingAlerts = await storage.getActiveAlerts();
       if (existingAlerts.length >= this.MAX_TOTAL_ALERTS) {
-        console.log(`${this.name}: CIRCUIT BREAKER ACTIVATED - Global alert limit reached (${existingAlerts.length}/${this.MAX_TOTAL_ALERTS}), stopping ALL anomaly detection`);
-        return;
+        console.log(`${this.name}: Alert limit reached (${existingAlerts.length}/${this.MAX_TOTAL_ALERTS}) - Using CRITICAL-ONLY mode`);
+        // Continue with CRITICAL-only detection instead of stopping completely
+        return await this.criticalOnlyDetection();
       }
 
       // Clean up old resolved alerts first to prevent accumulation
@@ -538,6 +541,92 @@ export class AnomalyDetectorAgent implements Agent {
       }
     } catch (error) {
       console.error(`${this.name}: Error cleaning up old alerts:`, error);
+    }
+  }
+
+  // PRODUCTION: Intelligent alert overflow management
+  private async manageAlertOverflow(): Promise<void> {
+    const activeAlerts = await storage.getActiveAlerts();
+    
+    if (activeAlerts.length >= this.MAX_TOTAL_ALERTS * 0.8) { // 80% threshold
+      console.log(`${this.name}: Alert volume high (${activeAlerts.length}/${this.MAX_TOTAL_ALERTS}) - Auto-resolving old alerts`);
+      
+      // 1. Auto-resolve old warning alerts (keep critical)
+      const oldWarningAlerts = activeAlerts
+        .filter(alert => 
+          alert.severity === 'warning' && 
+          alert.createdAt < new Date(Date.now() - 2 * 60 * 60 * 1000) // 2 hours old
+        )
+        .slice(0, 3); // Resolve up to 3 old warnings
+        
+      for (const alert of oldWarningAlerts) {
+        await storage.resolveAlert(alert.id);
+        console.log(`${this.name}: Auto-resolved old warning alert: ${alert.title}`);
+      }
+      
+      // 2. If still too many, resolve oldest non-critical alerts
+      const currentAlerts = await storage.getActiveAlerts();
+      if (currentAlerts.length >= this.MAX_TOTAL_ALERTS * 0.9) {
+        const oldAlerts = currentAlerts
+          .filter(alert => alert.severity !== 'critical')
+          .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+          .slice(0, 2); // Resolve 2 oldest non-critical
+          
+        for (const alert of oldAlerts) {
+          await storage.resolveAlert(alert.id);
+          console.log(`${this.name}: Auto-resolved old alert to prevent overflow: ${alert.title}`);
+        }
+      }
+    }
+  }
+
+  // PRODUCTION: Critical-only detection when at alert limit
+  private async criticalOnlyDetection(): Promise<void> {
+    console.log(`${this.name}: CRITICAL-ONLY MODE: Monitoring for severe issues only`);
+    
+    const latestMetrics = await storage.getLatestMetrics();
+    
+    for (const metric of latestMetrics) {
+      // Only create alerts for CRITICAL thresholds
+      if (metric.cpuUsage > 95) {
+        await this.createCriticalAlert(metric.serverId, 'cpu', metric.cpuUsage, 
+          'CRITICAL CPU OVERLOAD - Immediate attention required');
+      }
+      
+      if (metric.memoryUsage > 95) {
+        await this.createCriticalAlert(metric.serverId, 'memory', metric.memoryUsage, 
+          'CRITICAL MEMORY EXHAUSTION - System at risk');
+      }
+      
+      if (metric.diskUsage > 95) {
+        await this.createCriticalAlert(metric.serverId, 'disk', metric.diskUsage, 
+          'CRITICAL DISK FULL - Storage emergency');
+      }
+    }
+  }
+
+  private async createCriticalAlert(serverId: string, type: string, value: number, description: string): Promise<void> {
+    // Check if we already have a critical alert for this server/type
+    const existingAlerts = await storage.getActiveAlerts();
+    const existingCritical = existingAlerts.filter(alert => alert.serverId === serverId);
+    const hasCritical = existingCritical.some(alert => 
+      alert.metricType === type && alert.severity === 'critical'
+    );
+    
+    if (!hasCritical) {
+      await storage.createAlert({
+        serverId,
+        agentId: this.id,
+        title: `CRITICAL ${type.toUpperCase()} EMERGENCY`,
+        description,
+        severity: "critical" as const,
+        status: "active" as const,
+        metricType: type,
+        metricValue: value.toString(),
+        threshold: "95.0"
+      });
+      
+      console.log(`${this.name}: CRITICAL ALERT created for ${type} on server ${serverId}: ${value}%`);
     }
   }
 }

@@ -7,6 +7,7 @@ AgentOps is an AI-powered server health monitoring and automated remediation pla
 - **Dashboard Agent Count Fix**: Corrected "9/7 Active Agents" display error to show accurate "9/9" ratio
 - **Upload Speed Optimization**: Implemented auto-server creation for large datasets with real-time progress tracking
 - **Data Validation**: Enhanced upload system to handle 1790+ record files with proper server ID mapping (SRV-001 → server1, etc.)
+- **Production Alert Management**: Fixed circuit breaker issue that was blocking critical alerts, implemented intelligent overflow management with auto-resolution of old alerts and critical-only mode
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
