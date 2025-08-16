@@ -281,14 +281,23 @@ export class AnomalyDetectorAgent implements Agent {
       return;
     }
     
-    // Check for existing alert with same server + metric combination
+    // PRODUCTION: Enhanced deduplication check with multiple conditions
     const existingAlert = existingAlerts.find(
       alert => alert.serverId === serverId && 
                alert.metricType === metricType && 
-               alert.status === "active"
+               alert.status === "active" &&
+               alert.agentId === this.id // Ensure it's from this agent
+    );
+    
+    // Additional check for similar alerts from other agents to prevent cross-agent duplicates
+    const similarAlert = existingAlerts.find(
+      alert => alert.serverId === serverId && 
+               alert.metricType === metricType && 
+               alert.status === "active" &&
+               alert.severity === severity // Same severity level
     );
 
-    if (!existingAlert) {
+    if (!existingAlert && !similarAlert) {
       // Get server info to include hostname
       const server = await storage.getServer(serverId);
       const alert = await storage.createAlert({
@@ -307,7 +316,7 @@ export class AnomalyDetectorAgent implements Agent {
       wsManager.broadcastAlert(alert);
       
       console.log(`${this.name}: Created ${severity} alert for ${metricType} on server ${serverId}`);
-    } else {
+    } else if (existingAlert) {
       // Update existing alert if severity has changed
       if (existingAlert.severity !== severity) {
         await storage.updateAlert(existingAlert.id, {
@@ -317,7 +326,11 @@ export class AnomalyDetectorAgent implements Agent {
           updatedAt: new Date()
         });
         console.log(`${this.name}: Updated ${existingAlert.severity} to ${severity} alert for ${metricType} on server ${serverId}`);
+      } else {
+        console.log(`${this.name}: Skipping duplicate alert for ${metricType} on server ${serverId}`);
       }
+    } else if (similarAlert) {
+      console.log(`${this.name}: Skipping similar alert from another agent for ${metricType} on server ${serverId}`);
     }
   }
 
