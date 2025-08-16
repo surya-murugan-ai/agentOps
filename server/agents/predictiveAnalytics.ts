@@ -20,13 +20,9 @@ export class PredictiveAnalyticsAgent implements Agent {
     console.log(`Starting ${this.name}...`);
     this.running = true;
     
-    // Generate predictions every 5 minutes
-    this.intervalId = setInterval(() => {
-      this.generatePredictions();
-    }, 300000);
-
-    // Initial prediction
-    await this.generatePredictions();
+    // DISABLED: No prediction generation to prevent synthetic data creation
+    // Only process predictions when real metrics data is available from uploads
+    console.log(`${this.name}: Data generation disabled - only processes uploaded real data`);
   }
 
   async stop(): Promise<void> {

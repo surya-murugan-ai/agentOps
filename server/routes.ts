@@ -810,6 +810,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/admin/clear-all-data", async (req, res) => {
+    try {
+      // Clear all AI-generated data
+      await storage.clearAllMetrics();
+      await storage.clearAllAlerts();
+      await storage.clearAllRemediationActions();
+      await storage.clearAllAuditLogs();
+      console.log("✅ All AI-generated data cleared from database");
+      res.json({ success: true, message: "All synthetic data cleared" });
+    } catch (error) {
+      console.error("Error clearing all data:", error);
+      res.status(500).json({ error: "Failed to clear all data" });
+    }
+  });
+
   app.post("/api/agents/test", async (req, res) => {
     try {
       // Trigger a test cycle for all agents
