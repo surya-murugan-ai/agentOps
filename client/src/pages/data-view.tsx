@@ -71,30 +71,95 @@ export default function DataViewPage() {
       return response.json();
     },
     refetchInterval: 10000,  // Refresh every 10 seconds for real-time updates
-    staleTime: 0,  // Always consider data stale to force fresh fetches
-    cacheTime: 5000  // Keep cache for only 5 seconds
+    staleTime: 0  // Always consider data stale to force fresh fetches
   });
 
   const { data: alerts, isLoading: alertsLoading } = useQuery({
     queryKey: ["/api/alerts"],
     refetchInterval: 10000,
-    staleTime: 0,
-    cacheTime: 5000
+    staleTime: 0
   });
 
   const { data: remediations, isLoading: remediationsLoading } = useQuery({
     queryKey: ["/api/remediation-actions"],
     refetchInterval: 10000,
-    staleTime: 0,
-    cacheTime: 5000
+    staleTime: 0
   });
 
   const { data: auditLogs, isLoading: auditLoading } = useQuery({
     queryKey: ["/api/audit-logs"],
     refetchInterval: 10000,
-    staleTime: 0,
-    cacheTime: 5000
+    staleTime: 0
   });
+
+  // Filter and search data based on current filters
+  const filterData = (data: any[], dataType: string) => {
+    if (!Array.isArray(data)) return [];
+    
+    let filtered = data;
+    
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter((item) => {
+        const searchLower = searchTerm.toLowerCase();
+        switch (dataType) {
+          case "servers":
+            return (
+              item.hostname?.toLowerCase().includes(searchLower) ||
+              item.ipAddress?.toLowerCase().includes(searchLower) ||
+              item.environment?.toLowerCase().includes(searchLower) ||
+              item.location?.toLowerCase().includes(searchLower)
+            );
+          case "metrics":
+            const server = servers?.find((s: any) => s.id === item.serverId);
+            return server?.hostname?.toLowerCase().includes(searchLower);
+          case "alerts":
+            return (
+              item.title?.toLowerCase().includes(searchLower) ||
+              item.description?.toLowerCase().includes(searchLower) ||
+              item.server?.hostname?.toLowerCase().includes(searchLower)
+            );
+          case "remediations":
+            return (
+              item.title?.toLowerCase().includes(searchLower) ||
+              item.description?.toLowerCase().includes(searchLower) ||
+              item.server?.hostname?.toLowerCase().includes(searchLower)
+            );
+          case "audit":
+            return (
+              item.action?.toLowerCase().includes(searchLower) ||
+              item.details?.toLowerCase().includes(searchLower) ||
+              item.agentId?.toLowerCase().includes(searchLower)
+            );
+          default:
+            return true;
+        }
+      });
+    }
+    
+    // Apply status filter
+    if (filterStatus !== "all") {
+      filtered = filtered.filter((item) => {
+        switch (dataType) {
+          case "servers":
+            return item.status?.toLowerCase() === filterStatus.toLowerCase();
+          case "alerts":
+            return (
+              item.status?.toLowerCase() === filterStatus.toLowerCase() ||
+              item.severity?.toLowerCase() === filterStatus.toLowerCase()
+            );
+          case "remediations":
+            return item.status?.toLowerCase() === filterStatus.toLowerCase();
+          case "audit":
+            return item.status?.toLowerCase() === filterStatus.toLowerCase();
+          default:
+            return true;
+        }
+      });
+    }
+    
+    return filtered;
+  };
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -507,75 +572,6 @@ export default function DataViewPage() {
   };
 
   const visualizationData = getVisualizationData();
-
-  // Filter and search data based on current filters
-  const filterData = (data: any[], dataType: string) => {
-    if (!Array.isArray(data)) return [];
-    
-    let filtered = data;
-    
-    // Apply search filter
-    if (searchTerm) {
-      filtered = filtered.filter((item) => {
-        const searchLower = searchTerm.toLowerCase();
-        switch (dataType) {
-          case "servers":
-            return (
-              item.hostname?.toLowerCase().includes(searchLower) ||
-              item.ipAddress?.toLowerCase().includes(searchLower) ||
-              item.environment?.toLowerCase().includes(searchLower) ||
-              item.location?.toLowerCase().includes(searchLower)
-            );
-          case "metrics":
-            const server = servers?.find((s: any) => s.id === item.serverId);
-            return server?.hostname?.toLowerCase().includes(searchLower);
-          case "alerts":
-            return (
-              item.title?.toLowerCase().includes(searchLower) ||
-              item.description?.toLowerCase().includes(searchLower) ||
-              item.server?.hostname?.toLowerCase().includes(searchLower)
-            );
-          case "remediations":
-            return (
-              item.title?.toLowerCase().includes(searchLower) ||
-              item.description?.toLowerCase().includes(searchLower) ||
-              item.server?.hostname?.toLowerCase().includes(searchLower)
-            );
-          case "audit":
-            return (
-              item.action?.toLowerCase().includes(searchLower) ||
-              item.details?.toLowerCase().includes(searchLower) ||
-              item.agentId?.toLowerCase().includes(searchLower)
-            );
-          default:
-            return true;
-        }
-      });
-    }
-    
-    // Apply status filter
-    if (filterStatus !== "all") {
-      filtered = filtered.filter((item) => {
-        switch (dataType) {
-          case "servers":
-            return item.status?.toLowerCase() === filterStatus.toLowerCase();
-          case "alerts":
-            return (
-              item.status?.toLowerCase() === filterStatus.toLowerCase() ||
-              item.severity?.toLowerCase() === filterStatus.toLowerCase()
-            );
-          case "remediations":
-            return item.status?.toLowerCase() === filterStatus.toLowerCase();
-          case "audit":
-            return item.status?.toLowerCase() === filterStatus.toLowerCase();
-          default:
-            return true;
-        }
-      });
-    }
-    
-    return filtered;
-  };
 
   return (
     <div className="min-h-screen bg-dark-bg text-white">
