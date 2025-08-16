@@ -196,7 +196,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values([insertUser]).returning();
+    const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
 
@@ -293,9 +293,7 @@ export class DatabaseStorage implements IStorage {
     await db.update(serverMetrics).set(updates).where(eq(serverMetrics.id, id));
   }
 
-  async getAllMetrics(): Promise<ServerMetrics[]> {
-    return await db.select().from(serverMetrics).orderBy(desc(serverMetrics.timestamp));
-  }
+
 
   async deleteAlert(id: string): Promise<void> {
     await db.delete(alerts).where(eq(alerts.id, id));
