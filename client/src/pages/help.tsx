@@ -975,46 +975,187 @@ export default function HelpCenter() {
                 
                 <div className="space-y-3">
                   <h4 className="font-medium text-green-400">Documentation Files</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-blue-500" />
-                      <a 
-                        href="/LOCAL_SETUP_GUIDE.md" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-blue-400 hover:text-blue-300 underline"
-                        data-testid="link-setup-guide"
-                      >
-                        LOCAL_SETUP_GUIDE.md
-                      </a>
-                      <span className="text-slate-400">- Installation</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-green-500" />
-                      <a 
-                        href="/QUICK_START.md" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-green-400 hover:text-green-300 underline"
-                        data-testid="link-quick-start"
-                      >
-                        QUICK_START.md
-                      </a>
-                      <span className="text-slate-400">- Getting started</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-yellow-500" />
-                      <a 
-                        href="/OPTIMIZATION_SUMMARY.md" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-yellow-400 hover:text-yellow-300 underline"
-                        data-testid="link-optimization-summary"
-                      >
-                        OPTIMIZATION_SUMMARY.md
-                      </a>
-                      <span className="text-slate-400">- Cost details</span>
-                    </div>
+                  <div className="space-y-3">
+                    
+                    {/* LOCAL_SETUP_GUIDE.md */}
+                    <Card className="bg-dark-bg border-blue-500/20">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="flex items-center gap-2 text-blue-400 text-base">
+                          <FileText className="h-4 w-4" />
+                          LOCAL_SETUP_GUIDE.md
+                          <Badge variant="secondary" className="bg-blue-900 text-blue-300 text-xs">Installation</Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="bg-dark-surface p-4 rounded-lg border border-dark-border">
+                          <div className="prose prose-invert prose-sm max-w-none">
+                            <h3 className="text-blue-400 mt-0">AgentOps Local Setup Guide</h3>
+                            <p className="text-slate-300">Complete guide for setting up the AI-powered server monitoring platform locally.</p>
+                            
+                            <h4 className="text-green-400">Prerequisites</h4>
+                            <ul className="text-slate-300 space-y-1">
+                              <li><strong>Node.js 18+</strong> - Runtime environment</li>
+                              <li><strong>PostgreSQL 14+</strong> - Database system</li>
+                              <li><strong>OpenAI API Key</strong> - Required for AI agents</li>
+                              <li><strong>Git</strong> - Version control</li>
+                            </ul>
+
+                            <h4 className="text-green-400">Quick Setup</h4>
+                            <div className="bg-dark-bg p-3 rounded border border-dark-border">
+                              <code className="text-green-300 text-xs">
+                                {`# 1. Clone repository
+git clone <your-repo-url>
+cd agentops
+
+# 2. Install dependencies  
+npm install
+
+# 3. Database setup
+cp .env.example .env
+# Edit .env with your API keys
+
+# 4. Start application
+npm run dev`}
+                              </code>
+                            </div>
+
+                            <h4 className="text-yellow-400">Database Options</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div className="bg-dark-bg p-3 rounded border border-dark-border">
+                                <h5 className="text-green-400 text-sm mb-1">Option A: Neon (Recommended)</h5>
+                                <p className="text-xs text-slate-400">Free serverless PostgreSQL. Sign up at neon.tech</p>
+                              </div>
+                              <div className="bg-dark-bg p-3 rounded border border-dark-border">
+                                <h5 className="text-blue-400 text-sm mb-1">Option B: Local PostgreSQL</h5>
+                                <p className="text-xs text-slate-400">Install locally with apt/brew/windows installer</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* QUICK_START.md */}
+                    <Card className="bg-dark-bg border-green-500/20">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="flex items-center gap-2 text-green-400 text-base">
+                          <FileText className="h-4 w-4" />
+                          QUICK_START.md
+                          <Badge variant="secondary" className="bg-green-900 text-green-300 text-xs">Getting Started</Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="bg-dark-surface p-4 rounded-lg border border-dark-border">
+                          <div className="prose prose-invert prose-sm max-w-none">
+                            <h3 className="text-green-400 mt-0">🚀 Three Ways to Run Locally</h3>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="bg-dark-bg p-3 rounded border border-dark-border">
+                                <h4 className="text-blue-400 text-sm mb-2">Option 1: Simple Script</h4>
+                                <code className="text-green-300 text-xs">
+                                  {`chmod +x start-local.sh
+./start-local.sh`}
+                                </code>
+                                <p className="text-xs text-slate-400 mt-2">Recommended for beginners</p>
+                              </div>
+                              
+                              <div className="bg-dark-bg p-3 rounded border border-dark-border">
+                                <h4 className="text-purple-400 text-sm mb-2">Option 2: Docker Compose</h4>
+                                <code className="text-green-300 text-xs">
+                                  {`cp .env.example .env
+docker-compose up`}
+                                </code>
+                                <p className="text-xs text-slate-400 mt-2">Easiest setup</p>
+                              </div>
+                              
+                              <div className="bg-dark-bg p-3 rounded border border-dark-border">
+                                <h4 className="text-orange-400 text-sm mb-2">Option 3: Manual</h4>
+                                <code className="text-green-300 text-xs">
+                                  {`npm install
+npm run db:push
+npm run dev`}
+                                </code>
+                                <p className="text-xs text-slate-400 mt-2">Full control</p>
+                              </div>
+                            </div>
+
+                            <h4 className="text-yellow-400">🔑 Required API Keys</h4>
+                            <div className="space-y-2">
+                              <div className="bg-dark-bg p-3 rounded border border-dark-border">
+                                <strong className="text-red-400">OpenAI API Key (Required)</strong>
+                                <p className="text-xs text-slate-400">Get from platform.openai.com/api-keys</p>
+                                <code className="text-green-300 text-xs">OPENAI_API_KEY=sk-your-key-here</code>
+                              </div>
+                              <div className="bg-dark-bg p-3 rounded border border-dark-border">
+                                <strong className="text-blue-400">Anthropic API Key (Optional)</strong>
+                                <p className="text-xs text-slate-400">Get from console.anthropic.com</p>
+                                <code className="text-green-300 text-xs">ANTHROPIC_API_KEY=sk-ant-your-key-here</code>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* OPTIMIZATION_SUMMARY.md */}
+                    <Card className="bg-dark-bg border-yellow-500/20">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="flex items-center gap-2 text-yellow-400 text-base">
+                          <FileText className="h-4 w-4" />
+                          OPTIMIZATION_SUMMARY.md
+                          <Badge variant="secondary" className="bg-yellow-900 text-yellow-300 text-xs">Cost Details</Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="bg-dark-surface p-4 rounded-lg border border-dark-border">
+                          <div className="prose prose-invert prose-sm max-w-none">
+                            <h3 className="text-yellow-400 mt-0">OpenAI API Usage Optimization</h3>
+                            <p className="text-slate-300">How we reduced API costs by 85-90% through intelligent optimization.</p>
+                            
+                            <h4 className="text-red-400">Problem Identified</h4>
+                            <p className="text-slate-300 text-sm">Agents were making excessive OpenAI API calls even when server data hadn't changed significantly.</p>
+
+                            <h4 className="text-green-400">Key Optimizations</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div className="bg-dark-bg p-3 rounded border border-dark-border">
+                                <h5 className="text-blue-400 text-sm mb-1">Predictive Analytics</h5>
+                                <ul className="text-xs text-slate-400 space-y-1">
+                                  <li>✅ Recent predictions check (1 hour)</li>
+                                  <li>✅ Change detection before AI calls</li>
+                                  <li>✅ 90% reduction in stable data</li>
+                                </ul>
+                              </div>
+                              <div className="bg-dark-bg p-3 rounded border border-dark-border">
+                                <h5 className="text-orange-400 text-sm mb-1">Anomaly Detection</h5>
+                                <ul className="text-xs text-slate-400 space-y-1">
+                                  <li>✅ 15-minute cooldown periods</li>
+                                  <li>✅ Threshold pre-filtering</li>
+                                  <li>✅ 85% reduction in normal ops</li>
+                                </ul>
+                              </div>
+                            </div>
+
+                            <h4 className="text-purple-400">Expected Cost Reduction</h4>
+                            <div className="bg-dark-bg p-3 rounded border border-dark-border">
+                              <div className="grid grid-cols-3 gap-4 text-center">
+                                <div>
+                                  <div className="text-red-400 font-bold">Before</div>
+                                  <div className="text-xs text-slate-400">100+ calls/hour</div>
+                                </div>
+                                <div>
+                                  <div className="text-green-400 font-bold">After</div>
+                                  <div className="text-xs text-slate-400">10-15 calls/hour</div>
+                                </div>
+                                <div>
+                                  <div className="text-blue-400 font-bold">Savings</div>
+                                  <div className="text-xs text-slate-400">85-90%</div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
                 </div>
               </div>
