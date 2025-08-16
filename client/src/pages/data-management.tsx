@@ -158,6 +158,33 @@ export default function DataManagement() {
     },
   });
 
+  // Delete all data mutation
+  const deleteAllDataMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/data-cleaning/delete-all");
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "All Data Deleted",
+        description: data.message,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/data-cleaning/quality-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/servers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/alerts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/metrics/range"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/remediation-actions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/audit-logs"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Delete Failed",
+        description: error instanceof Error ? error.message : "Failed to delete all data",
+        variant: "destructive",
+      });
+    },
+  });
+
   const getQualityColor = (score: number) => {
     if (score >= 90) return "text-green-500";
     if (score >= 70) return "text-yellow-500";
@@ -431,6 +458,22 @@ export default function DataManagement() {
                 <Sparkles className="mr-2 h-4 w-4" />
                 {fullCleanMutation.isPending ? "Performing Full Clean..." : "Comprehensive Data Cleaning"}
               </Button>
+            </div>
+
+            <div className="pt-3 border-t">
+              <Button
+                onClick={() => deleteAllDataMutation.mutate()}
+                disabled={deleteAllDataMutation.isPending}
+                variant="destructive"
+                className="w-full"
+                data-testid="button-delete-all-data"
+              >
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                {deleteAllDataMutation.isPending ? "Deleting All Data..." : "Delete All Data"}
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2 text-center">
+                ⚠️ This action cannot be undone. All servers, metrics, alerts, and logs will be deleted.
+              </p>
             </div>
           </CardContent>
         </Card>

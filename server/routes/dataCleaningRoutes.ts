@@ -168,4 +168,52 @@ router.get("/quality-summary", async (req, res) => {
   }
 });
 
+// Delete all data
+router.post("/delete-all", async (req, res) => {
+  try {
+    console.log("API: Starting delete all data operation");
+    
+    const { storage } = await import("../storage");
+    
+    // Get current counts before deletion
+    const servers = await storage.getAllServers();
+    const metrics = await storage.getAllMetrics(); 
+    const alerts = await storage.getAllAlerts();
+    const remediationActions = await storage.getAllRemediationActions();
+    const auditLogs = await storage.getAllAuditLogs();
+    
+    const totalBeforeDelete = servers.length + metrics.length + alerts.length + remediationActions.length + auditLogs.length;
+    
+    // Clear all data
+    await storage.clearAllServers();
+    await storage.clearAllMetrics();
+    await storage.clearAllAlerts();
+    await storage.clearAllRemediationActions();
+    await storage.clearAllAuditLogs();
+    
+    console.log(`API: Successfully deleted ${totalBeforeDelete} records`);
+    
+    res.json({
+      success: true,
+      data: {
+        totalDeleted: totalBeforeDelete,
+        breakdown: {
+          servers: servers.length,
+          metrics: metrics.length,
+          alerts: alerts.length,
+          remediationActions: remediationActions.length,
+          auditLogs: auditLogs.length
+        }
+      },
+      message: `All data deleted successfully. ${totalBeforeDelete} records removed.`
+    });
+  } catch (error) {
+    console.error("API: Error deleting all data:", error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred"
+    });
+  }
+});
+
 export default router;

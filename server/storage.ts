@@ -38,6 +38,10 @@ export interface IStorage {
   deleteMetric(id: string): Promise<void>;
   updateMetric(id: string, updates: Partial<InsertServerMetrics>): Promise<void>;
   getAllMetrics(): Promise<ServerMetrics[]>;
+  clearAllServers(): Promise<void>;
+  clearAllAlerts(): Promise<void>;
+  clearAllRemediationActions(): Promise<void>;
+  clearAllAuditLogs(): Promise<void>;
   deleteAlert(id: string): Promise<void>;
   deleteRemediationAction(id: string): Promise<void>;
   deleteAuditLog(id: string): Promise<void>;
@@ -255,6 +259,29 @@ export class DatabaseStorage implements IStorage {
 
   async clearAllMetrics(): Promise<void> {
     await db.delete(serverMetrics);
+  }
+
+  async clearAllServers(): Promise<void> {
+    // Clear all related data first to avoid foreign key constraints
+    await db.delete(serverMetrics);
+    await db.delete(alerts);
+    await db.delete(remediationActions);
+    await db.delete(auditLogs);
+    await db.delete(anomalies);
+    await db.delete(predictions);
+    await db.delete(servers);
+  }
+
+  async clearAllAlerts(): Promise<void> {
+    await db.delete(alerts);
+  }
+
+  async clearAllRemediationActions(): Promise<void> {
+    await db.delete(remediationActions);
+  }
+
+  async clearAllAuditLogs(): Promise<void> {
+    await db.delete(auditLogs);
   }
 
   async deleteMetric(id: string): Promise<void> {
