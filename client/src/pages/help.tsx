@@ -334,6 +334,278 @@ export default function HelpCenter() {
           </CardContent>
         </Card>
 
+        {/* User Guides Section */}
+        <div className="mt-8">
+          <h2 className="text-2xl font-bold mb-6">Complete User Guides</h2>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            
+            {/* Data Upload Guide */}
+            <Card className="bg-dark-surface border-dark-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Database className="h-5 w-5 text-blue-500" />
+                  Data Upload Guide
+                </CardTitle>
+                <CardDescription>How to upload server data and metrics</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="bg-dark-bg p-3 rounded-lg">
+                    <h4 className="font-medium text-blue-400 mb-2">Step 1: Prepare Your Data</h4>
+                    <ul className="text-sm space-y-1 text-slate-400">
+                      <li>• Supported formats: CSV, Excel (.xlsx), JSON</li>
+                      <li>• Include server hostnames (srv-001, server1, etc.)</li>
+                      <li>• Add metrics: CPU, memory, disk usage</li>
+                      <li>• Optional: Environment, location, tags</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-dark-bg p-3 rounded-lg">
+                    <h4 className="font-medium text-green-400 mb-2">Step 2: Upload Process</h4>
+                    <ul className="text-sm space-y-1 text-slate-400">
+                      <li>• Go to Data Management → Upload Data</li>
+                      <li>• Drag and drop or select your file</li>
+                      <li>• Review the automatic data mapping</li>
+                      <li>• Click "Process Upload" to start</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-dark-bg p-3 rounded-lg">
+                    <h4 className="font-medium text-purple-400 mb-2">Step 3: Verification</h4>
+                    <ul className="text-sm space-y-1 text-slate-400">
+                      <li>• Check upload progress in real-time</li>
+                      <li>• View processed records count</li>
+                      <li>• Verify data in Data Viewer</li>
+                      <li>• Monitor dashboard for new metrics</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Dashboard Navigation Guide */}
+            <Card className="bg-dark-surface border-dark-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-green-500" />
+                  Dashboard Navigation
+                </CardTitle>
+                <CardDescription>Master the platform interface</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="bg-dark-bg p-3 rounded-lg">
+                    <h4 className="font-medium text-green-400 mb-2">Main Dashboard</h4>
+                    <ul className="text-sm space-y-1 text-slate-400">
+                      <li>• Live server health overview</li>
+                      <li>• Real-time metrics and alerts</li>
+                      <li>• Agent status monitoring</li>
+                      <li>• Quick action buttons</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-dark-bg p-3 rounded-lg">
+                    <h4 className="font-medium text-blue-400 mb-2">Advanced Analytics</h4>
+                    <ul className="text-sm space-y-1 text-slate-400">
+                      <li>• Historical trend analysis</li>
+                      <li>• Custom time range filtering</li>
+                      <li>• Environment and severity filters</li>
+                      <li>• Export reports and charts</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-dark-bg p-3 rounded-lg">
+                    <h4 className="font-medium text-orange-400 mb-2">Alert Management</h4>
+                    <ul className="text-sm space-y-1 text-slate-400">
+                      <li>• View and acknowledge alerts</li>
+                      <li>• Filter by severity and status</li>
+                      <li>• Track remediation actions</li>
+                      <li>• Review audit logs</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Agent Management Guide */}
+            <Card className="bg-dark-surface border-dark-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bot className="h-5 w-5 text-purple-500" />
+                  Agent Management
+                </CardTitle>
+                <CardDescription>Control and monitor AI agents</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="bg-dark-bg p-3 rounded-lg">
+                    <h4 className="font-medium text-purple-400 mb-2">Agent Control Panel</h4>
+                    <ul className="text-sm space-y-1 text-slate-400">
+                      <li>• Start/stop individual agents</li>
+                      <li>• Monitor processing cycles</li>
+                      <li>• View agent performance metrics</li>
+                      <li>• Configure processing intervals</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-dark-bg p-3 rounded-lg">
+                    <h4 className="font-medium text-yellow-400 mb-2">Understanding Agent Status</h4>
+                    <ul className="text-sm space-y-1 text-slate-400">
+                      <li>• Active: Currently processing data</li>
+                      <li>• Paused: Temporarily stopped (optimization)</li>
+                      <li>• Error: Needs attention or restart</li>
+                      <li>• Idle: Waiting for next cycle</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-dark-bg p-3 rounded-lg">
+                    <h4 className="font-medium text-red-400 mb-2">Troubleshooting Agents</h4>
+                    <ul className="text-sm space-y-1 text-slate-400">
+                      <li>• Check API key configuration</li>
+                      <li>• Review processing logs</li>
+                      <li>• Restart failed agents</li>
+                      <li>• Adjust processing intervals</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Alert and Remediation Guide */}
+            <Card className="bg-dark-surface border-dark-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-red-500" />
+                  Alert & Remediation
+                </CardTitle>
+                <CardDescription>Manage alerts and automated fixes</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="bg-dark-bg p-3 rounded-lg">
+                    <h4 className="font-medium text-red-400 mb-2">Alert Lifecycle</h4>
+                    <ul className="text-sm space-y-1 text-slate-400">
+                      <li>• New: Just detected by AI agents</li>
+                      <li>• Acknowledged: Viewed by operator</li>
+                      <li>• Resolved: Issue fixed automatically/manually</li>
+                      <li>• Closed: No longer relevant</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-dark-bg p-3 rounded-lg">
+                    <h4 className="font-medium text-orange-400 mb-2">Remediation Actions</h4>
+                    <ul className="text-sm space-y-1 text-slate-400">
+                      <li>• Pending: Waiting for approval</li>
+                      <li>• Approved: Ready for execution</li>
+                      <li>• Completed: Successfully executed</li>
+                      <li>• Failed: Execution encountered errors</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-dark-bg p-3 rounded-lg">
+                    <h4 className="font-medium text-green-400 mb-2">Best Practices</h4>
+                    <ul className="text-sm space-y-1 text-slate-400">
+                      <li>• Review alerts within 15 minutes</li>
+                      <li>• Approve low-risk remediations quickly</li>
+                      <li>• Monitor execution results</li>
+                      <li>• Learn from audit logs</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Analytics and Reporting Guide */}
+            <Card className="bg-dark-surface border-dark-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-blue-500" />
+                  Analytics & Reporting
+                </CardTitle>
+                <CardDescription>Generate insights and reports</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="bg-dark-bg p-3 rounded-lg">
+                    <h4 className="font-medium text-blue-400 mb-2">Using Filters</h4>
+                    <ul className="text-sm space-y-1 text-slate-400">
+                      <li>• Time Range: 1h, 24h, 7d, 30d, 90d</li>
+                      <li>• Environment: Production, Staging, Dev</li>
+                      <li>• Status: Healthy, Warning, Critical</li>
+                      <li>• Servers: Multi-select specific servers</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-dark-bg p-3 rounded-lg">
+                    <h4 className="font-medium text-green-400 mb-2">Chart Types</h4>
+                    <ul className="text-sm space-y-1 text-slate-400">
+                      <li>• Line charts: CPU, memory trends over time</li>
+                      <li>• Bar charts: Alert distribution by severity</li>
+                      <li>• Scatter plots: Performance correlations</li>
+                      <li>• Pie charts: Server status breakdown</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-dark-bg p-3 rounded-lg">
+                    <h4 className="font-medium text-purple-400 mb-2">Exporting Data</h4>
+                    <ul className="text-sm space-y-1 text-slate-400">
+                      <li>• Export charts as PNG/SVG images</li>
+                      <li>• Download raw data as CSV/JSON</li>
+                      <li>• Generate executive summary reports</li>
+                      <li>• Schedule automated reports</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Threshold Management Guide */}
+            <Card className="bg-dark-surface border-dark-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5 text-yellow-500" />
+                  Threshold Management
+                </CardTitle>
+                <CardDescription>Configure monitoring thresholds</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="bg-dark-bg p-3 rounded-lg">
+                    <h4 className="font-medium text-yellow-400 mb-2">Environment-Specific</h4>
+                    <ul className="text-sm space-y-1 text-slate-400">
+                      <li>• Production: Strict thresholds (80% CPU)</li>
+                      <li>• Staging: Moderate thresholds (85% CPU)</li>
+                      <li>• Development: Relaxed thresholds (90% CPU)</li>
+                      <li>• Custom: Define your own thresholds</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-dark-bg p-3 rounded-lg">
+                    <h4 className="font-medium text-orange-400 mb-2">Metric Types</h4>
+                    <ul className="text-sm space-y-1 text-slate-400">
+                      <li>• CPU Usage: Warning and critical levels</li>
+                      <li>• Memory Usage: Available RAM thresholds</li>
+                      <li>• Disk Space: Free space percentages</li>
+                      <li>• Network Latency: Response time limits</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-dark-bg p-3 rounded-lg">
+                    <h4 className="font-medium text-red-400 mb-2">Alert Configuration</h4>
+                    <ul className="text-sm space-y-1 text-slate-400">
+                      <li>• Set warning and critical thresholds</li>
+                      <li>• Configure alert frequency limits</li>
+                      <li>• Enable/disable notifications</li>
+                      <li>• Test threshold settings</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
         {/* Contact & Support */}
         <Card className="mt-6 bg-dark-surface border-dark-border">
           <CardHeader>
