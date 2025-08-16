@@ -534,8 +534,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Processing ${extractionResult.extractedData.length} ${extractionResult.dataType} records...`);
 
+      // Pre-fetch all servers to avoid repeated database calls
+      const allServers = await storage.getAllServers();
+      const serverByHostname = new Map();
+      allServers.forEach(server => {
+        serverByHostname.set(server.hostname, server);
+      });
+      
+      console.log(`Pre-fetched ${allServers.length} servers for fast lookup: ${allServers.map(s => s.hostname).join(', ')}`);
+
+      // Track processing progress for large uploads
+      const total = extractionResult.extractedData.length;
+      let processed = 0;
+      let lastProgressLog = 0;
+
       // Process extracted data based on detected type
       for (const item of extractionResult.extractedData) {
+        processed++;
+        
+        // Log progress every 10% for large uploads
+        if (total > 100 && processed - lastProgressLog >= Math.floor(total / 10)) {
+          console.log(`Progress: ${processed}/${total} records processed (${Math.round(processed/total*100)}%), ${count} successful so far`);
+          lastProgressLog = processed;
+        }
         try {
           if (extractionResult.dataType === 'servers') {
             // Check if server already exists
@@ -553,12 +574,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } else if (extractionResult.dataType === 'metrics') {
             let serverId = item.serverId || item.serverid || item.server_id;
             
-            // Try multiple approaches to find the server
+            // Try multiple approaches to find the server using pre-fetched data
             let targetServer = null;
             
             // 1. First try direct hostname lookup
             if (item.hostname) {
-              targetServer = await storage.getServerByHostname(item.hostname);
+              targetServer = serverByHostname.get(item.hostname);
             }
             
             // 2. If no hostname, try to map serverid to hostname pattern
@@ -568,14 +589,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const numberPart = serverId.replace('SRV-', '');
                 const serverNumber = parseInt(numberPart, 10).toString(); // Convert to number then back to string to remove leading zeros
                 const expectedHostname = `server${serverNumber}`;
-                targetServer = await storage.getServerByHostname(expectedHostname);
-                console.log(`Trying to map ${serverId} (number: ${numberPart} -> ${serverNumber}) to hostname: ${expectedHostname}, found: ${!!targetServer}`);
+                targetServer = serverByHostname.get(expectedHostname);
+                
+                // Early termination for unmappable server ranges
+                if (!targetServer && parseInt(numberPart, 10) > 10) {
+                  if (errors.length < 5) { // Only add first few range errors
+                    errors.push(`Server range beyond SRV-010 not supported (found ${serverId})`);
+                  }
+                  continue; // Skip processing for servers beyond our range
+                }
+                
+                if (count < 3) { // Only log first few for debugging
+                  console.log(`Trying to map ${serverId} (number: ${numberPart} -> ${serverNumber}) to hostname: ${expectedHostname}, found: ${!!targetServer}`);
+                }
               }
             }
             
             // 3. If still no server, try to find by serverId as hostname directly
             if (!targetServer && serverId) {
-              targetServer = await storage.getServerByHostname(serverId);
+              targetServer = serverByHostname.get(serverId);
             }
 
             if (targetServer) {
@@ -591,12 +623,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 networkThroughput: item.networkThroughput || null
               });
               count++;
-              console.log(`✓ Successfully mapped metrics for ${serverId} to server ${targetServer.hostname}`);
+              if (count < 5) { // Only log first few successes
+                console.log(`✓ Successfully mapped metrics for ${serverId} to server ${targetServer.hostname}`);
+              }
             } else {
               const identifier = item.hostname || serverId || 'unknown';
-              errors.push(`Metrics for ${identifier}: Server not found in database`);
-              console.log(`✗ Could not find server for identifier: ${identifier}. Available servers:`, 
-                await storage.getAllServers().then(servers => servers.map(s => `${s.hostname}(${s.id.slice(0,8)})`).join(', ')));
+              if (errors.length < 10) { // Limit error collection for performance
+                errors.push(`Metrics for ${identifier}: Server not found in database`);
+              }
+              if (errors.length === 1) { // Only show available servers once
+                console.log(`✗ Could not find server for identifier: ${identifier}. Available servers:`, 
+                  allServers.map(s => s.hostname).join(', '));
+              }
             }
           } else if (extractionResult.dataType === 'alerts') {
             // Handle different serverId field names (ServerID, serverId, server_id)
