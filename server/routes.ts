@@ -533,7 +533,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let serversCreated = 0;
       const errors: string[] = [];
       
-      console.log(`Processing ${extractionResult.extractedData.length} ${extractionResult.dataType} records...`);
+      // Processing records with optimized speed
 
       // Pre-fetch all servers to avoid repeated database calls
       const allServers = await storage.getAllServers();
@@ -542,7 +542,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         serverByHostname.set(server.hostname, server);
       });
       
-      console.log(`Pre-fetched ${allServers.length} servers for fast lookup: ${allServers.map(s => s.hostname).join(', ')}`);
+      // Reduced logging for faster uploads
 
       // Track processing progress for large uploads
       const total = extractionResult.extractedData.length;
@@ -564,14 +564,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
 
-      // OPTIMIZED BATCH PROCESSING - Process in chunks of 100 for better performance
-      const BATCH_SIZE = 100;
+      // OPTIMIZED BATCH PROCESSING - Increase batch size for better performance
+      const BATCH_SIZE = 500;
       const batches = [];
       for (let i = 0; i < extractionResult.extractedData.length; i += BATCH_SIZE) {
         batches.push(extractionResult.extractedData.slice(i, i + BATCH_SIZE));
       }
       
-      console.log(`🚀 OPTIMIZED BATCH UPLOAD: Processing ${total} records in ${batches.length} batches of ${BATCH_SIZE}`);
+      console.log(`⚡ FAST BATCH UPLOAD: ${total} records in ${batches.length} batches`);
       
       for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
         const batch = batches[batchIndex];
@@ -586,73 +586,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
             let serverId = item.serverId || item.serverid || item.server_id || item.ServerID;
             let targetServer = null;
             
-            // DEBUG: Log the item to see what we're working with
-            console.log(`🔍 Processing metrics item:`, {
-              serverId,
-              hostname: item.hostname,
-              keys: Object.keys(item),
-              allServerHostnames: Array.from(serverByHostname.keys())
-            });
-            
             if (item.hostname) {
               targetServer = serverByHostname.get(item.hostname);
-              console.log(`🎯 Hostname lookup for "${item.hostname}":`, targetServer ? 'FOUND' : 'NOT FOUND');
             }
             
-            // Try direct server ID mapping (case-insensitive)
+            // Fast server ID mapping (case-insensitive)
             if (!targetServer && serverId) {
-              console.log(`🔍 Trying server ID "${serverId}" mapping...`);
-              
               // Try exact match first
               targetServer = serverByHostname.get(serverId);
-              if (targetServer) {
-                console.log(`✅ Exact match found for "${serverId}"`);
-              }
               
-              // Try case-insensitive match
+              // Try case-insensitive match only if needed
               if (!targetServer) {
+                const lowerServerId = serverId.toLowerCase();
                 for (const [hostname, server] of serverByHostname.entries()) {
-                  if (hostname.toLowerCase() === serverId.toLowerCase()) {
+                  if (hostname.toLowerCase() === lowerServerId) {
                     targetServer = server;
-                    console.log(`✅ Case-insensitive match found: "${serverId}" → "${hostname}"`);
                     break;
                   }
                 }
               }
-              
-              // Try SRV-xxx → server pattern
-              if (!targetServer && serverId.toUpperCase().startsWith('SRV-')) {
-                const numberPart = serverId.replace(/SRV-/i, '');
-                const serverNumber = parseInt(numberPart, 10).toString();
-                const expectedHostname = `server${serverNumber}`;
-                targetServer = serverByHostname.get(expectedHostname);
-                console.log(`🔍 SRV pattern: "${serverId}" → "${expectedHostname}":`, targetServer ? 'FOUND' : 'NOT FOUND');
-                
-                if (!targetServer) {
-                  try {
-                    const newServer = await storage.createServer({
-                      hostname: expectedHostname,
-                      ipAddress: `192.168.1.${100 + parseInt(serverNumber)}`,
-                      environment: 'production',
-                      status: 'healthy',
-                      location: 'datacenter-1'
-                    });
-                    serverByHostname.set(expectedHostname, newServer);
-                    targetServer = newServer;
-                    serversCreated++;
-                    console.log(`✅ Created new server: "${expectedHostname}"`);
-                  } catch (error) {
-                    console.log(`❌ Failed to create server "${expectedHostname}":`, error.message);
-                    continue;
-                  }
-                }
-              }
-              
-              if (!targetServer) {
-                console.log(`❌ No server found for ID "${serverId}"`);
-              }
-            } else {
-              console.log(`❌ No server ID found in item:`, Object.keys(item));
             }
             
             if (targetServer) {
@@ -734,30 +686,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         processed = (batchIndex + 1) * BATCH_SIZE;
         if (processed > total) processed = total;
         
-        // Progress updates per batch (much less frequent)
-        const progressPercent = Math.round((processed / total) * 100);
-        const timeElapsed = Date.now() - startTime;
-        const batchTime = Date.now() - batchStartTime;
+        // Only broadcast progress for large uploads to reduce WebSocket overhead
+        if (total > 100 && batchIndex % 5 === 0) {
+          const progressPercent = Math.round((processed / total) * 100);
+          const timeElapsed = Date.now() - startTime;
+          const batchTime = Date.now() - batchStartTime;
+          
+          wsManager.broadcast({
+            type: 'upload_progress',
+            data: {
+              progress: progressPercent,
+              processed,
+              total,
+              successful: count,
+              failed: processed - count,
+              serversCreated,
+              dataType: extractionResult.dataType,
+              status: 'processing',
+              timeElapsed: Math.round(timeElapsed / 1000),
+              batchNumber: batchIndex + 1,
+              totalBatches: batches.length,
+              batchTime: Math.round(batchTime)
+            }
+          });
+        }
         
-        wsManager.broadcast({
-          type: 'upload_progress',
-          data: {
-            progress: progressPercent,
-            processed,
-            total,
-            successful: count,
-            failed: processed - count,
-            serversCreated,
-            dataType: extractionResult.dataType,
-            status: 'processing',
-            timeElapsed: Math.round(timeElapsed / 1000),
-            batchNumber: batchIndex + 1,
-            totalBatches: batches.length,
-            batchTime: Math.round(batchTime)
-          }
-        });
-        
-        console.log(`⚡ Batch ${batchIndex + 1}/${batches.length} completed in ${batchTime}ms - ${count} successful records so far`);
+        console.log(`⚡ Batch ${batchIndex + 1}/${batches.length}: ${batchTime}ms - ${count} records`);
       }
 
       // Send final progress update
