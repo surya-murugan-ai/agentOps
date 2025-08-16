@@ -583,23 +583,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const metricsToInsert = [];
           
           for (const item of batch) {
-            let serverId = item.serverId || item.serverid || item.server_id;
+            let serverId = item.serverId || item.serverid || item.server_id || item.ServerID;
             let targetServer = null;
+            
+            // DEBUG: Log the item to see what we're working with
+            console.log(`🔍 Processing metrics item:`, {
+              serverId,
+              hostname: item.hostname,
+              keys: Object.keys(item),
+              allServerHostnames: Array.from(serverByHostname.keys())
+            });
             
             if (item.hostname) {
               targetServer = serverByHostname.get(item.hostname);
+              console.log(`🎯 Hostname lookup for "${item.hostname}":`, targetServer ? 'FOUND' : 'NOT FOUND');
             }
             
             // Try direct server ID mapping (case-insensitive)
             if (!targetServer && serverId) {
+              console.log(`🔍 Trying server ID "${serverId}" mapping...`);
+              
               // Try exact match first
               targetServer = serverByHostname.get(serverId);
+              if (targetServer) {
+                console.log(`✅ Exact match found for "${serverId}"`);
+              }
               
               // Try case-insensitive match
               if (!targetServer) {
                 for (const [hostname, server] of serverByHostname.entries()) {
                   if (hostname.toLowerCase() === serverId.toLowerCase()) {
                     targetServer = server;
+                    console.log(`✅ Case-insensitive match found: "${serverId}" → "${hostname}"`);
                     break;
                   }
                 }
@@ -611,6 +626,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const serverNumber = parseInt(numberPart, 10).toString();
                 const expectedHostname = `server${serverNumber}`;
                 targetServer = serverByHostname.get(expectedHostname);
+                console.log(`🔍 SRV pattern: "${serverId}" → "${expectedHostname}":`, targetServer ? 'FOUND' : 'NOT FOUND');
                 
                 if (!targetServer) {
                   try {
@@ -624,11 +640,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     serverByHostname.set(expectedHostname, newServer);
                     targetServer = newServer;
                     serversCreated++;
+                    console.log(`✅ Created new server: "${expectedHostname}"`);
                   } catch (error) {
+                    console.log(`❌ Failed to create server "${expectedHostname}":`, error.message);
                     continue;
                   }
                 }
               }
+              
+              if (!targetServer) {
+                console.log(`❌ No server found for ID "${serverId}"`);
+              }
+            } else {
+              console.log(`❌ No server ID found in item:`, Object.keys(item));
             }
             
             if (targetServer) {
