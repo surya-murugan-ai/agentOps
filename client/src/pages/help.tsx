@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   HelpCircle, 
   Activity, 
@@ -15,25 +18,165 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  DollarSign
+  DollarSign,
+  Book,
+  FileText,
+  ChevronRight,
+  Home,
+  Upload,
+  BarChart3,
+  Monitor
 } from 'lucide-react';
 
 export default function HelpCenter() {
+  const [activeSection, setActiveSection] = useState('overview');
+
+  const navigationSections = [
+    { id: 'overview', title: 'Overview', icon: Home },
+    { id: 'quick-start', title: 'Quick Start Guide', icon: Zap },
+    { id: 'data-upload', title: 'Data Upload', icon: Upload },
+    { id: 'dashboard', title: 'Dashboard Navigation', icon: Monitor },
+    { id: 'agents', title: 'Agent Management', icon: Bot },
+    { id: 'alerts', title: 'Alerts & Remediation', icon: AlertTriangle },
+    { id: 'analytics', title: 'Analytics & Reports', icon: BarChart3 },
+    { id: 'thresholds', title: 'Threshold Management', icon: Settings },
+    { id: 'troubleshooting', title: 'Troubleshooting', icon: Shield },
+    { id: 'api-reference', title: 'API Reference', icon: FileText }
+  ];
+
+  const scrollToSection = (sectionId: string) => {
+    setActiveSection(sectionId);
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-dark-bg text-white p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <HelpCircle className="h-8 w-8 text-primary" />
-            <h1 className="text-3xl font-bold">AgentOps Help Center</h1>
+    <div className="min-h-screen bg-dark-bg text-white">
+      <div className="flex">
+        {/* Sidebar Navigation */}
+        <div className="w-80 bg-dark-surface border-r border-dark-border h-screen sticky top-0">
+          <div className="p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <HelpCircle className="h-6 w-6 text-primary" />
+              <h1 className="text-xl font-bold">Help Center</h1>
+            </div>
+            
+            <ScrollArea className="h-[calc(100vh-120px)]">
+              <nav className="space-y-2">
+                {navigationSections.map((section) => {
+                  const IconComponent = section.icon;
+                  return (
+                    <button
+                      key={section.id}
+                      onClick={() => scrollToSection(section.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                        activeSection === section.id
+                          ? 'bg-primary/20 text-primary border border-primary/30'
+                          : 'hover:bg-dark-bg text-slate-300 hover:text-white'
+                      }`}
+                      data-testid={`nav-${section.id}`}
+                    >
+                      <IconComponent size={16} />
+                      <span className="text-sm">{section.title}</span>
+                      <ChevronRight size={14} className="ml-auto opacity-50" />
+                    </button>
+                  );
+                })}
+              </nav>
+            </ScrollArea>
           </div>
-          <p className="text-slate-400 text-lg">
-            Complete guide to using the AI-powered server monitoring and automated remediation platform
-          </p>
         </div>
 
-        {/* Quick Status Guide */}
+        {/* Main Content */}
+        <div className="flex-1 p-6">
+          <div className="max-w-4xl mx-auto">
+            {/* Header */}
+            <div className="mb-8" id="overview">
+              <div className="flex items-center gap-3 mb-4">
+                <Book className="h-8 w-8 text-primary" />
+                <h1 className="text-3xl font-bold">AgentOps Documentation</h1>
+              </div>
+              <p className="text-slate-400 text-lg">
+                Complete guide to using the AI-powered server monitoring and automated remediation platform
+              </p>
+            </div>
+
+        {/* Quick Start Guide */}
+        <section id="quick-start" className="mb-12">
+          <div className="flex items-center gap-3 mb-6">
+            <Zap className="h-6 w-6 text-yellow-500" />
+            <h2 className="text-2xl font-bold">Quick Start Guide</h2>
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <Card className="bg-dark-surface border-dark-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span className="bg-blue-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold">1</span>
+                  Upload Your Data
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-slate-400 text-sm mb-3">Start by uploading your server data to begin monitoring</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => scrollToSection('data-upload')}
+                  className="w-full"
+                  data-testid="quick-start-data-upload"
+                >
+                  View Upload Guide <ChevronRight size={14} className="ml-1" />
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-dark-surface border-dark-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span className="bg-green-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold">2</span>
+                  Configure Agents
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-slate-400 text-sm mb-3">Set up AI agents to monitor your infrastructure</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => scrollToSection('agents')}
+                  className="w-full"
+                  data-testid="quick-start-agents"
+                >
+                  Agent Setup <ChevronRight size={14} className="ml-1" />
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-dark-surface border-dark-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span className="bg-purple-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold">3</span>
+                  Monitor & Analyze
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-slate-400 text-sm mb-3">Use dashboards and analytics to track performance</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => scrollToSection('dashboard')}
+                  className="w-full"
+                  data-testid="quick-start-dashboard"
+                >
+                  Dashboard Guide <ChevronRight size={14} className="ml-1" />
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+
+        {/* System Status Understanding */}
         <Card className="mb-8 bg-dark-surface border-dark-border">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -334,20 +477,17 @@ export default function HelpCenter() {
           </CardContent>
         </Card>
 
-        {/* User Guides Section */}
-        <div className="mt-8">
-          <h2 className="text-2xl font-bold mb-6">Complete User Guides</h2>
+        {/* Data Upload Guide */}
+        <section id="data-upload" className="mb-12">
+          <div className="flex items-center gap-3 mb-6">
+            <Upload className="h-6 w-6 text-blue-500" />
+            <h2 className="text-2xl font-bold">Data Upload Guide</h2>
+          </div>
           
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            
-            {/* Data Upload Guide */}
-            <Card className="bg-dark-surface border-dark-border">
+          <Card className="bg-dark-surface border-dark-border">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Database className="h-5 w-5 text-blue-500" />
-                  Data Upload Guide
-                </CardTitle>
-                <CardDescription>How to upload server data and metrics</CardDescription>
+                <CardTitle>Step-by-Step Upload Process</CardTitle>
+                <CardDescription>How to upload server data and metrics to start monitoring</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
@@ -384,14 +524,19 @@ export default function HelpCenter() {
               </CardContent>
             </Card>
 
-            {/* Dashboard Navigation Guide */}
-            <Card className="bg-dark-surface border-dark-border">
+        </section>
+
+        {/* Dashboard Navigation Guide */}
+        <section id="dashboard" className="mb-12">
+          <div className="flex items-center gap-3 mb-6">
+            <Monitor className="h-6 w-6 text-green-500" />
+            <h2 className="text-2xl font-bold">Dashboard Navigation</h2>
+          </div>
+          
+          <Card className="bg-dark-surface border-dark-border">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-green-500" />
-                  Dashboard Navigation
-                </CardTitle>
-                <CardDescription>Master the platform interface</CardDescription>
+                <CardTitle>Platform Interface Guide</CardTitle>
+                <CardDescription>Master the dashboard and navigate all platform features</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
@@ -428,14 +573,19 @@ export default function HelpCenter() {
               </CardContent>
             </Card>
 
-            {/* Agent Management Guide */}
-            <Card className="bg-dark-surface border-dark-border">
+        </section>
+
+        {/* Agent Management Guide */}
+        <section id="agents" className="mb-12">
+          <div className="flex items-center gap-3 mb-6">
+            <Bot className="h-6 w-6 text-purple-500" />
+            <h2 className="text-2xl font-bold">Agent Management</h2>
+          </div>
+          
+          <Card className="bg-dark-surface border-dark-border">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Bot className="h-5 w-5 text-purple-500" />
-                  Agent Management
-                </CardTitle>
-                <CardDescription>Control and monitor AI agents</CardDescription>
+                <CardTitle>AI Agent Control & Monitoring</CardTitle>
+                <CardDescription>Control, configure, and troubleshoot the 9 specialized AI agents</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
@@ -472,14 +622,19 @@ export default function HelpCenter() {
               </CardContent>
             </Card>
 
-            {/* Alert and Remediation Guide */}
-            <Card className="bg-dark-surface border-dark-border">
+        </section>
+
+        {/* Alert and Remediation Guide */}
+        <section id="alerts" className="mb-12">
+          <div className="flex items-center gap-3 mb-6">
+            <AlertTriangle className="h-6 w-6 text-red-500" />
+            <h2 className="text-2xl font-bold">Alerts & Remediation</h2>
+          </div>
+          
+          <Card className="bg-dark-surface border-dark-border">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-red-500" />
-                  Alert & Remediation
-                </CardTitle>
-                <CardDescription>Manage alerts and automated fixes</CardDescription>
+                <CardTitle>Incident Management Workflow</CardTitle>
+                <CardDescription>Handle alerts, approve remediations, and track resolutions</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
@@ -516,14 +671,19 @@ export default function HelpCenter() {
               </CardContent>
             </Card>
 
-            {/* Analytics and Reporting Guide */}
-            <Card className="bg-dark-surface border-dark-border">
+        </section>
+
+        {/* Analytics and Reporting Guide */}
+        <section id="analytics" className="mb-12">
+          <div className="flex items-center gap-3 mb-6">
+            <BarChart3 className="h-6 w-6 text-blue-500" />
+            <h2 className="text-2xl font-bold">Analytics & Reporting</h2>
+          </div>
+          
+          <Card className="bg-dark-surface border-dark-border">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-blue-500" />
-                  Analytics & Reporting
-                </CardTitle>
-                <CardDescription>Generate insights and reports</CardDescription>
+                <CardTitle>Advanced Analytics & Insights</CardTitle>
+                <CardDescription>Use filters, generate reports, and export data for analysis</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
@@ -560,14 +720,19 @@ export default function HelpCenter() {
               </CardContent>
             </Card>
 
-            {/* Threshold Management Guide */}
-            <Card className="bg-dark-surface border-dark-border">
+        </section>
+
+        {/* Threshold Management Guide */}
+        <section id="thresholds" className="mb-12">
+          <div className="flex items-center gap-3 mb-6">
+            <Settings className="h-6 w-6 text-yellow-500" />
+            <h2 className="text-2xl font-bold">Threshold Management</h2>
+          </div>
+          
+          <Card className="bg-dark-surface border-dark-border">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5 text-yellow-500" />
-                  Threshold Management
-                </CardTitle>
-                <CardDescription>Configure monitoring thresholds</CardDescription>
+                <CardTitle>Environment-Specific Configuration</CardTitle>
+                <CardDescription>Set up monitoring thresholds for different environments and metrics</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
@@ -604,45 +769,207 @@ export default function HelpCenter() {
               </CardContent>
             </Card>
           </div>
-        </div>
+        </section>
 
-        {/* Contact & Support */}
-        <Card className="mt-6 bg-dark-surface border-dark-border">
-          <CardHeader>
-            <CardTitle>Getting Additional Help</CardTitle>
-            <CardDescription>Resources and support options</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <h4 className="font-medium">Quick Health Checks</h4>
-                  <ul className="text-sm text-slate-400 space-y-1">
-                    <li>• Visit /api/health for basic system status</li>
-                    <li>• Check /api/system/api-status for API health</li>
-                    <li>• Monitor agent dashboard for real-time status</li>
+        {/* Troubleshooting Guide */}
+        <section id="troubleshooting" className="mb-12">
+          <div className="flex items-center gap-3 mb-6">
+            <Shield className="h-6 w-6 text-orange-500" />
+            <h2 className="text-2xl font-bold">Troubleshooting</h2>
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="bg-dark-surface border-dark-border">
+              <CardHeader>
+                <CardTitle className="text-orange-400">Common Issues</CardTitle>
+                <CardDescription>Quick fixes for frequent problems</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="border border-orange-500/20 p-3 rounded-lg">
+                  <h4 className="font-medium text-orange-400 mb-2">API Quota Exceeded</h4>
+                  <p className="text-sm text-slate-400 mb-2">System shows "quota_exceeded" status</p>
+                  <ul className="text-xs text-slate-500 space-y-1">
+                    <li>• Normal behavior - optimization will reduce usage</li>
+                    <li>• Agents automatically pause expensive operations</li>
+                    <li>• System continues monitoring with fallback methods</li>
                   </ul>
                 </div>
                 
-                <div className="space-y-2">
-                  <h4 className="font-medium">Documentation</h4>
-                  <ul className="text-sm text-slate-400 space-y-1">
-                    <li>• LOCAL_SETUP_GUIDE.md for installation</li>
-                    <li>• QUICK_START.md for getting started</li>
-                    <li>• OPTIMIZATION_SUMMARY.md for cost details</li>
+                <div className="border border-yellow-500/20 p-3 rounded-lg">
+                  <h4 className="font-medium text-yellow-400 mb-2">9/7 Agent Ratio</h4>
+                  <p className="text-sm text-slate-400 mb-2">More total agents than active monitoring</p>
+                  <ul className="text-xs text-slate-500 space-y-1">
+                    <li>• Normal when optimization features are working</li>
+                    <li>• 2 agents paused to save API costs</li>
+                    <li>• Circuit breakers preventing excessive alerts</li>
                   </ul>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-dark-surface border-dark-border">
+              <CardHeader>
+                <CardTitle className="text-red-400">Error Resolution</CardTitle>
+                <CardDescription>Steps to resolve system errors</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="border border-red-500/20 p-3 rounded-lg">
+                  <h4 className="font-medium text-red-400 mb-2">Missing Data</h4>
+                  <p className="text-sm text-slate-400 mb-2">Charts showing empty or minimal data</p>
+                  <ul className="text-xs text-slate-500 space-y-1">
+                    <li>• Check if agents are collecting telemetry</li>
+                    <li>• Verify database connectivity</li>
+                    <li>• Wait for next collection cycle (30 seconds)</li>
+                  </ul>
+                </div>
+                
+                <div className="border border-blue-500/20 p-3 rounded-lg">
+                  <h4 className="font-medium text-blue-400 mb-2">Upload Issues</h4>
+                  <p className="text-sm text-slate-400 mb-2">File upload failures or errors</p>
+                  <ul className="text-xs text-slate-500 space-y-1">
+                    <li>• Check file format (CSV, Excel, JSON)</li>
+                    <li>• Ensure proper column headers</li>
+                    <li>• Verify file size limits (10MB max)</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+
+        {/* API Reference */}
+        <section id="api-reference" className="mb-12">
+          <div className="flex items-center gap-3 mb-6">
+            <FileText className="h-6 w-6 text-purple-500" />
+            <h2 className="text-2xl font-bold">API Reference</h2>
+          </div>
+          
+          <Card className="bg-dark-surface border-dark-border">
+            <CardHeader>
+              <CardTitle>Health Check Endpoints</CardTitle>
+              <CardDescription>Monitor system health and API status</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-dark-bg p-4 rounded-lg font-mono text-sm">
+                  <div className="text-green-400 mb-2">GET /api/health</div>
+                  <p className="text-slate-400 text-xs mb-2">Basic system status check</p>
+                  <div className="text-slate-500 text-xs">
+                    Returns: {"{ status: 'ok', timestamp: '...' }"}
+                  </div>
+                </div>
+                
+                <div className="bg-dark-bg p-4 rounded-lg font-mono text-sm">
+                  <div className="text-blue-400 mb-2">GET /api/system/api-status</div>
+                  <p className="text-slate-400 text-xs mb-2">Detailed API health information</p>
+                  <div className="text-slate-500 text-xs">
+                    Returns: OpenAI status, rate limits, errors
+                  </div>
+                </div>
+                
+                <div className="bg-dark-bg p-4 rounded-lg font-mono text-sm">
+                  <div className="text-purple-400 mb-2">GET /api/agents</div>
+                  <p className="text-slate-400 text-xs mb-2">List all AI agents and their status</p>
+                  <div className="text-slate-500 text-xs">
+                    Returns: Agent list with activity status
+                  </div>
+                </div>
+                
+                <div className="bg-dark-bg p-4 rounded-lg font-mono text-sm">
+                  <div className="text-yellow-400 mb-2">GET /api/dashboard/metrics</div>
+                  <p className="text-slate-400 text-xs mb-2">Dashboard summary metrics</p>
+                  <div className="text-slate-500 text-xs">
+                    Returns: Server counts, health status
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Getting Help */}
+        <Card className="bg-dark-surface border-dark-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <HelpCircle className="h-5 w-5 text-blue-500" />
+              Getting Additional Help
+            </CardTitle>
+            <CardDescription>Resources and support options</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <h4 className="font-medium text-blue-400">Quick Health Checks</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <code className="text-green-400">/api/health</code>
+                      <span className="text-slate-400">- Basic system status</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-blue-500" />
+                      <code className="text-blue-400">/api/system/api-status</code>
+                      <span className="text-slate-400">- API health</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-purple-500" />
+                      <span className="text-slate-400">Agent Control Dashboard - Real-time monitoring</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  <h4 className="font-medium text-green-400">Documentation Files</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-blue-500" />
+                      <code className="text-blue-400">LOCAL_SETUP_GUIDE.md</code>
+                      <span className="text-slate-400">- Installation</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-green-500" />
+                      <code className="text-green-400">QUICK_START.md</code>
+                      <span className="text-slate-400">- Getting started</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-yellow-500" />
+                      <code className="text-yellow-400">OPTIMIZATION_SUMMARY.md</code>
+                      <span className="text-slate-400">- Cost details</span>
+                    </div>
+                  </div>
                 </div>
               </div>
               
               <Separator className="bg-dark-border" />
               
-              <div className="text-center text-sm text-slate-500">
-                <p>AgentOps v1.0 - AI-Powered Infrastructure Monitoring Platform</p>
-                <p className="mt-1">Built with OpenAI GPT-4o and Claude Sonnet for intelligent automation</p>
+              <div className="text-center">
+                <div className="text-sm text-slate-500 mb-2">
+                  <strong className="text-white">AgentOps v1.0</strong> - AI-Powered Infrastructure Monitoring Platform
+                </div>
+                <div className="text-xs text-slate-600">
+                  Built with OpenAI GPT-4o and Claude Sonnet for intelligent automation
+                </div>
+                <div className="mt-4 flex justify-center gap-4">
+                  <Badge variant="secondary" className="bg-green-900 text-green-300">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Production Ready
+                  </Badge>
+                  <Badge variant="secondary" className="bg-blue-900 text-blue-300">
+                    <Zap className="h-3 w-3 mr-1" />
+                    Cost Optimized
+                  </Badge>
+                  <Badge variant="secondary" className="bg-purple-900 text-purple-300">
+                    <Bot className="h-3 w-3 mr-1" />
+                    AI Powered
+                  </Badge>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
