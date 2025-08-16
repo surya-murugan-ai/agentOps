@@ -36,13 +36,15 @@ export default function DataViewPage() {
   const { data: metrics, isLoading: metricsLoading } = useQuery({
     queryKey: ["/api/metrics/all"],
     queryFn: async () => {
-      const response = await fetch(`/api/metrics/all?limit=1000`);
+      const response = await fetch(`/api/metrics/all?limit=1000&_=${Date.now()}`);
       if (!response.ok) {
         throw new Error('Failed to fetch metrics');
       }
       return response.json();
     },
-    refetchInterval: 30000  // Refresh every 30 seconds to show real-time data
+    refetchInterval: 10000,  // Refresh every 10 seconds for real-time updates
+    staleTime: 0,  // Always consider data stale to force fresh fetches
+    cacheTime: 5000  // Keep cache for only 5 seconds
   });
 
   const { data: alerts, isLoading: alertsLoading } = useQuery({

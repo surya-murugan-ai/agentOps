@@ -180,19 +180,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // All metrics endpoint with pagination for data viewer
+  // All metrics endpoint with pagination for data viewer - no caching for accurate counts
   app.get("/api/metrics/all", asyncHandler(async (req, res) => {
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 1000;
     const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
     
-    const metrics = await getCached(
-      `metrics:all:${limit}:${offset}`,
-      () => storage.getAllMetrics(limit + offset),
-      cacheTTL.metrics
-    );
+    // Direct database call for real-time accurate count
+    const metrics = await storage.getAllMetrics(limit + offset);
     
     // Apply offset manually since storage doesn't support it
     const paginatedMetrics = metrics.slice(offset, offset + limit);
+    
+    // Add cache-control headers to prevent browser caching
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
     
     res.json(paginatedMetrics);
   }));
