@@ -563,10 +563,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (!targetServer && serverId) {
               // Convert SRV-001 -> server1, SRV-002 -> server2, etc.
               if (serverId.startsWith('SRV-')) {
-                const serverNumber = serverId.replace('SRV-', '').replace(/^0+/, ''); // Remove leading zeros
+                const numberPart = serverId.replace('SRV-', '');
+                const serverNumber = parseInt(numberPart, 10).toString(); // Convert to number then back to string to remove leading zeros
                 const expectedHostname = `server${serverNumber}`;
                 targetServer = await storage.getServerByHostname(expectedHostname);
-                console.log(`Trying to map ${serverId} to hostname: ${expectedHostname}, found: ${!!targetServer}`);
+                console.log(`Trying to map ${serverId} (number: ${numberPart} -> ${serverNumber}) to hostname: ${expectedHostname}, found: ${!!targetServer}`);
               }
             }
             
