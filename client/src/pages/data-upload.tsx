@@ -28,6 +28,7 @@ interface UploadState {
   total?: number;
   successful?: number;
   failed?: number;
+  serversCreated?: number;
   timeElapsed?: number;
   timeRemaining?: number;
   status?: 'processing' | 'completed' | 'error';
@@ -76,6 +77,7 @@ export default function DataUploadPage() {
               total: data.data.total,
               successful: data.data.successful,
               failed: data.data.failed,
+              serversCreated: data.data.serversCreated,
               timeElapsed: data.data.timeElapsed,
               timeRemaining: data.data.timeRemaining,
               status: data.data.status,
@@ -735,7 +737,7 @@ export default function DataUploadPage() {
                         </div>
 
                         {uploadState.total && (
-                          <div className="grid grid-cols-3 gap-4 text-sm">
+                          <div className="grid grid-cols-4 gap-3 text-sm">
                             <div className="text-center">
                               <div className="text-white font-semibold">
                                 {uploadState.processed || 0}
@@ -747,6 +749,12 @@ export default function DataUploadPage() {
                                 {uploadState.successful || 0}
                               </div>
                               <div className="text-slate-400">Successful</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-blue-400 font-semibold">
+                                {uploadState.serversCreated || 0}
+                              </div>
+                              <div className="text-slate-400">Created</div>
                             </div>
                             <div className="text-center">
                               <div className="text-red-400 font-semibold">

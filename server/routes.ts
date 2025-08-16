@@ -530,6 +530,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       let count = 0;
+      let serversCreated = 0;
       const errors: string[] = [];
       
       console.log(`Processing ${extractionResult.extractedData.length} ${extractionResult.dataType} records...`);
@@ -582,6 +583,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               processed,
               total,
               successful: count,
+              failed: processed - count,
+              serversCreated,
               dataType: extractionResult.dataType,
               status: 'processing',
               timeElapsed: Math.round(timeElapsed / 1000),
@@ -626,12 +629,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const expectedHostname = `server${serverNumber}`;
                 targetServer = serverByHostname.get(expectedHostname);
                 
-                // Early termination for unmappable server ranges
-                if (!targetServer && parseInt(numberPart, 10) > 10) {
-                  if (errors.length < 5) { // Only add first few range errors
-                    errors.push(`Server range beyond SRV-010 not supported (found ${serverId})`);
+                // Auto-create missing servers for large datasets
+                if (!targetServer) {
+                  const expectedHostname = `server${serverNumber}`;
+                  
+                  // Create the missing server automatically
+                  try {
+                    const newServer = await storage.createServer({
+                      hostname: expectedHostname,
+                      ipAddress: `192.168.1.${100 + parseInt(serverNumber)}`, // Generate IP
+                      environment: 'production',
+                      status: 'healthy',
+                      location: 'datacenter-1'
+                    });
+                    
+                    // Update our cache
+                    serverByHostname.set(expectedHostname, newServer);
+                    targetServer = newServer;
+                    
+                    serversCreated++;
+                    if (serversCreated <= 5) { // Log first few creations
+                      console.log(`✓ Auto-created server ${expectedHostname} for ${serverId}`);
+                    }
+                  } catch (error) {
+                    if (errors.length < 5) {
+                      errors.push(`Failed to create server for ${serverId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                    }
+                    continue;
                   }
-                  continue; // Skip processing for servers beyond our range
                 }
                 
                 if (count < 3) { // Only log first few for debugging
@@ -744,6 +769,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           total,
           successful: count,
           failed: total - count,
+          serversCreated,
           dataType: extractionResult.dataType,
           status: 'completed',
           timeElapsed: totalTimeElapsed,
