@@ -73,20 +73,33 @@ export class PredictiveAnalyticsAgent implements Agent {
           continue; // Need enough historical data
         }
 
-        // Check if we need new predictions (only run AI if data has significantly changed)
-        const recentPredictions = await storage.getRecentPredictions(server.id, 60); // Last hour
-        if (recentPredictions.length > 0) {
-          console.log(`${this.name}: Recent predictions exist for server ${server.id}, skipping AI analysis to save API costs`);
-          continue; // Skip if we have recent predictions
-        }
-
-        // Check if metrics have changed significantly since last prediction
-        const lastPredictionTime = await this.getLastPredictionTime(server.id);
-        const newMetricsCount = await this.getNewMetricsCount(server.id, lastPredictionTime);
+        // Check if we have any predictions for this server
+        const serverPredictions = await storage.getRecentPredictions(server.id);
+        const hasExistingPredictions = serverPredictions.length > 0;
         
-        if (newMetricsCount < 5) {
-          console.log(`${this.name}: Only ${newMetricsCount} new metrics for server ${server.id}, skipping expensive AI analysis`);
-          continue; // Skip if not enough new data
+        // If no existing predictions, create initial baseline predictions
+        if (!hasExistingPredictions) {
+          console.log(`${this.name}: No existing predictions for server ${server.id}, creating initial baseline predictions`);
+          // Force creation of initial predictions
+        } else {
+          // Check for recent predictions only if we already have some
+          const recentCutoff = new Date(Date.now() - 60 * 60 * 1000); // 1 hour ago
+          const recentPredictions = serverPredictions.filter(p => 
+            new Date(p.createdAt) > recentCutoff
+          );
+          if (recentPredictions.length > 0) {
+            console.log(`${this.name}: Recent predictions exist for server ${server.id}, skipping AI analysis to save API costs`);
+            continue; // Skip if we have recent predictions
+          }
+
+          // Check if metrics have changed significantly since last prediction
+          const lastPredictionTime = await this.getLastPredictionTime(server.id);
+          const newMetricsCount = await this.getNewMetricsCount(server.id, lastPredictionTime);
+          
+          if (newMetricsCount < 5) {
+            console.log(`${this.name}: Only ${newMetricsCount} new metrics for server ${server.id}, skipping expensive AI analysis`);
+            continue; // Skip if not enough new data
+          }
         }
 
         try {
@@ -116,15 +129,15 @@ export class PredictiveAnalyticsAgent implements Agent {
               // Log successful AI analysis
               await storage.createAuditLog({
                 agentId: this.id,
-                serverId: server.id,
                 action: "AI Predictive Analysis",
                 details: `AI analyzed ${historicalMetrics.length} metrics and generated ${aiPredictions.predictions.length} predictions`,
                 status: "success",
                 metadata: { 
                   aiMethod: "openai_prediction",
                   predictionCount: aiPredictions.predictions.length,
-                  serverHostname: await this.getServerHostname(server.id)
-                },
+                  serverHostname: await this.getServerHostname(server.id),
+                  serverId: server.id
+                } as any,
               });
 
               console.log(`${this.name}: AI generated ${aiPredictions.predictions.length} predictions for server ${server.id}`);
@@ -148,16 +161,24 @@ export class PredictiveAnalyticsAgent implements Agent {
           // Log fallback usage
           await storage.createAuditLog({
             agentId: this.id,
-            serverId: server.id,
             action: "Fallback Prediction Analysis",
             details: `AI prediction failed, using statistical fallback methods for ${historicalMetrics.length} metrics`,
             status: "warning",
             metadata: { 
               fallbackReason: aiError instanceof Error ? aiError.message : 'Unknown error',
               serverHostname: await this.getServerHostname(server.id),
-              predictionMethod: "statistical_fallback"
-            },
+              predictionMethod: "statistical_fallback",
+              serverId: server.id
+            } as any,
           });
+        }
+        
+        // Also run fallback methods for initial predictions if no existing predictions
+        if (!hasExistingPredictions) {
+          console.log(`${this.name}: Creating initial statistical predictions for server ${server.id}`);
+          await this.predictCpuUsage(server.id, historicalMetrics);
+          await this.predictMemoryUsage(server.id, historicalMetrics);
+          await this.predictDiskUsage(server.id, historicalMetrics);
         }
         
         this.processedCount++;
@@ -365,12 +386,13 @@ export class PredictiveAnalyticsAgent implements Agent {
     const existingAlert = existingAlerts.find(
       alert => alert.serverId === serverId && 
                alert.metricType === metricType && 
-               alert.title.includes("PREDICTED") &&
+               alert.title?.includes("PREDICTED") &&
                alert.status === "active"
     );
 
     if (!existingAlert) {
       const alert = await storage.createAlert({
+        hostname: await this.getServerHostname(serverId),
         serverId,
         agentId: this.id,
         title: `PREDICTED ${metricType.toUpperCase()} ${severity.toUpperCase()}`,
@@ -396,7 +418,7 @@ export class PredictiveAnalyticsAgent implements Agent {
         predictedValue: prediction.predictedValue.toString(),
         predictionTime: new Date(Date.now() + this.parseTimeframe(prediction.timeframe)),
         confidence: prediction.confidence.toString(),
-        algorithm: "ai_analysis",
+        model: "ai_analysis",
       });
 
       this.predictionsGenerated++;
@@ -425,8 +447,8 @@ export class PredictiveAnalyticsAgent implements Agent {
 
   private async getLastPredictionTime(serverId: string): Promise<Date> {
     try {
-      const predictions = await storage.getServerPredictions(serverId, 1);
-      return predictions.length > 0 ? new Date(predictions[0].createdAt) : new Date(0);
+      const serverPredictions = await storage.getRecentPredictions(serverId);
+      return serverPredictions.length > 0 ? new Date(serverPredictions[0].createdAt) : new Date(0);
     } catch (error) {
       return new Date(0);
     }
@@ -434,8 +456,8 @@ export class PredictiveAnalyticsAgent implements Agent {
 
   private async getNewMetricsCount(serverId: string, since: Date): Promise<number> {
     try {
-      const metrics = await storage.getMetricsInRange(since, new Date());
-      return metrics.filter(m => m.serverId === serverId).length;
+      const metrics = await storage.getMetricsInTimeRange(since, new Date());
+      return metrics.filter((m: any) => m.serverId === serverId).length;
     } catch (error) {
       return 0;
     }
