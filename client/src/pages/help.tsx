@@ -855,7 +855,7 @@ export default function HelpCenter() {
                   <div className="text-green-400 mb-2">GET /api/health</div>
                   <p className="text-slate-400 text-xs mb-2">Basic system status check</p>
                   <div className="text-slate-500 text-xs">
-                    Returns: {"{ status: 'ok', timestamp: '...' }"}
+                    Returns: {`{ status: 'ok', timestamp: '...' }`}
                   </div>
                 </div>
                 
