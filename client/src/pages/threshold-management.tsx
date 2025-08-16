@@ -8,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Settings, Save, RotateCcw, AlertTriangle, CheckCircle } from "lucide-react";
+import { Link } from "wouter";
+import { Settings, Save, RotateCcw, AlertTriangle, CheckCircle, ArrowLeft, Home } from "lucide-react";
 
 interface AlertThresholds {
   cpu: {
@@ -137,12 +138,28 @@ export default function ThresholdManagement() {
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb Navigation */}
+      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+        <Link href="/" className="flex items-center gap-1 hover:text-foreground transition-colors" data-testid="breadcrumb-home">
+          <Home className="h-4 w-4" />
+          Dashboard
+        </Link>
+        <span>/</span>
+        <span className="text-foreground">Threshold Management</span>
+      </div>
+
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Settings className="h-6 w-6" />
-          <h1 className="text-3xl font-bold" data-testid="title-threshold-management">
-            Threshold Management
-          </h1>
+        <div className="flex items-center gap-4">
+          <Link href="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors" data-testid="button-back-dashboard">
+            <ArrowLeft className="h-5 w-5" />
+            Back to Dashboard
+          </Link>
+          <div className="flex items-center gap-2">
+            <Settings className="h-6 w-6" />
+            <h1 className="text-3xl font-bold" data-testid="title-threshold-management">
+              Threshold Management
+            </h1>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {hasChanges && (
@@ -170,8 +187,9 @@ export default function ThresholdManagement() {
         </div>
       </div>
 
-      <div className="text-sm text-muted-foreground">
+      <div className="text-sm text-muted-foreground max-w-4xl">
         Configure monitoring thresholds for different environments. Changes apply immediately to all agents.
+        Use the tabs below to switch between Production, Staging, Development, and Default configurations.
       </div>
 
       <Tabs value={selectedEnvironment} onValueChange={setSelectedEnvironment}>
