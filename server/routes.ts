@@ -549,29 +549,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
               count++;
             }
           } else if (extractionResult.dataType === 'metrics') {
-            // Find server by hostname if serverId not provided
-            if (!item.serverId && item.hostname) {
-              const server = await storage.getServerByHostname(item.hostname);
-              if (server) {
-                item.serverId = server.id;
+            let serverId = item.serverId || item.serverid || item.server_id;
+            
+            // Try multiple approaches to find the server
+            let targetServer = null;
+            
+            // 1. First try direct hostname lookup
+            if (item.hostname) {
+              targetServer = await storage.getServerByHostname(item.hostname);
+            }
+            
+            // 2. If no hostname, try to map serverid to hostname pattern
+            if (!targetServer && serverId) {
+              // Convert SRV-001 -> server1, SRV-002 -> server2, etc.
+              if (serverId.startsWith('SRV-')) {
+                const serverNumber = serverId.replace('SRV-', '').replace(/^0+/, ''); // Remove leading zeros
+                const expectedHostname = `server${serverNumber}`;
+                targetServer = await storage.getServerByHostname(expectedHostname);
+                console.log(`Trying to map ${serverId} to hostname: ${expectedHostname}, found: ${!!targetServer}`);
               }
             }
+            
+            // 3. If still no server, try to find by serverId as hostname directly
+            if (!targetServer && serverId) {
+              targetServer = await storage.getServerByHostname(serverId);
+            }
 
-            if (item.serverId) {
+            if (targetServer) {
               await storage.addServerMetrics({
-                serverId: item.serverId,
-                cpuUsage: (parseFloat(item.cpuUsage) || 0).toString(),
-                memoryUsage: (parseFloat(item.memoryUsage) || 0).toString(),
-                diskUsage: (parseFloat(item.diskUsage) || 0).toString(),
+                serverId: targetServer.id,
+                cpuUsage: (parseFloat(item.cpu_usage || item.cpuUsage) || 0).toString(),
+                memoryUsage: (parseFloat(item.memory_usage || item.memoryUsage) || 0).toString(),
+                diskUsage: (parseFloat(item.disk_usage || item.diskUsage) || 0).toString(),
                 memoryTotal: parseInt(item.memoryTotal) || 1024,
                 diskTotal: parseInt(item.diskTotal) || 1024,
-                processCount: parseInt(item.processCount) || 10,
-                networkLatency: item.networkLatency || null,
+                processCount: parseInt(item.process_count || item.processCount) || 10,
+                networkLatency: item.network_latency || item.networkLatency || null,
                 networkThroughput: item.networkThroughput || null
               });
               count++;
+              console.log(`✓ Successfully mapped metrics for ${serverId} to server ${targetServer.hostname}`);
             } else {
-              errors.push(`Metrics for ${item.hostname || 'unknown host'}: Server not found`);
+              const identifier = item.hostname || serverId || 'unknown';
+              errors.push(`Metrics for ${identifier}: Server not found in database`);
+              console.log(`✗ Could not find server for identifier: ${identifier}`);
             }
           } else if (extractionResult.dataType === 'alerts') {
             // Handle different serverId field names (ServerID, serverId, server_id)
