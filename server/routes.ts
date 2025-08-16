@@ -1219,9 +1219,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Apply global error handling middleware
-  app.use(errorHandler);
-  app.use(notFoundHandler);
+  // Note: Global error handlers will be applied in server/index.ts after Vite setup
+  // to avoid interfering with frontend routing
 
   return httpServer;
 }

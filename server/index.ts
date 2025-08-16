@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
 const app = express();
 app.use(express.json({ limit: '10mb' })); // Increased limit for large data uploads
@@ -47,6 +48,9 @@ app.use((req, res, next) => {
     throw err;
   });
 
+  // Apply global error handling middleware for API routes only
+  app.use('/api', errorHandler);
+  
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
@@ -55,6 +59,9 @@ app.use((req, res, next) => {
   } else {
     serveStatic(app);
   }
+  
+  // Apply 404 handler only for API routes that weren't matched
+  app.use('/api', notFoundHandler);
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
   // Other ports are firewalled. Default to 5000 if not specified.
