@@ -13,6 +13,13 @@ import { systemRouter } from "./routes/system";
 import { thresholdsRouter } from "./routes/thresholds";
 import cloudRoutes from "./routes/cloudRoutes";
 
+// Import comprehensive error handling and validation systems
+import { AgentOpsError, ValidationError, DatabaseError, NotFoundError, logError } from './utils/errors';
+import { validateInput, apiSchemas, validateFileUpload, sanitizeString, sanitizeHtml } from './utils/validation';
+import { errorHandler, notFoundHandler, asyncHandler } from './middleware/errorHandler';
+import { rateLimiters } from './middleware/rateLimiter';
+import { cache, getCached, invalidateCache, cacheKeys, cacheTTL } from './utils/cache';
+
 // Helper functions for agent details
 async function getAgentInsights(agentId: string) {
   // Get recent audit logs to extract AI insights
@@ -75,6 +82,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
   setupWebSocket(wss);
 
+  // Apply global rate limiting to all API routes
+  app.use('/api', rateLimiters.api);
+
   // Register agent control routes
   registerAgentControlRoutes(app);
   
@@ -84,62 +94,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register threshold configuration routes
   app.use('/api/thresholds', thresholdsRouter);
 
-  // Dashboard metrics endpoint
-  app.get("/api/dashboard/metrics", async (req, res) => {
-    try {
-      const metrics = await storage.getDashboardMetrics();
-      res.json(metrics);
-    } catch (error) {
-      console.error("Error fetching dashboard metrics:", error);
-      res.status(500).json({ error: "Failed to fetch dashboard metrics" });
-    }
-  });
+  // Dashboard metrics endpoint with caching
+  app.get("/api/dashboard/metrics", asyncHandler(async (req, res) => {
+    const metrics = await getCached(
+      cacheKeys.dashboardMetrics(),
+      () => storage.getDashboardMetrics(),
+      cacheTTL.dashboard
+    );
+    res.json(metrics);
+  }));
 
-  // Servers endpoints
-  app.get("/api/servers", async (req, res) => {
-    try {
-      const servers = await storage.getAllServers();
-      res.json(servers);
-    } catch (error) {
-      console.error("Error fetching servers:", error);
-      res.status(500).json({ error: "Failed to fetch servers" });
-    }
-  });
+  // Servers endpoints with caching and validation
+  app.get("/api/servers", asyncHandler(async (req, res) => {
+    const servers = await getCached(
+      cacheKeys.servers(),
+      () => storage.getAllServers(),
+      cacheTTL.servers
+    );
+    res.json(servers);
+  }));
 
-  app.get("/api/servers/:id", async (req, res) => {
-    try {
-      const server = await storage.getServer(req.params.id);
-      if (!server) {
-        return res.status(404).json({ error: "Server not found" });
-      }
-      res.json(server);
-    } catch (error) {
-      console.error("Error fetching server:", error);
-      res.status(500).json({ error: "Failed to fetch server" });
+  app.get("/api/servers/:id", asyncHandler(async (req, res) => {
+    const serverId = sanitizeString(req.params.id);
+    const server = await getCached(
+      cacheKeys.serverById(serverId),
+      () => storage.getServer(serverId),
+      cacheTTL.servers
+    );
+    if (!server) {
+      throw new NotFoundError("Server");
     }
-  });
+    res.json(server);
+  }));
 
-  app.get("/api/servers/:id/metrics", async (req, res) => {
-    try {
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
-      const metrics = await storage.getServerMetrics(req.params.id, limit);
-      res.json(metrics);
-    } catch (error) {
-      console.error("Error fetching server metrics:", error);
-      res.status(500).json({ error: "Failed to fetch server metrics" });
-    }
-  });
+  app.get("/api/servers/:id/metrics", asyncHandler(async (req, res) => {
+    const serverId = sanitizeString(req.params.id);
+    const limit = req.query.limit ? Math.min(parseInt(req.query.limit as string), 1000) : 100;
+    
+    const metrics = await getCached(
+      cacheKeys.metrics(serverId, limit),
+      () => storage.getServerMetrics(serverId, limit),
+      cacheTTL.metrics
+    );
+    res.json(metrics);
+  }));
 
-  // Latest metrics for all servers
-  app.get("/api/metrics/latest", async (req, res) => {
-    try {
-      const metrics = await storage.getLatestMetrics();
-      res.json(metrics);
-    } catch (error) {
-      console.error("Error fetching latest metrics:", error);
-      res.status(500).json({ error: "Failed to fetch latest metrics" });
-    }
-  });
+  // Latest metrics for all servers with caching
+  app.get("/api/metrics/latest", asyncHandler(async (req, res) => {
+    const metrics = await getCached(
+      'metrics:latest',
+      () => storage.getLatestMetrics(),
+      cacheTTL.metrics
+    );
+    res.json(metrics);
+  }));
 
   // Metrics in time range
   app.get("/api/metrics/range", async (req, res) => {
@@ -598,7 +606,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Try case-insensitive match only if needed
               if (!targetServer) {
                 const lowerServerId = serverId.toLowerCase();
-                for (const [hostname, server] of serverByHostname.entries()) {
+                for (const [hostname, server] of Array.from(serverByHostname.entries())) {
                   if (hostname.toLowerCase() === lowerServerId) {
                     targetServer = server;
                     break;
@@ -663,8 +671,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   if (!['critical', 'warning', 'info'].includes(severity)) {
                     severity = 'warning';
                   }
+                  
+                  // Get server hostname for alert creation
+                  const server = await storage.getServer(serverId);
+                  const hostname = server?.hostname || 'unknown';
         
                   await storage.createAlert({
+                    hostname: hostname,
                     serverId: serverId,
                     metricType: item.metricType || item.Metric || item.metric || 'system',
                     metricValue: item.metricValue || item.Value || item.value || 0,
@@ -711,6 +724,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
+        const batchTime = Date.now() - batchStartTime;
         console.log(`⚡ Batch ${batchIndex + 1}/${batches.length}: ${batchTime}ms - ${count} records`);
       }
 
@@ -1204,6 +1218,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: 'Failed to get conversation history' });
     }
   });
+
+  // Apply global error handling middleware
+  app.use(errorHandler);
+  app.use(notFoundHandler);
 
   return httpServer;
 }

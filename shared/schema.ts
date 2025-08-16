@@ -222,6 +222,7 @@ export const auditLogs = pgTable("audit_logs", {
   status: text("status").notNull(), // status field from template (Success, Failed, etc.)
   impact: text("impact"), // impact field from template
   timestamp: timestamp("timestamp").defaultNow(), // timestamp field from template
+  createdAt: timestamp("created_at").defaultNow(), // Add missing createdAt field
   
   // Internal fields for system functionality
   agentId: varchar("agent_id").references(() => agents.id),
@@ -276,7 +277,12 @@ export const approvalWorkflows = pgTable("approval_workflows", {
     impactAssessment: string;
     businessJustification: string;
     escalationReason?: string;
-  }>().default({}),
+  }>().default({
+    serverCriticality: "medium",
+    environment: "production", 
+    impactAssessment: "",
+    businessJustification: ""
+  }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -297,7 +303,12 @@ export const workflowSteps = pgTable("workflow_steps", {
     autoEscalate: boolean;
     parallelApproval: boolean;
     conditions: Record<string, any>;
-  }>().default({}),
+  }>().default({
+    timeoutHours: 24,
+    autoEscalate: false,
+    parallelApproval: false,
+    conditions: {}
+  }),
   createdAt: timestamp("created_at").defaultNow(),
   completedAt: timestamp("completed_at"),
 });
@@ -315,7 +326,10 @@ export const approvalHistory = pgTable("approval_history", {
     userAgent: string;
     delegatedTo?: string;
     escalationReason?: string;
-  }>().default({}),
+  }>().default({
+    ipAddress: "",
+    userAgent: ""
+  }),
   timestamp: timestamp("timestamp").defaultNow(),
 });
 

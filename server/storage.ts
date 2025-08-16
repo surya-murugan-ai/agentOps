@@ -196,7 +196,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
+    const [user] = await db.insert(users).values([insertUser]).returning();
     return user;
   }
 
@@ -453,7 +453,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAgentControlSettings(settings: InsertAgentControlSettings): Promise<AgentControlSettings> {
-    const [newSettings] = await db.insert(agentControlSettings).values(settings).returning();
+    const [newSettings] = await db.insert(agentControlSettings).values([settings]).returning();
     return newSettings;
   }
 
@@ -475,6 +475,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select({
         id: alerts.id,
+        hostname: alerts.hostname,
         serverId: alerts.serverId,
         agentId: alerts.agentId,
         title: alerts.title,
@@ -484,6 +485,7 @@ export class DatabaseStorage implements IStorage {
         metricType: alerts.metricType,
         metricValue: alerts.metricValue,
         threshold: alerts.threshold,
+        timestamp: alerts.timestamp,
         createdAt: alerts.createdAt,
         acknowledgedAt: alerts.acknowledgedAt,
         resolvedAt: alerts.resolvedAt,
@@ -500,6 +502,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select({
         id: alerts.id,
+        hostname: alerts.hostname,
         serverId: alerts.serverId,
         agentId: alerts.agentId,
         title: alerts.title,
@@ -509,6 +512,7 @@ export class DatabaseStorage implements IStorage {
         metricType: alerts.metricType,
         metricValue: alerts.metricValue,
         threshold: alerts.threshold,
+        timestamp: alerts.timestamp,
         createdAt: alerts.createdAt,
         acknowledgedAt: alerts.acknowledgedAt,
         resolvedAt: alerts.resolvedAt,
@@ -846,7 +850,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createAgentSettings(settings: InsertAgentSettings): Promise<AgentSettings> {
-    const [newSettings] = await db.insert(agentSettings).values(settings).returning();
+    const [newSettings] = await db.insert(agentSettings).values([settings]).returning();
     return newSettings;
   }
 
