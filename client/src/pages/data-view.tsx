@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { 
   Database, 
   Server, 
@@ -19,13 +20,40 @@ import {
   Filter,
   Download,
   Eye,
-  BarChart3
+  BarChart3,
+  X
 } from "lucide-react";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement
+} from 'chart.js';
+import { Line, Bar, Pie } from 'react-chartjs-2';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 export default function DataViewPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedTable, setSelectedTable] = useState("servers");
+  const [showVisualizeModal, setShowVisualizeModal] = useState(false);
   const [_, setLocation] = useLocation();
 
   // Fetch data for different tables - always fetch counts for buttons
@@ -352,6 +380,119 @@ export default function DataViewPage() {
   const stats = getTableStats();
   const IconComponent = stats.icon;
 
+  // Generate visualization data based on selected table
+  const getVisualizationData = () => {
+    switch (selectedTable) {
+      case "metrics":
+        if (!Array.isArray(metrics) || metrics.length === 0) return null;
+        
+        // CPU usage over time (last 20 records)
+        const recentMetrics = metrics.slice(0, 20).reverse();
+        const cpuData = {
+          labels: recentMetrics.map((_, index) => `T-${20-index}`),
+          datasets: [{
+            label: 'CPU Usage (%)',
+            data: recentMetrics.map(m => parseFloat(m.cpuUsage)),
+            borderColor: '#3B82F6',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            tension: 0.4
+          }]
+        };
+
+        // Server distribution
+        const serverCounts = {};
+        metrics.forEach(m => {
+          const hostname = servers?.find(s => s.id === m.serverId)?.hostname || 'Unknown';
+          serverCounts[hostname] = (serverCounts[hostname] || 0) + 1;
+        });
+
+        const serverDistribution = {
+          labels: Object.keys(serverCounts),
+          datasets: [{
+            data: Object.values(serverCounts),
+            backgroundColor: [
+              '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
+              '#06B6D4', '#84CC16', '#F97316', '#EC4899', '#6B7280'
+            ]
+          }]
+        };
+
+        return { cpuData, serverDistribution };
+
+      case "alerts":
+        if (!Array.isArray(alerts) || alerts.length === 0) return null;
+        
+        // Alert severity distribution
+        const severityCounts = { critical: 0, warning: 0, info: 0 };
+        alerts.forEach(alert => {
+          severityCounts[alert.severity] = (severityCounts[alert.severity] || 0) + 1;
+        });
+
+        const alertSeverity = {
+          labels: ['Critical', 'Warning', 'Info'],
+          datasets: [{
+            data: [severityCounts.critical, severityCounts.warning, severityCounts.info],
+            backgroundColor: ['#EF4444', '#F59E0B', '#3B82F6']
+          }]
+        };
+
+        // Alert status distribution
+        const statusCounts = {};
+        alerts.forEach(alert => {
+          statusCounts[alert.status] = (statusCounts[alert.status] || 0) + 1;
+        });
+
+        const alertStatus = {
+          labels: Object.keys(statusCounts),
+          datasets: [{
+            data: Object.values(statusCounts),
+            backgroundColor: ['#10B981', '#F59E0B', '#EF4444', '#6B7280']
+          }]
+        };
+
+        return { alertSeverity, alertStatus };
+
+      case "servers":
+        if (!Array.isArray(servers) || servers.length === 0) return null;
+        
+        // Server status distribution
+        const serverStatusCounts = {};
+        servers.forEach(server => {
+          serverStatusCounts[server.status] = (serverStatusCounts[server.status] || 0) + 1;
+        });
+
+        const serverStatusData = {
+          labels: Object.keys(serverStatusCounts),
+          datasets: [{
+            data: Object.values(serverStatusCounts),
+            backgroundColor: ['#10B981', '#F59E0B', '#EF4444', '#6B7280']
+          }]
+        };
+
+        // Environment distribution
+        const envCounts = {};
+        servers.forEach(server => {
+          envCounts[server.environment] = (envCounts[server.environment] || 0) + 1;
+        });
+
+        const envData = {
+          labels: Object.keys(envCounts),
+          datasets: [{
+            label: 'Servers by Environment',
+            data: Object.values(envCounts),
+            backgroundColor: ['#3B82F6', '#10B981', '#F59E0B']
+          }]
+        };
+
+        return { serverStatusData, envData };
+
+      default:
+        return null;
+    }
+  };
+
+  const visualizationData = getVisualizationData();
+
   return (
     <div className="min-h-screen bg-dark-bg text-white">
       <Sidebar />
@@ -374,10 +515,191 @@ export default function DataViewPage() {
                 <Download size={16} className="mr-2" />
                 Export
               </Button>
-              <Button variant="outline" className="border-slate-600 text-slate-300">
-                <BarChart3 size={16} className="mr-2" />
-                Visualize
-              </Button>
+              <Dialog open={showVisualizeModal} onOpenChange={setShowVisualizeModal}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="border-slate-600 text-slate-300">
+                    <BarChart3 size={16} className="mr-2" />
+                    Visualize
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-dark-card border-slate-700">
+                  <DialogHeader>
+                    <DialogTitle className="text-white flex items-center gap-2">
+                      <BarChart3 size={20} />
+                      Data Visualization - {selectedTable.charAt(0).toUpperCase() + selectedTable.slice(1)}
+                    </DialogTitle>
+                  </DialogHeader>
+                  
+                  <div className="space-y-6 mt-4">
+                    {visualizationData ? (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {selectedTable === "metrics" && visualizationData.cpuData && (
+                          <>
+                            <Card className="bg-slate-800 border-slate-700">
+                              <CardHeader>
+                                <CardTitle className="text-white text-sm">CPU Usage Trend</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="h-64">
+                                  <Line
+                                    data={visualizationData.cpuData}
+                                    options={{
+                                      responsive: true,
+                                      maintainAspectRatio: false,
+                                      plugins: {
+                                        legend: { labels: { color: '#fff' } }
+                                      },
+                                      scales: {
+                                        x: { ticks: { color: '#9CA3AF' }, grid: { color: '#374151' } },
+                                        y: { ticks: { color: '#9CA3AF' }, grid: { color: '#374151' } }
+                                      }
+                                    }}
+                                  />
+                                </div>
+                              </CardContent>
+                            </Card>
+                            
+                            <Card className="bg-slate-800 border-slate-700">
+                              <CardHeader>
+                                <CardTitle className="text-white text-sm">Metrics by Server</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="h-64">
+                                  <Pie
+                                    data={visualizationData.serverDistribution}
+                                    options={{
+                                      responsive: true,
+                                      maintainAspectRatio: false,
+                                      plugins: {
+                                        legend: { labels: { color: '#fff' } }
+                                      }
+                                    }}
+                                  />
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </>
+                        )}
+                        
+                        {selectedTable === "alerts" && visualizationData.alertSeverity && (
+                          <>
+                            <Card className="bg-slate-800 border-slate-700">
+                              <CardHeader>
+                                <CardTitle className="text-white text-sm">Alert Severity Distribution</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="h-64">
+                                  <Pie
+                                    data={visualizationData.alertSeverity}
+                                    options={{
+                                      responsive: true,
+                                      maintainAspectRatio: false,
+                                      plugins: {
+                                        legend: { labels: { color: '#fff' } }
+                                      }
+                                    }}
+                                  />
+                                </div>
+                              </CardContent>
+                            </Card>
+                            
+                            <Card className="bg-slate-800 border-slate-700">
+                              <CardHeader>
+                                <CardTitle className="text-white text-sm">Alert Status</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="h-64">
+                                  <Bar
+                                    data={visualizationData.alertStatus}
+                                    options={{
+                                      responsive: true,
+                                      maintainAspectRatio: false,
+                                      plugins: {
+                                        legend: { display: false }
+                                      },
+                                      scales: {
+                                        x: { ticks: { color: '#9CA3AF' }, grid: { color: '#374151' } },
+                                        y: { ticks: { color: '#9CA3AF' }, grid: { color: '#374151' } }
+                                      }
+                                    }}
+                                  />
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </>
+                        )}
+                        
+                        {selectedTable === "servers" && visualizationData.serverStatusData && (
+                          <>
+                            <Card className="bg-slate-800 border-slate-700">
+                              <CardHeader>
+                                <CardTitle className="text-white text-sm">Server Status Distribution</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="h-64">
+                                  <Pie
+                                    data={visualizationData.serverStatusData}
+                                    options={{
+                                      responsive: true,
+                                      maintainAspectRatio: false,
+                                      plugins: {
+                                        legend: { labels: { color: '#fff' } }
+                                      }
+                                    }}
+                                  />
+                                </div>
+                              </CardContent>
+                            </Card>
+                            
+                            <Card className="bg-slate-800 border-slate-700">
+                              <CardHeader>
+                                <CardTitle className="text-white text-sm">Servers by Environment</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="h-64">
+                                  <Bar
+                                    data={visualizationData.envData}
+                                    options={{
+                                      responsive: true,
+                                      maintainAspectRatio: false,
+                                      plugins: {
+                                        legend: { display: false }
+                                      },
+                                      scales: {
+                                        x: { ticks: { color: '#9CA3AF' }, grid: { color: '#374151' } },
+                                        y: { ticks: { color: '#9CA3AF' }, grid: { color: '#374151' } }
+                                      }
+                                    }}
+                                  />
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <BarChart3 className="mx-auto text-slate-400 mb-4" size={48} />
+                        <h3 className="text-lg font-medium text-white mb-2">No Data Available</h3>
+                        <p className="text-slate-400">
+                          No data available for visualization in the selected data type.
+                        </p>
+                      </div>
+                    )}
+                    
+                    <div className="flex justify-end pt-4 border-t border-slate-700">
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowVisualizeModal(false)}
+                        className="border-slate-600 text-slate-300"
+                      >
+                        <X size={16} className="mr-2" />
+                        Close
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
 
