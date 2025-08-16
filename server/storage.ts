@@ -769,7 +769,7 @@ export class DatabaseStorage implements IStorage {
 
     const [
       serverCounts,
-      agentCount,
+      agentCounts,
       alertCounts,
       remediationCounts
     ] = await Promise.all([
@@ -781,7 +781,10 @@ export class DatabaseStorage implements IStorage {
           critical: sql<number>`count(case when status = 'critical' then 1 end)`,
         })
         .from(servers),
-      db.select({ count: count() }).from(agents).where(eq(agents.status, "active")),
+      db.select({ 
+        total: count(),
+        active: sql<number>`count(case when status = 'active' then 1 end)`
+      }).from(agents),
       db
         .select({
           total: count(),
@@ -805,7 +808,8 @@ export class DatabaseStorage implements IStorage {
       healthyServers: serverCounts[0]?.healthy || 0,
       warningServers: serverCounts[0]?.warning || 0,
       criticalServers: serverCounts[0]?.critical || 0,
-      activeAgents: agentCount[0]?.count || 0,
+      totalAgents: agentCounts[0]?.total || 0,
+      activeAgents: agentCounts[0]?.active || 0,
       activeAlerts: alertCounts[0]?.total || 0,
       criticalAlerts: alertCounts[0]?.critical || 0,
       warningAlerts: alertCounts[0]?.warning || 0,

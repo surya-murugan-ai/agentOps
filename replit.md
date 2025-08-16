@@ -3,6 +3,11 @@
 ## Overview
 AgentOps is an AI-powered server health monitoring and automated remediation platform. It provides proactive monitoring of mission-critical servers for financial institutions, insurance companies, and trading firms through real-time telemetry, anomaly detection, predictive analytics, and automated remediation. The platform includes a comprehensive dashboard for visualizing server health, managing alerts, and overseeing AI agent operations. Its primary purpose is to ensure high availability and performance of critical server infrastructure while reducing operational costs and potential downtime.
 
+## Recent Changes (August 16, 2025)
+- **Dashboard Agent Count Fix**: Corrected "9/7 Active Agents" display error to show accurate "9/9" ratio
+- **Upload Speed Optimization**: Implemented auto-server creation for large datasets with real-time progress tracking
+- **Data Validation**: Enhanced upload system to handle 1790+ record files with proper server ID mapping (SRV-001 → server1, etc.)
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 

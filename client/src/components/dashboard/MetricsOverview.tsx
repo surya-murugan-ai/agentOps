@@ -64,7 +64,7 @@ export default function MetricsOverview() {
             <span className="text-xs bg-success/20 text-success px-2 py-1 rounded-full">Online</span>
           </div>
           <h3 className="text-2xl font-bold text-white mb-1" data-testid="active-agents">
-            {metrics?.activeAgents || 0}/7
+            {metrics?.activeAgents || 0}/{metrics?.totalAgents || 0}
           </h3>
           <p className="text-sm text-slate-400">Active Agents</p>
           <div className="mt-3 text-xs text-slate-500">
