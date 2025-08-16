@@ -71,15 +71,15 @@ export default function DataUploadPage() {
       type: 'metrics',
       name: 'Performance Metrics',
       description: 'Real-time and historical server performance data',
-      requiredFields: ['hostname', 'cpuUsage'],
+      requiredFields: ['serverid'],
       icon: Activity,
       example: {
-        hostname: "web-prod-01",
-        cpuUsage: 75.2,
-        memoryUsage: 68.5,
-        diskUsage: 45.3,
-        networkLatency: 12.4,
-        timestamp: "2025-01-13T10:30:00Z"
+        serverid: "SRV-001",
+        timestamp: "2025-01-13T10:30:00Z",
+        cpu_usage: 75.2,
+        memory_usage: 68.5,
+        disk_usage: 45.3,
+        network_latency: 12.4
       }
     },
     {
@@ -268,6 +268,28 @@ export default function DataUploadPage() {
       
       if (!hasIdentifier) {
         errors.push('Server data must have at least one identifier field (hostname, serverid, id, etc.)');
+      }
+    } else if (type === 'metrics') {
+      const firstRow = data[0];
+      const columns = Object.keys(firstRow).map(col => col.toLowerCase());
+      
+      const hasIdentifier = columns.some(col => 
+        col.includes('hostname') || col.includes('host') || 
+        col.includes('serverid') || col.includes('server_id') || 
+        col.includes('id') || col.includes('name')
+      );
+      
+      const hasMetric = columns.some(col => 
+        col.includes('cpu') || col.includes('memory') || col.includes('disk') || 
+        col.includes('usage') || col.includes('latency') || col.includes('network')
+      );
+      
+      if (!hasIdentifier) {
+        errors.push('Metrics data must have at least one server identifier field (hostname, serverid, etc.)');
+      }
+      
+      if (!hasMetric) {
+        errors.push('Metrics data must have at least one performance metric field (cpu, memory, disk, etc.)');
       }
     } else {
       // For other data types, use the original validation
