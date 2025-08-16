@@ -57,7 +57,7 @@ export default function DataUploadPage() {
       type: 'servers',
       name: 'Server Inventory',
       description: 'Infrastructure servers and their configurations',
-      requiredFields: ['hostname', 'ipAddress'],
+      requiredFields: ['hostname'],
       icon: Server,
       example: {
         hostname: "web-prod-01",
@@ -255,12 +255,29 @@ export default function DataUploadPage() {
       return errors;
     }
 
-    const missingFields = template.requiredFields.filter(field => 
-      !data.every(item => item.hasOwnProperty(field))
-    );
+    // Flexible field validation based on data type
+    if (type === 'servers') {
+      const firstRow = data[0];
+      const columns = Object.keys(firstRow).map(col => col.toLowerCase());
+      
+      const hasIdentifier = columns.some(col => 
+        col.includes('hostname') || col.includes('host') || 
+        col.includes('serverid') || col.includes('server_id') || 
+        col.includes('id') || col.includes('name')
+      );
+      
+      if (!hasIdentifier) {
+        errors.push('Server data must have at least one identifier field (hostname, serverid, id, etc.)');
+      }
+    } else {
+      // For other data types, use the original validation
+      const missingFields = template.requiredFields.filter(field => 
+        !data.every(item => item.hasOwnProperty(field))
+      );
 
-    if (missingFields.length > 0) {
-      errors.push(`Missing required fields: ${missingFields.join(', ')}`);
+      if (missingFields.length > 0) {
+        errors.push(`Missing required fields: ${missingFields.join(', ')}`);
+      }
     }
 
     // Additional validations
