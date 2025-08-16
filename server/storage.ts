@@ -262,17 +262,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async clearAllServers(): Promise<void> {
-    // Clear all related data first to avoid foreign key constraints
-    await db.delete(serverMetrics);
-    await db.delete(alerts);
-    await db.delete(remediationActions);
-    await db.delete(auditLogs);
-    await db.delete(anomalies);
-    await db.delete(predictions);
-    await db.delete(servers);
+    // Only delete servers table - other data should be cleared separately
+    await db.delete(anomalies);     // Clear anomalies first (references servers)
+    await db.delete(predictions);   // Clear predictions first (references servers)
+    await db.delete(servers);       // Finally delete servers
   }
 
   async clearAllAlerts(): Promise<void> {
+    // Delete remediation actions that reference alerts first
+    await db.delete(remediationActions);
+    // Now safe to delete alerts
     await db.delete(alerts);
   }
 

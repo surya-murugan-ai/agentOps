@@ -184,12 +184,18 @@ router.post("/delete-all", async (req, res) => {
     
     const totalBeforeDelete = servers.length + metrics.length + alerts.length + remediationActions.length + auditLogs.length;
     
-    // Clear all data
-    await storage.clearAllServers();
-    await storage.clearAllMetrics();
-    await storage.clearAllAlerts();
-    await storage.clearAllRemediationActions();
-    await storage.clearAllAuditLogs();
+    // Clear all data using direct SQL to avoid foreign key constraint issues
+    const { db } = await import("../db");
+    const schema = await import("@shared/schema");
+    
+    // Delete in correct order to respect foreign key constraints
+    await db.delete(schema.remediationActions);  // Delete first (references alerts)
+    await db.delete(schema.alerts);              // Delete second (references servers)
+    await db.delete(schema.auditLogs);           // Delete third (references servers)
+    await db.delete(schema.serverMetrics);       // Delete fourth (references servers)
+    await db.delete(schema.anomalies);           // Delete fifth (references servers)
+    await db.delete(schema.predictions);         // Delete sixth (references servers)
+    await db.delete(schema.servers);             // Delete last (parent table)
     
     console.log(`API: Successfully deleted ${totalBeforeDelete} records`);
     
