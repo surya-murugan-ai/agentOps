@@ -56,45 +56,52 @@ export default function DataUploadPage() {
 
   // WebSocket connection for real-time progress updates
   useEffect(() => {
-    const ws = new WebSocket(`ws://${window.location.host}`);
-    
-    ws.onopen = () => {
-      console.log('WebSocket connected');
-    };
-    
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'upload_progress') {
-          setUploadState(prev => ({
-            ...prev,
-            progress: data.data.progress || 0,
-            processed: data.data.processed,
-            total: data.data.total,
-            successful: data.data.successful,
-            failed: data.data.failed,
-            timeElapsed: data.data.timeElapsed,
-            timeRemaining: data.data.timeRemaining,
-            status: data.data.status,
-            errors: data.data.errors
-          }));
+    try {
+      // Use secure WebSocket for HTTPS and regular for HTTP
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const ws = new WebSocket(`${protocol}//${window.location.host}`);
+      
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'upload_progress') {
+            setUploadState(prev => ({
+              ...prev,
+              progress: data.data.progress || 0,
+              processed: data.data.processed,
+              total: data.data.total,
+              successful: data.data.successful,
+              failed: data.data.failed,
+              timeElapsed: data.data.timeElapsed,
+              timeRemaining: data.data.timeRemaining,
+              status: data.data.status,
+              errors: data.data.errors
+            }));
+          }
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
         }
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
-      }
-    };
+      };
 
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
 
-    ws.onclose = () => {
-      console.log('WebSocket disconnected');
-    };
+      ws.onclose = () => {
+        console.log('WebSocket disconnected');
+      };
 
-    return () => {
-      ws.close();
-    };
+      return () => {
+        ws.close();
+      };
+    } catch (error) {
+      console.error('Failed to establish WebSocket connection:', error);
+      // Continue without WebSocket - progress will still work via polling
+    }
   }, []);
 
   // Get current data counts for context
