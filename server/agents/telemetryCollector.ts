@@ -116,19 +116,19 @@ export class TelemetryCollectorAgent implements Agent {
   }
 
   private async checkForRealDataSources(server: any): Promise<boolean> {
-    // Check if server has real data sources configured
+    // STRICT POLICY: Only process servers with ACTIVE external data sources
+    // Do NOT use uploaded data as baseline for generation
     
-    // 1. Check for uploaded metrics data
-    const recentMetrics = await storage.getServerMetrics(server.id, 1);
-    const hasUploadedData = recentMetrics.length > 0;
-    
-    // 2. Check for external API configurations
+    // 1. Check for external API configurations
     const hasApiConfig = server.metadata?.apiEndpoint || server.metadata?.monitoringUrl;
     
-    // 3. Check for file-based data sources
+    // 2. Check for file-based data sources
     const hasFileSource = server.metadata?.dataFile || server.metadata?.csvPath;
     
-    return hasUploadedData || hasApiConfig || hasFileSource;
+    // 3. REMOVED: uploaded data check to prevent synthetic generation
+    // Previously uploaded data should NOT trigger ongoing data generation
+    
+    return hasApiConfig || hasFileSource;
   }
 
   private async collectFromRealSources(server: any): Promise<any | null> {
@@ -143,11 +143,8 @@ export class TelemetryCollectorAgent implements Agent {
         return await this.collectFromFile(server);
       }
       
-      // Priority 3: Use most recent uploaded data as baseline
-      const recentMetrics = await storage.getServerMetrics(server.id, 1);
-      if (recentMetrics.length > 0) {
-        return await this.useUploadedDataBaseline(server, recentMetrics[0]);
-      }
+      // REMOVED: Baseline data generation from uploaded data
+      // This prevents synthetic data generation from previously uploaded real data
       
       return null;
     } catch (error) {
