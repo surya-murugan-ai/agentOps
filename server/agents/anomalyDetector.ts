@@ -15,9 +15,9 @@ export class AnomalyDetectorAgent implements Agent {
   private anomaliesDetected = 0;
   private errorCount = 0;
   
-  // Alert management limits - EMERGENCY STRICT circuit breaker protection
-  private readonly MAX_ALERTS_PER_SERVER = 2;  // Reduced to 2 per server
-  private readonly MAX_TOTAL_ALERTS = 8;       // Emergency reduction to 8 total
+  // Alert management limits - Balanced circuit breaker protection
+  private readonly MAX_ALERTS_PER_SERVER = 3;  // Allow 3 per server for better coverage
+  private readonly MAX_TOTAL_ALERTS = 15;      // Increased to 15 total to catch critical issues
 
   async start(): Promise<void> {
     if (this.running) return;
