@@ -68,10 +68,10 @@ export default function DataManagement() {
 
   // Clean servers mutation
   const cleanServersMutation = useMutation({
-    mutationFn: () => apiRequest("/api/data-cleaning/servers", {
-      method: "POST",
-      body: cleaningOptions,
-    }),
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/data-cleaning/servers", cleaningOptions);
+      return await response.json();
+    },
     onSuccess: (data) => {
       toast({
         title: "Server Data Cleaned",
@@ -91,10 +91,10 @@ export default function DataManagement() {
 
   // Clean metrics mutation
   const cleanMetricsMutation = useMutation({
-    mutationFn: () => apiRequest("/api/data-cleaning/metrics", {
-      method: "POST",
-      body: cleaningOptions,
-    }),
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/data-cleaning/metrics", cleaningOptions);
+      return await response.json();
+    },
     onSuccess: (data) => {
       toast({
         title: "Metrics Data Cleaned",
@@ -113,10 +113,10 @@ export default function DataManagement() {
 
   // Clean alerts mutation
   const cleanAlertsMutation = useMutation({
-    mutationFn: () => apiRequest("/api/data-cleaning/alerts", {
-      method: "POST",
-      body: cleaningOptions,
-    }),
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/data-cleaning/alerts", cleaningOptions);
+      return await response.json();
+    },
     onSuccess: (data) => {
       toast({
         title: "Alerts Data Cleaned",
@@ -136,10 +136,10 @@ export default function DataManagement() {
 
   // Full clean mutation
   const fullCleanMutation = useMutation({
-    mutationFn: () => apiRequest("/api/data-cleaning/full-clean", {
-      method: "POST",
-      body: cleaningOptions,
-    }),
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/data-cleaning/full-clean", cleaningOptions);
+      return await response.json();
+    },
     onSuccess: (data) => {
       toast({
         title: "Comprehensive Cleaning Complete",
