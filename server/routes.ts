@@ -531,6 +531,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let count = 0;
       const errors: string[] = [];
+      
+      console.log(`Processing ${extractionResult.extractedData.length} ${extractionResult.dataType} records...`);
 
       // Process extracted data based on detected type
       for (const item of extractionResult.extractedData) {
