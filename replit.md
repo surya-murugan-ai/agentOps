@@ -8,9 +8,11 @@ AgentOps is an AI-powered server health monitoring and automated remediation pla
 - **Upload Speed Optimization**: Implemented auto-server creation for large datasets with real-time progress tracking
 - **Data Validation**: Enhanced upload system to handle 1790+ record files with proper server ID mapping (SRV-001 → server1, etc.)
 - **Production Alert Management**: Fixed circuit breaker issue that was blocking critical alerts, implemented intelligent overflow management with auto-resolution of old alerts and critical-only mode
+- **Real Data Only Policy**: Completely removed synthetic data generation from Telemetry Collector - now only processes real data from uploads, external APIs, or configured data sources
 
 ## User Preferences
-Preferred communication style: Simple, everyday language.
+- Preferred communication style: Simple, everyday language.
+- Data handling: Only use real data from uploads, external APIs, or configured sources - no synthetic data generation.
 
 ## System Architecture
 
@@ -22,7 +24,7 @@ The system uses PostgreSQL with Drizzle ORM for type-safe operations. Core table
 
 ### AI Agent System
 A microservices-inspired architecture comprises nine independent AI agents:
-1.  **Telemetry Collector**: Gathers server metrics.
+1.  **Telemetry Collector**: Gathers server metrics from real data sources (uploads, APIs, files) - no synthetic data generation.
 2.  **Anomaly Detector**: Identifies unusual server behavior patterns.
 3.  **Predictive Analytics**: Forecasts potential issues.
 4.  **Recommendation Engine**: Suggests remediation actions.
