@@ -149,23 +149,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(metrics);
   }));
 
-  // Metrics in time range
+  // Metrics in time range - with smart defaults for better UX
   app.get("/api/metrics/range", async (req, res) => {
     try {
-      const { start, end } = req.query;
+      const { start, end, limit } = req.query;
+      
+      // Provide smart defaults if no time range specified
+      let startTime: Date;
+      let endTime: Date;
+      
       if (!start || !end) {
-        return res.status(400).json({ error: "Start and end time required" });
+        // Default to last 24 hours if no range provided
+        endTime = new Date();
+        startTime = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      } else {
+        startTime = new Date(start as string);
+        endTime = new Date(end as string);
       }
       
-      const startTime = new Date(start as string);
-      const endTime = new Date(end as string);
       const metrics = await storage.getMetricsInTimeRange(startTime, endTime);
-      res.json(metrics);
+      
+      // Apply limit if specified
+      const limitNum = limit ? parseInt(limit as string) : metrics.length;
+      const limitedMetrics = metrics.slice(0, limitNum);
+      
+      res.json(limitedMetrics);
     } catch (error) {
       console.error("Error fetching metrics range:", error);
       res.status(500).json({ error: "Failed to fetch metrics range" });
     }
   });
+
+  // All metrics endpoint with pagination for data viewer
+  app.get("/api/metrics/all", asyncHandler(async (req, res) => {
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 1000;
+    const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+    
+    const metrics = await getCached(
+      `metrics:all:${limit}:${offset}`,
+      () => storage.getAllMetrics(limit + offset),
+      cacheTTL.metrics
+    );
+    
+    // Apply offset manually since storage doesn't support it
+    const paginatedMetrics = metrics.slice(offset, offset + limit);
+    
+    res.json(paginatedMetrics);
+  }));
 
   // Add server metrics (used by telemetry collector)
   app.post("/api/metrics", async (req, res) => {

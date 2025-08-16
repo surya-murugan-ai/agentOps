@@ -34,16 +34,15 @@ export default function DataViewPage() {
   });
 
   const { data: metrics, isLoading: metricsLoading } = useQuery({
-    queryKey: ["/api/metrics/range"],
+    queryKey: ["/api/metrics/all"],
     queryFn: async () => {
-      const endTime = new Date();
-      const startTime = new Date(endTime.getTime() - 7 * 24 * 60 * 60 * 1000); // Last 7 days
-      const response = await fetch(`/api/metrics/range?start=${startTime.toISOString()}&end=${endTime.toISOString()}`);
+      const response = await fetch(`/api/metrics/all?limit=1000`);
       if (!response.ok) {
         throw new Error('Failed to fetch metrics');
       }
       return response.json();
-    }
+    },
+    refetchInterval: 30000  // Refresh every 30 seconds to show real-time data
   });
 
   const { data: alerts, isLoading: alertsLoading } = useQuery({
