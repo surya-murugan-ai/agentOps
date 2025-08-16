@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Upload, Server, Database, Activity, AlertTriangle, CheckCircle, FileText, X, Eye, Download, RefreshCw, CloudUpload, FileSpreadsheet, Settings } from 'lucide-react';
+import { Upload, Server, Database, Activity, AlertTriangle, CheckCircle, FileText, X, Eye, Download, RefreshCw, CloudUpload, FileSpreadsheet, Settings, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Sidebar from '@/components/dashboard/Sidebar';
 import Papa from 'papaparse';
@@ -24,6 +24,14 @@ interface UploadState {
   previewData?: any[];
   dataType?: string;
   validationErrors?: string[];
+  processed?: number;
+  total?: number;
+  successful?: number;
+  failed?: number;
+  timeElapsed?: number;
+  timeRemaining?: number;
+  status?: 'processing' | 'completed' | 'error';
+  errors?: string[];
 }
 
 interface DataTemplate {
@@ -45,6 +53,49 @@ export default function DataUploadPage() {
   const [showPreview, setShowPreview] = useState(false);
   const [apiEndpoint, setApiEndpoint] = useState('');
   const [apiKey, setApiKey] = useState('');
+
+  // WebSocket connection for real-time progress updates
+  useEffect(() => {
+    const ws = new WebSocket(`ws://${window.location.host}`);
+    
+    ws.onopen = () => {
+      console.log('WebSocket connected');
+    };
+    
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'upload_progress') {
+          setUploadState(prev => ({
+            ...prev,
+            progress: data.data.progress || 0,
+            processed: data.data.processed,
+            total: data.data.total,
+            successful: data.data.successful,
+            failed: data.data.failed,
+            timeElapsed: data.data.timeElapsed,
+            timeRemaining: data.data.timeRemaining,
+            status: data.data.status,
+            errors: data.data.errors
+          }));
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket disconnected');
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, []);
 
   // Get current data counts for context
   const { data: currentStats } = useQuery({
@@ -155,11 +206,7 @@ export default function DataUploadPage() {
                      type === 'audit-logs' ? { auditLogs: data } :
                      { data };
 
-      // Simulate progress
-      for (let i = 0; i <= 90; i += 10) {
-        setUploadState(prev => ({ ...prev, progress: i }));
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
+      // Don't simulate progress anymore - WebSocket will handle it
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -167,7 +214,7 @@ export default function DataUploadPage() {
         body: JSON.stringify(payload)
       });
       
-      setUploadState(prev => ({ ...prev, progress: 100 }));
+      // Progress will be updated via WebSocket
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -190,7 +237,9 @@ export default function DataUploadPage() {
         description: `Successfully uploaded ${result.count} records${dataTypeInfo}${confidence}`
       });
       
-      setUploadState({ isUploading: false, progress: 0 });
+      setTimeout(() => {
+        setUploadState({ isUploading: false, progress: 0 });
+      }, 2000); // Keep results visible for 2 seconds
       setShowPreview(false);
     },
     onError: (error) => {
@@ -199,7 +248,7 @@ export default function DataUploadPage() {
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive" 
       });
-      setUploadState({ isUploading: false, progress: 0 });
+      setUploadState({ isUploading: false, progress: 0, status: 'error' });
     },
   });
 
@@ -640,11 +689,78 @@ export default function DataUploadPage() {
                     </div>
 
                     {uploadState.isUploading && (
-                      <div className="space-y-3">
-                        <Progress value={uploadState.progress} className="w-full" />
-                        <p className="text-slate-400 text-sm">
-                          Processing {uploadState.currentFile?.name}...
-                        </p>
+                      <div className="space-y-4 bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                            <span className="text-white font-medium">
+                              {uploadState.status === 'completed' ? 'Upload Complete' : 'Processing Upload'}
+                            </span>
+                          </div>
+                          {uploadState.timeElapsed && (
+                            <div className="flex items-center space-x-4 text-sm">
+                              <div className="flex items-center space-x-1 text-slate-400">
+                                <Clock size={14} />
+                                <span>{uploadState.timeElapsed}s elapsed</span>
+                              </div>
+                              {uploadState.timeRemaining && uploadState.timeRemaining > 0 && (
+                                <span className="text-slate-400">
+                                  ~{uploadState.timeRemaining}s remaining
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-slate-300">
+                              {uploadState.currentFile?.name}
+                            </span>
+                            <span className="text-slate-400">
+                              {uploadState.progress || 0}%
+                            </span>
+                          </div>
+                          <Progress 
+                            value={uploadState.progress || 0} 
+                            className="w-full h-2" 
+                          />
+                        </div>
+
+                        {uploadState.total && (
+                          <div className="grid grid-cols-3 gap-4 text-sm">
+                            <div className="text-center">
+                              <div className="text-white font-semibold">
+                                {uploadState.processed || 0}
+                              </div>
+                              <div className="text-slate-400">Processed</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-green-400 font-semibold">
+                                {uploadState.successful || 0}
+                              </div>
+                              <div className="text-slate-400">Successful</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-red-400 font-semibold">
+                                {uploadState.failed || 0}
+                              </div>
+                              <div className="text-slate-400">Failed</div>
+                            </div>
+                          </div>
+                        )}
+
+                        {uploadState.errors && uploadState.errors.length > 0 && (
+                          <div className="mt-3">
+                            <Alert className="bg-red-900/20 border-red-800">
+                              <AlertTriangle className="h-4 w-4" />
+                              <AlertDescription className="text-red-300">
+                                {uploadState.errors.slice(0, 2).join(', ')}
+                                {uploadState.errors.length > 2 && ` (and ${uploadState.errors.length - 2} more)`}
+                              </AlertDescription>
+                            </Alert>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

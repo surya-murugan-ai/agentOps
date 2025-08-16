@@ -546,16 +546,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Track processing progress for large uploads
       const total = extractionResult.extractedData.length;
       let processed = 0;
-      let lastProgressLog = 0;
+      let lastProgressBroadcast = 0;
+      const startTime = Date.now();
+
+      // Send initial progress update
+      wsManager.broadcast({
+        type: 'upload_progress',
+        data: {
+          progress: 0,
+          processed: 0,
+          total,
+          successful: 0,
+          dataType: extractionResult.dataType,
+          status: 'processing',
+          startTime
+        }
+      });
 
       // Process extracted data based on detected type
       for (const item of extractionResult.extractedData) {
         processed++;
         
-        // Log progress every 10% for large uploads
-        if (total > 100 && processed - lastProgressLog >= Math.floor(total / 10)) {
-          console.log(`Progress: ${processed}/${total} records processed (${Math.round(processed/total*100)}%), ${count} successful so far`);
-          lastProgressLog = processed;
+        // Broadcast progress every 5% or every 100 records (whichever is smaller) for large uploads
+        const progressThreshold = Math.min(Math.floor(total / 20), 100);
+        if (total > 50 && processed - lastProgressBroadcast >= progressThreshold) {
+          const progressPercent = Math.round((processed / total) * 100);
+          const timeElapsed = Date.now() - startTime;
+          const estimatedTotal = total > 0 ? (timeElapsed / processed) * total : 0;
+          const timeRemaining = Math.max(0, estimatedTotal - timeElapsed);
+          
+          wsManager.broadcast({
+            type: 'upload_progress',
+            data: {
+              progress: progressPercent,
+              processed,
+              total,
+              successful: count,
+              dataType: extractionResult.dataType,
+              status: 'processing',
+              timeElapsed: Math.round(timeElapsed / 1000),
+              timeRemaining: Math.round(timeRemaining / 1000)
+            }
+          });
+          
+          console.log(`Progress: ${processed}/${total} records processed (${progressPercent}%), ${count} successful so far`);
+          lastProgressBroadcast = processed;
         }
         try {
           if (extractionResult.dataType === 'servers') {
@@ -696,6 +731,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           errors.push(`Failed to process item: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
       }
+
+      // Send final progress update
+      const finalTime = Date.now();
+      const totalTimeElapsed = Math.round((finalTime - startTime) / 1000);
+      
+      wsManager.broadcast({
+        type: 'upload_progress',
+        data: {
+          progress: 100,
+          processed: total,
+          total,
+          successful: count,
+          failed: total - count,
+          dataType: extractionResult.dataType,
+          status: 'completed',
+          timeElapsed: totalTimeElapsed,
+          errors: errors.slice(0, 5) // Include first few errors
+        }
+      });
 
       // Notify WebSocket clients of new data
       if (count > 0) {
