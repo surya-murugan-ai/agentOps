@@ -768,7 +768,6 @@ export default function HelpCenter() {
                 </div>
               </CardContent>
             </Card>
-          </div>
         </section>
 
         {/* Troubleshooting Guide */}
