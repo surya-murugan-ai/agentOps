@@ -150,7 +150,7 @@ export default function DataViewPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Array.isArray(servers) && servers.map((server: any) => (
+              {filterData(servers || [], "servers").map((server: any) => (
                 <TableRow key={server.id}>
                   <TableCell className="text-white font-medium">{server.hostname}</TableCell>
                   <TableCell className="text-slate-300">{server.ipAddress}</TableCell>
@@ -194,7 +194,7 @@ export default function DataViewPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Array.isArray(metrics) && metrics.slice(0, 50).map((metric: any) => (
+              {filterData(metrics || [], "metrics").slice(0, 50).map((metric: any) => (
                 <TableRow key={metric.id}>
                   <TableCell className="text-white font-medium">
                     {(() => {
@@ -239,7 +239,7 @@ export default function DataViewPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Array.isArray(alerts) && alerts.map((alert: any) => (
+              {filterData(alerts || [], "alerts").map((alert: any) => (
                 <TableRow key={alert.id}>
                   <TableCell className="text-white font-medium">{alert.title}</TableCell>
                   <TableCell className="text-slate-300">
@@ -289,7 +289,7 @@ export default function DataViewPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Array.isArray(remediations) && remediations.map((remediation: any) => (
+              {filterData(remediations || [], "remediations").map((remediation: any) => (
                 <TableRow key={remediation.id}>
                   <TableCell className="text-white font-medium">{remediation.title}</TableCell>
                   <TableCell className="text-slate-300">
@@ -335,7 +335,7 @@ export default function DataViewPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Array.isArray(auditLogs) && auditLogs.slice(0, 50).map((log: any) => (
+              {filterData(auditLogs || [], "audit").slice(0, 50).map((log: any) => (
                 <TableRow key={log.id}>
                   <TableCell className="text-white font-medium">{log.action}</TableCell>
                   <TableCell className="text-slate-300">{log.userId || 'System'}</TableCell>
@@ -363,15 +363,30 @@ export default function DataViewPage() {
   const getTableStats = () => {
     switch (selectedTable) {
       case "servers":
-        return { total: Array.isArray(servers) ? servers.length : 0, icon: Server };
+        return { 
+          total: filterData(servers || [], "servers").length, 
+          icon: Server 
+        };
       case "metrics":
-        return { total: Array.isArray(metrics) ? metrics.length : 0, icon: Activity };
+        return { 
+          total: filterData(metrics || [], "metrics").length, 
+          icon: Activity 
+        };
       case "alerts":
-        return { total: Array.isArray(alerts) ? alerts.length : 0, icon: AlertTriangle };
+        return { 
+          total: filterData(alerts || [], "alerts").length, 
+          icon: AlertTriangle 
+        };
       case "remediations":
-        return { total: Array.isArray(remediations) ? remediations.length : 0, icon: Wrench };
+        return { 
+          total: filterData(remediations || [], "remediations").length, 
+          icon: Wrench 
+        };
       case "audit":
-        return { total: Array.isArray(auditLogs) ? auditLogs.length : 0, icon: Database };
+        return { 
+          total: filterData(auditLogs || [], "audit").length, 
+          icon: Database 
+        };
       default:
         return { total: 0, icon: Database };
     }
@@ -492,6 +507,75 @@ export default function DataViewPage() {
   };
 
   const visualizationData = getVisualizationData();
+
+  // Filter and search data based on current filters
+  const filterData = (data: any[], dataType: string) => {
+    if (!Array.isArray(data)) return [];
+    
+    let filtered = data;
+    
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter((item) => {
+        const searchLower = searchTerm.toLowerCase();
+        switch (dataType) {
+          case "servers":
+            return (
+              item.hostname?.toLowerCase().includes(searchLower) ||
+              item.ipAddress?.toLowerCase().includes(searchLower) ||
+              item.environment?.toLowerCase().includes(searchLower) ||
+              item.location?.toLowerCase().includes(searchLower)
+            );
+          case "metrics":
+            const server = servers?.find((s: any) => s.id === item.serverId);
+            return server?.hostname?.toLowerCase().includes(searchLower);
+          case "alerts":
+            return (
+              item.title?.toLowerCase().includes(searchLower) ||
+              item.description?.toLowerCase().includes(searchLower) ||
+              item.server?.hostname?.toLowerCase().includes(searchLower)
+            );
+          case "remediations":
+            return (
+              item.title?.toLowerCase().includes(searchLower) ||
+              item.description?.toLowerCase().includes(searchLower) ||
+              item.server?.hostname?.toLowerCase().includes(searchLower)
+            );
+          case "audit":
+            return (
+              item.action?.toLowerCase().includes(searchLower) ||
+              item.details?.toLowerCase().includes(searchLower) ||
+              item.agentId?.toLowerCase().includes(searchLower)
+            );
+          default:
+            return true;
+        }
+      });
+    }
+    
+    // Apply status filter
+    if (filterStatus !== "all") {
+      filtered = filtered.filter((item) => {
+        switch (dataType) {
+          case "servers":
+            return item.status?.toLowerCase() === filterStatus.toLowerCase();
+          case "alerts":
+            return (
+              item.status?.toLowerCase() === filterStatus.toLowerCase() ||
+              item.severity?.toLowerCase() === filterStatus.toLowerCase()
+            );
+          case "remediations":
+            return item.status?.toLowerCase() === filterStatus.toLowerCase();
+          case "audit":
+            return item.status?.toLowerCase() === filterStatus.toLowerCase();
+          default:
+            return true;
+        }
+      });
+    }
+    
+    return filtered;
+  };
 
   return (
     <div className="min-h-screen bg-dark-bg text-white">
@@ -768,10 +852,46 @@ export default function DataViewPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                    <SelectItem value="healthy">Healthy</SelectItem>
-                    <SelectItem value="critical">Critical</SelectItem>
+                    {selectedTable === "servers" && (
+                      <>
+                        <SelectItem value="healthy">Healthy</SelectItem>
+                        <SelectItem value="warning">Warning</SelectItem>
+                        <SelectItem value="critical">Critical</SelectItem>
+                      </>
+                    )}
+                    {selectedTable === "alerts" && (
+                      <>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="acknowledged">Acknowledged</SelectItem>
+                        <SelectItem value="resolved">Resolved</SelectItem>
+                        <SelectItem value="critical">Critical</SelectItem>
+                        <SelectItem value="warning">Warning</SelectItem>
+                        <SelectItem value="info">Info</SelectItem>
+                      </>
+                    )}
+                    {selectedTable === "remediations" && (
+                      <>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="failed">Failed</SelectItem>
+                      </>
+                    )}
+                    {selectedTable === "audit" && (
+                      <>
+                        <SelectItem value="success">Success</SelectItem>
+                        <SelectItem value="failed">Failed</SelectItem>
+                        <SelectItem value="warning">Warning</SelectItem>
+                      </>
+                    )}
+                    {selectedTable === "metrics" && (
+                      <>
+                        <SelectItem value="healthy">Healthy Servers</SelectItem>
+                        <SelectItem value="warning">Warning Servers</SelectItem>
+                        <SelectItem value="critical">Critical Servers</SelectItem>
+                      </>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
