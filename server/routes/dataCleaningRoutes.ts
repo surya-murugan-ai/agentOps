@@ -179,8 +179,8 @@ router.post("/delete-all", async (req, res) => {
     const servers = await storage.getAllServers();
     const metrics = await storage.getAllMetrics(); 
     const alerts = await storage.getAllAlerts();
-    const remediationActions = await storage.getAllRemediationActions();
-    const auditLogs = await storage.getAllAuditLogs();
+    const remediationActions = await storage.getRemediationActions();
+    const auditLogs = await storage.getAuditLogs();
     
     const totalBeforeDelete = servers.length + metrics.length + alerts.length + remediationActions.length + auditLogs.length;
     
