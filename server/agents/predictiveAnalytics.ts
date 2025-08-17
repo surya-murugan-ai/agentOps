@@ -189,7 +189,7 @@ export class PredictiveAnalyticsAgent implements Agent {
 
   private async predictCpuUsage(serverId: string, historicalMetrics: any[]) {
     const cpuValues = historicalMetrics
-      .slice(0, 20) // Last 20 data points
+      .slice(0, Math.min(50, historicalMetrics.length)) // Use more data points for better predictions (up to 50)
       .map(m => parseFloat(m.cpuUsage))
       .reverse(); // Oldest first
 
@@ -241,7 +241,7 @@ export class PredictiveAnalyticsAgent implements Agent {
 
   private async predictMemoryUsage(serverId: string, historicalMetrics: any[]) {
     const memoryValues = historicalMetrics
-      .slice(0, 20)
+      .slice(0, Math.min(50, historicalMetrics.length)) // Use more data for better memory predictions
       .map(m => parseFloat(m.memoryUsage))
       .reverse();
 

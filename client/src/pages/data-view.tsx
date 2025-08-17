@@ -259,7 +259,7 @@ export default function DataViewPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filterData(metrics || [], "metrics").slice(0, 50).map((metric: any) => (
+              {filterData(metrics || [], "metrics").map((metric: any) => (
                 <TableRow key={metric.id}>
                   <TableCell className="text-white font-medium">
                     {(() => {
@@ -466,10 +466,10 @@ export default function DataViewPage() {
       case "metrics":
         if (!Array.isArray(metrics) || metrics.length === 0) return null;
         
-        // CPU usage over time (last 20 records)
-        const recentMetrics = metrics.slice(0, 20).reverse();
+        // CPU usage over time (showing all available records for comprehensive analysis)
+        const recentMetrics = metrics.slice(0, Math.min(50, metrics.length)).reverse();
         const cpuData = {
-          labels: recentMetrics.map((_, index) => `T-${20-index}`),
+          labels: recentMetrics.map((_, index) => `T-${recentMetrics.length-index}`),
           datasets: [{
             label: 'CPU Usage (%)',
             data: recentMetrics.map(m => parseFloat(m.cpuUsage)),
