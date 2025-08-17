@@ -15,6 +15,7 @@ const AgentsPage = lazy(() => import("@/pages/agents"));
 const AgentSettingsPage = lazy(() => import("@/pages/agent-settings"));
 const AlertsPage = lazy(() => import("@/pages/alerts"));
 const RemediationsPage = lazy(() => import("@/pages/remediations"));
+const RemediationCommandsPage = lazy(() => import("@/pages/RemediationCommands"));
 const AuditPage = lazy(() => import("@/pages/audit"));
 const AnalyticsPage = lazy(() => import("@/pages/analytics"));
 const AdvancedAnalyticsPage = lazy(() => import("@/pages/analytics-advanced"));
@@ -72,6 +73,11 @@ function Router() {
       <Route path="/remediations">
         <Suspense fallback={<PageLoader />}>
           <RemediationsPage />
+        </Suspense>
+      </Route>
+      <Route path="/remediation-commands">
+        <Suspense fallback={<PageLoader />}>
+          <RemediationCommandsPage />
         </Suspense>
       </Route>
       <Route path="/audit">

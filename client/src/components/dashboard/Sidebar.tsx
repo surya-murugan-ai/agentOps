@@ -1,4 +1,4 @@
-import { Brain, BarChart3, Server, Users, AlertTriangle, Settings, ClipboardList, Activity, Upload, Database, Wrench, Key, TrendingUp, GitBranch, HelpCircle, Cloud } from 'lucide-react';
+import { Brain, BarChart3, Server, Users, AlertTriangle, Settings, ClipboardList, Activity, Upload, Database, Wrench, Key, TrendingUp, GitBranch, HelpCircle, Cloud, Terminal } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 
@@ -103,6 +103,10 @@ export default function Sidebar() {
           <Link href="/remediations" className={getNavItemClass("/remediations")} data-testid="nav-remediations">
             <Wrench size={20} />
             <span>Remediations</span>
+          </Link>
+          <Link href="/remediation-commands" className={getNavItemClass("/remediation-commands")} data-testid="nav-remediation-commands">
+            <Terminal size={20} />
+            <span>Command Execution</span>
           </Link>
 
           <Link href="/workflows" className={getNavItemClass("/workflows")} data-testid="nav-workflows">
