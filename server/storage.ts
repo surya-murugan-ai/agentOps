@@ -196,7 +196,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
+    const [user] = await db.insert(users).values([insertUser]).returning();
     return user;
   }
 
@@ -696,7 +696,7 @@ export class DatabaseStorage implements IStorage {
 
   // Approval Workflows Implementation
   async createApprovalWorkflow(workflow: InsertApprovalWorkflow): Promise<ApprovalWorkflow> {
-    const [newWorkflow] = await db.insert(approvalWorkflows).values(workflow).returning();
+    const [newWorkflow] = await db.insert(approvalWorkflows).values([workflow]).returning();
     return newWorkflow;
   }
 
@@ -771,7 +771,7 @@ export class DatabaseStorage implements IStorage {
 
   // Approval History Implementation
   async createApprovalHistory(history: InsertApprovalHistory): Promise<ApprovalHistory> {
-    const [newHistory] = await db.insert(approvalHistory).values(history).returning();
+    const [newHistory] = await db.insert(approvalHistory).values([history]).returning();
     return newHistory;
   }
 
@@ -1008,7 +1008,7 @@ export class DatabaseStorage implements IStorage {
 
   // LLM Usage Tracking
   async createLlmUsage(usage: InsertLlmUsage): Promise<LlmUsage> {
-    const [newUsage] = await db.insert(llmUsage).values(usage).returning();
+    const [newUsage] = await db.insert(llmUsage).values([usage]).returning();
     return newUsage;
   }
 
@@ -1164,7 +1164,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCloudConnection(connection: InsertCloudConnection): Promise<CloudConnection> {
-    const [newConnection] = await db.insert(cloudConnections).values(connection).returning();
+    const [newConnection] = await db.insert(cloudConnections).values([connection]).returning();
     return newConnection;
   }
 
