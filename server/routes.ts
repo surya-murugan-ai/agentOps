@@ -473,9 +473,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Smart auto-mapping upload endpoint - handles ANY data format
+  app.post("/api/metrics/smart-upload", async (req, res) => {
+    try {
+      const { data: rawData } = req.body;
+      if (!Array.isArray(rawData)) {
+        return res.status(400).json({ error: "Expected array of data records" });
+      }
+
+      console.log(`🤖 SMART UPLOAD: Processing ${rawData.length} records with auto-detection`);
+      
+      // Import the auto-mapper
+      const { DataAutoMapper } = await import('./services/dataAutoMapper');
+      
+      // Analyze the data structure
+      const analysis = DataAutoMapper.analyzeDataStructure(rawData);
+      console.log(`📊 Data Analysis:`, analysis);
+      
+      // Auto-map the data to standard format
+      const mappedData = DataAutoMapper.autoMapData(rawData);
+      
+      if (mappedData.length === 0) {
+        return res.status(400).json({ 
+          error: "No valid data could be mapped from the uploaded file",
+          analysis: analysis,
+          recommendations: analysis.recommendations
+        });
+      }
+
+      console.log(`✅ Successfully mapped ${mappedData.length}/${rawData.length} records`);
+      
+      // Use the existing bulk upload logic with mapped data
+      return await processBulkMetrics(req, res, mappedData, analysis);
+      
+    } catch (error) {
+      console.error("Error in smart upload:", error);
+      res.status(500).json({ error: "Failed to process smart upload" });
+    }
+  });
+
   app.post("/api/metrics/bulk", async (req, res) => {
     try {
-      const { metrics } = req.body;
+      const { metrics, data } = req.body;
+      let processedMetrics = metrics;
+      
+      // If 'data' is provided instead of 'metrics', use auto-mapping
+      if (!metrics && data) {
+        console.log(`🤖 Auto-detecting data format for ${data.length} records`);
+        const { DataAutoMapper } = await import('./services/dataAutoMapper');
+        processedMetrics = DataAutoMapper.autoMapData(data);
+        console.log(`✅ Auto-mapped ${processedMetrics.length}/${data.length} records`);
+      }
+      
+      if (!Array.isArray(processedMetrics)) {
+        return res.status(400).json({ error: "Expected array of metrics or data" });
+      }
+
+      return await processBulkMetrics(req, res, processedMetrics);
+      
+    } catch (error) {
+      console.error("Error in bulk upload:", error);
+      res.status(500).json({ error: "Failed to upload metrics" });
+    }
+  });
+
+  // Core bulk processing logic (shared by both endpoints)
+  const processBulkMetrics = async (req, res, metrics, analysis = null) => {
+    try {
       if (!Array.isArray(metrics)) {
         return res.status(400).json({ error: "Expected array of metrics" });
       }
@@ -562,16 +626,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             serverId = finalServerId;
 
+            // Clean numeric values to ensure they're valid numbers
+            const cleanNumeric = (value: any, defaultValue: number = 0): string => {
+              if (value === null || value === undefined || value === '') return String(defaultValue);
+              // More aggressive cleaning: remove %, ms, units, and extra spaces
+              const cleaned = String(value).replace(/[^\d.-]/g, '').trim();
+              const num = parseFloat(cleaned);
+              return isNaN(num) || cleaned === '' ? String(defaultValue) : String(num);
+            };
+
             return {
               serverId,
-              cpuUsage: String(metricData.cpuUsage || metricData.cpu_usage || 0),
-              memoryUsage: String(metricData.memoryUsage || metricData.memory_usage || 0),
-              memoryTotal: Number(metricData.memoryTotal || metricData.memory_total || 8192),
-              diskUsage: String(metricData.diskUsage || metricData.disk_usage || 0),
-              diskTotal: Number(metricData.diskTotal || metricData.disk_total || 256),
-              networkLatency: String(metricData.networkLatency || metricData.network_latency || 0),
-              networkThroughput: String(metricData.networkThroughput || metricData.network_throughput || 0),
-              processCount: Number(metricData.processCount || metricData.process_count || 150),
+              cpuUsage: cleanNumeric(metricData.cpuUsage || metricData.cpu_usage, 0),
+              memoryUsage: cleanNumeric(metricData.memoryUsage || metricData.memory_usage, 0),
+              memoryTotal: Number(cleanNumeric(metricData.memoryTotal || metricData.memory_total, 8192)),
+              diskUsage: cleanNumeric(metricData.diskUsage || metricData.disk_usage, 0),
+              diskTotal: Number(cleanNumeric(metricData.diskTotal || metricData.disk_total, 256)),
+              networkLatency: cleanNumeric(metricData.networkLatency || metricData.network_latency, 0),
+              networkThroughput: cleanNumeric(metricData.networkThroughput || metricData.network_throughput, 0),
+              processCount: Number(cleanNumeric(metricData.processCount || metricData.process_count, 150)),
               timestamp: metricData.timestamp ? new Date(metricData.timestamp) : new Date()
             };
           })
@@ -579,6 +652,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Single batch insert for maximum performance
         if (processedBatch.length > 0) {
+          // Debug log the first record to diagnose data type issues
+          if (processedBatch.length > 0) {
+            console.log(`🔍 DEBUG - Sample processed record:`, JSON.stringify(processedBatch[0], null, 2));
+          }
           await storage.bulkInsertMetrics(processedBatch);
           totalProcessed += processedBatch.length;
         }
@@ -600,13 +677,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalRecords: totalProcessed,
           timeMs: totalTime,
           recordsPerSecond: Math.round(totalProcessed/(totalTime/1000))
-        }
+        },
+        analysis: analysis || undefined
       });
     } catch (error) {
       console.error("Error in optimized bulk metrics upload:", error);
       res.status(500).json({ error: "Failed to upload metrics" });
     }
-  });
+  };
 
   app.post("/api/alerts/bulk", async (req, res) => {
     try {

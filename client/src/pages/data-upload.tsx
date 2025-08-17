@@ -199,7 +199,7 @@ export default function DataUploadPage() {
       // Use smart upload endpoint when auto-detect is selected
       const useSmartUpload = selectedDataType === 'auto' || type === 'auto';
       
-      const endpoint = useSmartUpload ? '/api/data/smart-upload' :
+      const endpoint = useSmartUpload ? '/api/metrics/smart-upload' :
                      type === 'servers' ? '/api/servers/bulk' :
                      type === 'metrics' ? '/api/metrics/bulk' :
                      type === 'alerts' ? '/api/alerts/bulk' :
