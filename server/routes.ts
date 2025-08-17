@@ -12,6 +12,10 @@ import { registerAgentControlRoutes } from "./routes/agentControlRoutes";
 import { systemRouter } from "./routes/system";
 import { thresholdsRouter } from "./routes/thresholds";
 import cloudRoutes from "./routes/cloudRoutes";
+import multer from 'multer';
+import fs from 'fs';
+import path from 'path';
+import Papa from 'papaparse';
 
 // Import comprehensive error handling and validation systems
 import { AgentOpsError, ValidationError, DatabaseError, NotFoundError, logError } from './utils/errors';
@@ -77,6 +81,236 @@ async function getLastProcessingDetails(agentId: string): Promise<any> {
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   const dataExtractor = new DataExtractionService();
+
+  // Configure multer for file uploads
+  const upload = multer({
+    dest: 'uploads/',
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ['.csv', '.xlsx', '.xls', '.json'];
+      const ext = path.extname(file.originalname).toLowerCase();
+      cb(null, allowedTypes.includes(ext));
+    },
+    limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
+  });
+
+  // File upload endpoint
+  app.post("/api/upload", upload.single('file'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const { uploadType } = req.body;
+      const filePath = req.file.path;
+      const fileExtension = path.extname(req.file.originalname).toLowerCase();
+      
+      console.log(`📁 Processing upload: ${req.file.originalname} (${uploadType})`);
+      
+      let parsedData: any[] = [];
+      
+      // Parse different file formats
+      if (fileExtension === '.csv') {
+        const fileContent = fs.readFileSync(filePath, 'utf8');
+        const result = Papa.parse(fileContent, { header: true, skipEmptyLines: true });
+        parsedData = result.data;
+      } else if (fileExtension === '.json') {
+        const fileContent = fs.readFileSync(filePath, 'utf8');
+        parsedData = JSON.parse(fileContent);
+      } else {
+        // For Excel files, use smart upload endpoint
+        return res.status(400).json({ error: "Excel files not yet supported in this endpoint" });
+      }
+
+      console.log(`📊 Parsed ${parsedData.length} records`);
+
+      // Process based on upload type
+      let result;
+      if (uploadType === 'servers') {
+        // Process servers data
+        const { DataAutoMapper } = await import('./services/dataAutoMapper');
+        const analysis = DataAutoMapper.analyzeDataStructure(parsedData);
+        
+        if (analysis.dataType === 'servers' || analysis.confidence > 0.7) {
+          let count = 0;
+          const errors: string[] = [];
+          
+          for (const serverData of parsedData) {
+            try {
+              const hostname = serverData.hostname || serverData.serverId || serverData.server_id;
+              const existingServer = hostname ? await storage.getServerByHostname(hostname) : null;
+              
+              if (!existingServer && hostname) {
+                await storage.createServer({
+                  id: nanoid(),
+                  hostname: hostname,
+                  ipAddress: serverData.ipAddress || serverData.ip_address || serverData.ipaddress || 
+                            `192.168.1.${Math.floor(Math.random() * 254) + 1}`,
+                  environment: serverData.environment || 'production',
+                  status: serverData.status || 'healthy',
+                  location: serverData.location || 'Unknown',
+                  tags: typeof serverData.tags === 'string' ? 
+                        (() => {
+                          try {
+                            // Parse "service=core-banking;tier=bronze" format
+                            const pairs = serverData.tags.split(';');
+                            const obj = {};
+                            pairs.forEach(pair => {
+                              const [key, value] = pair.split('=');
+                              if (key && value) obj[key.trim()] = value.trim();
+                            });
+                            return obj;
+                          } catch (e) {
+                            return { raw: serverData.tags };
+                          }
+                        })() :
+                        (serverData.tags || {}),
+                  createdAt: new Date(),
+                  updatedAt: new Date()
+                });
+                count++;
+                console.log(`✅ Created server: ${hostname}`);
+              }
+            } catch (error) {
+              console.error(`Failed to create server:`, error);
+              errors.push(`Failed to create server: ${error.message}`);
+            }
+          }
+          
+          result = { count, message: `Successfully uploaded ${count} servers`, errors };
+        } else {
+          result = { error: "Data does not appear to be server data" };
+        }
+      } else if (uploadType === 'metrics') {
+        // Process metrics data
+        const { DataAutoMapper } = await import('./services/dataAutoMapper');
+        const mappedData = DataAutoMapper.autoMapData(parsedData);
+        
+        // Process metrics using bulk endpoint logic
+        const BATCH_SIZE = 250;
+        let totalProcessed = 0;
+        const startTime = Date.now();
+        
+        // Pre-fetch servers
+        const allServers = await storage.getAllServers();
+        const serverMap = new Map();
+        allServers.forEach(server => {
+          serverMap.set(server.hostname, server.id);
+          serverMap.set(server.id, server.id);
+        });
+        
+        for (let i = 0; i < mappedData.length; i += BATCH_SIZE) {
+          const batch = mappedData.slice(i, i + BATCH_SIZE);
+          const metricsToInsert = [];
+          
+          for (const metric of batch) {
+            let serverId = metric.serverId;
+            if (!serverId && metric.hostname) {
+              serverId = serverMap.get(metric.hostname);
+            }
+            
+            if (serverId) {
+              metricsToInsert.push({
+                ...metric,
+                id: nanoid(),
+                serverId: serverId,
+                timestamp: new Date(metric.timestamp || Date.now())
+              });
+            }
+          }
+          
+          if (metricsToInsert.length > 0) {
+            await storage.bulkInsertMetrics(metricsToInsert);
+            totalProcessed += metricsToInsert.length;
+          }
+        }
+        
+        const totalTime = Date.now() - startTime;
+        result = { 
+          count: totalProcessed, 
+          message: `Successfully uploaded ${totalProcessed} metrics in ${totalTime}ms`,
+          performance: { recordsPerSecond: Math.round(totalProcessed/(totalTime/1000)) }
+        };
+      } else {
+        // Auto-detect data type
+        const { DataAutoMapper } = await import('./services/dataAutoMapper');
+        const analysis = DataAutoMapper.analyzeDataStructure(parsedData);
+        
+        if (analysis.dataType === 'servers') {
+          // Redirect to server processing
+          req.body.uploadType = 'servers';
+          return app.emit('request', req, res);
+        } else if (analysis.dataType === 'metrics') {
+          // Process metrics auto-detected data
+          const mappedData = DataAutoMapper.autoMapData(parsedData);
+          
+          const BATCH_SIZE = 250;
+          let totalProcessed = 0;
+          const startTime = Date.now();
+          
+          const allServers = await storage.getAllServers();
+          const serverMap = new Map();
+          allServers.forEach(server => {
+            serverMap.set(server.hostname, server.id);
+            serverMap.set(server.id, server.id);
+          });
+          
+          for (let i = 0; i < mappedData.length; i += BATCH_SIZE) {
+            const batch = mappedData.slice(i, i + BATCH_SIZE);
+            const metricsToInsert = [];
+            
+            for (const metric of batch) {
+              let serverId = metric.serverId;
+              if (!serverId && metric.hostname) {
+                serverId = serverMap.get(metric.hostname);
+              }
+              
+              if (serverId) {
+                metricsToInsert.push({
+                  ...metric,
+                  id: nanoid(),
+                  serverId: serverId,
+                  timestamp: new Date(metric.timestamp || Date.now())
+                });
+              }
+            }
+            
+            if (metricsToInsert.length > 0) {
+              await storage.bulkInsertMetrics(metricsToInsert);
+              totalProcessed += metricsToInsert.length;
+            }
+          }
+          
+          const totalTime = Date.now() - startTime;
+          result = { 
+            count: totalProcessed, 
+            message: `Successfully uploaded ${totalProcessed} metrics in ${totalTime}ms`,
+            performance: { recordsPerSecond: Math.round(totalProcessed/(totalTime/1000)) }
+          };
+        } else {
+          result = { error: "Unable to determine data type", analysis };
+        }
+      }
+
+      // Clean up uploaded file
+      fs.unlinkSync(filePath);
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error processing upload:", error);
+      
+      // Clean up uploaded file on error
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      
+      res.status(500).json({ error: "Failed to process upload" });
+    }
+  });
+
+  // Upload status endpoint
+  app.get("/api/upload/status", (req, res) => {
+    res.json({ status: "ready", message: "Upload system ready" });
+  });
 
   // Setup WebSocket server
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
