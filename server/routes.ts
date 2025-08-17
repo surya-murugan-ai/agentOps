@@ -190,7 +190,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let totalProcessed = 0;
         const startTime = Date.now();
         
-        // Pre-fetch servers
+        // Pre-fetch servers  
         const allServers = await storage.getAllServers();
         const serverMap = new Map();
         allServers.forEach(server => {
@@ -203,22 +203,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const metricsToInsert = [];
           
           for (const metric of batch) {
-            let serverId = metric.serverId;
+            // Look up server by hostname first (this is what CSV contains)
+            let serverId = serverMap.get(metric.serverId);
             if (!serverId && metric.hostname) {
               serverId = serverMap.get(metric.hostname);
+            }
+            
+            // If server doesn't exist, create it with hostname as the lookup key
+            if (!serverId) {
+              const hostname = metric.serverId || metric.hostname || `auto-server-${Date.now()}`;
+              const newServer = await storage.createServer({
+                id: nanoid(),
+                hostname: hostname,
+                ipAddress: '192.168.1.10', // Default IP
+                environment: 'production',
+                location: 'datacenter-1',
+                status: 'healthy'
+              });
+              serverId = newServer.id;
+              serverMap.set(hostname, serverId); // Map hostname to serverId
+              console.log(`✅ Auto-created server: ${hostname}`);
             }
             
             if (serverId) {
               metricsToInsert.push({
                 ...metric,
                 id: nanoid(),
-                serverId: serverId,
-                timestamp: new Date(metric.timestamp || Date.now())
+                serverId: serverId, // This should be the database ID, not the CSV serverId
+                timestamp: new Date(metric.timestamp || Date.now()),
+                processCount: metric.processCount || 100,
+                memoryTotal: metric.memoryTotal || 8192,
+                diskTotal: metric.diskTotal || 256,
+                networkThroughput: metric.networkThroughput || 0
               });
             }
           }
           
           if (metricsToInsert.length > 0) {
+            // Process batch with proper server mapping
+            console.log(`📊 Processing batch: ${metricsToInsert.length} metrics`);
             await storage.bulkInsertMetrics(metricsToInsert);
             totalProcessed += metricsToInsert.length;
           }
@@ -269,7 +292,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   ...metric,
                   id: nanoid(),
                   serverId: serverId,
-                  timestamp: new Date(metric.timestamp || Date.now())
+                  timestamp: new Date(metric.timestamp || Date.now()),
+                  processCount: metric.processCount || 100, // Default value for missing process count
+                  memoryTotal: metric.memoryTotal || 8192,  // Default memory total
+                  diskTotal: metric.diskTotal || 256,       // Default disk total  
+                  networkThroughput: metric.networkThroughput || 0 // Default network throughput
                 });
               }
             }

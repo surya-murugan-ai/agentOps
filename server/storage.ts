@@ -344,11 +344,15 @@ export class DatabaseStorage implements IStorage {
   async bulkInsertMetrics(metrics: InsertServerMetrics[]): Promise<void> {
     if (metrics.length === 0) return;
     
-    // Add IDs and timestamps to all metrics
+    // Add IDs and timestamps to all metrics, ensure all required fields have values
     const metricsWithDefaults = metrics.map(m => ({
       ...m,
       id: m.id || nanoid(),
-      timestamp: m.timestamp || new Date()
+      timestamp: m.timestamp || new Date(),
+      processCount: m.processCount ?? 100, // Ensure processCount is never null/undefined
+      memoryTotal: m.memoryTotal ?? 8192,
+      diskTotal: m.diskTotal ?? 256,
+      networkThroughput: m.networkThroughput ?? '0'
     }));
     
     // Batch insert all metrics at once - much faster than individual inserts

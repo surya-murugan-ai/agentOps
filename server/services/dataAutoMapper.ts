@@ -196,8 +196,9 @@ export class DataAutoMapper {
               break;
 
             case 'processCount':
-              // Convert to number
-              mappedRow[standardField] = Number(value || 0);
+              // Convert to number, ensure it's never null/undefined
+              const numValue = Number(value || 100);
+              mappedRow[standardField] = isNaN(numValue) ? 100 : numValue;
               break;
 
             case 'timestamp':
@@ -233,10 +234,19 @@ export class DataAutoMapper {
           mappedRow.timestamp = new Date();
         }
 
-        // Set reasonable defaults for missing metrics
-        mappedRow.memoryTotal = mappedRow.memoryTotal || 8192;
-        mappedRow.diskTotal = mappedRow.diskTotal || 256;
-        mappedRow.networkThroughput = mappedRow.networkThroughput || '0';
+        // Set reasonable defaults for missing metrics - use explicit checks for undefined/null
+        if (mappedRow.memoryTotal === undefined || mappedRow.memoryTotal === null) {
+          mappedRow.memoryTotal = 8192;
+        }
+        if (mappedRow.diskTotal === undefined || mappedRow.diskTotal === null) {
+          mappedRow.diskTotal = 256;
+        }
+        if (mappedRow.networkThroughput === undefined || mappedRow.networkThroughput === null) {
+          mappedRow.networkThroughput = '0';
+        }
+        if (mappedRow.processCount === undefined || mappedRow.processCount === null) {
+          mappedRow.processCount = 100; // Ensure this is never null for database constraint
+        }
 
         return mappedRow;
         
