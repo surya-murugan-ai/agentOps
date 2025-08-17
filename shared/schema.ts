@@ -333,6 +333,16 @@ export const approvalHistory = pgTable("approval_history", {
   timestamp: timestamp("timestamp").defaultNow(),
 });
 
+// Upload History table for tracking file uploads and preventing duplicates
+export const uploadHistory = pgTable("upload_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  fileHash: varchar("file_hash", { length: 64 }).notNull().unique(),
+  filename: varchar("filename", { length: 255 }).notNull(),
+  uploadCount: integer("upload_count").notNull(),
+  uploadType: varchar("upload_type", { length: 50 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // LLM Usage Tracking table
 export const llmUsage = pgTable("llm_usage", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

@@ -16,6 +16,8 @@ import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import Papa from 'papaparse';
+import { db } from "./db";
+import { sql } from "drizzle-orm";
 
 // Import comprehensive error handling and validation systems
 import { AgentOpsError, ValidationError, DatabaseError, NotFoundError, logError } from './utils/errors';
@@ -105,6 +107,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fileExtension = path.extname(req.file.originalname).toLowerCase();
       
       console.log(`📁 Processing upload: ${req.file.originalname} (${uploadType})`);
+      
+      // Create file hash to prevent duplicate uploads
+      const crypto = await import('crypto');
+      const fileContent = fs.readFileSync(filePath);
+      const fileHash = crypto.createHash('sha256').update(fileContent).digest('hex');
+      
+      // Check if this exact file has been uploaded before
+      const { uploadHistory } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+      const existingUpload = await db.select().from(uploadHistory).where(eq(uploadHistory.fileHash, fileHash));
+      if (existingUpload.length > 0) {
+        fs.unlinkSync(filePath); // Clean up temp file
+        return res.status(409).json({ 
+          error: "Duplicate file upload detected",
+          message: `File '${req.file.originalname}' has already been uploaded previously`,
+          previousUpload: existingUpload[0]
+        });
+      }
       
       let parsedData: any[] = [];
       
@@ -198,6 +218,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           serverMap.set(server.id, server.id);
         });
         
+        // Add database-level duplicate prevention
+        console.log('🔍 Checking for existing metrics to prevent duplicates...');
+        const sessionId = nanoid(); // Create unique session ID for this upload
+        
         for (let i = 0; i < mappedData.length; i += BATCH_SIZE) {
           const batch = mappedData.slice(i, i + BATCH_SIZE);
           const metricsToInsert = [];
@@ -229,7 +253,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               metricsToInsert.push({
                 ...metric,
                 id: nanoid(),
-                serverId: serverId, // This should be the database ID, not the CSV serverId
+                serverId: serverId,
                 timestamp: new Date(metric.timestamp || Date.now()),
                 processCount: metric.processCount || 100,
                 memoryTotal: metric.memoryTotal || 8192,
@@ -240,14 +264,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           if (metricsToInsert.length > 0) {
-            // Process batch with proper server mapping
             console.log(`📊 Processing batch: ${metricsToInsert.length} metrics`);
-            await storage.bulkInsertMetrics(metricsToInsert);
-            totalProcessed += metricsToInsert.length;
+            // Use session-aware duplicate prevention
+            const uniqueMetrics = await storage.bulkInsertMetricsWithDuplicateCheck(metricsToInsert, sessionId);
+            totalProcessed += uniqueMetrics;
           }
         }
         
+        // Clear session tracking after upload completes
+        storage.clearUploadSession();
+        
         const totalTime = Date.now() - startTime;
+        
+        // Record successful upload in upload history
+        await db.insert(uploadHistory).values({
+          id: nanoid(),
+          fileHash: fileHash,
+          filename: req.file.originalname,
+          uploadCount: totalProcessed,
+          uploadType: 'metrics'
+        });
+        
         result = { 
           count: totalProcessed, 
           message: `Successfully uploaded ${totalProcessed} metrics in ${totalTime}ms`,

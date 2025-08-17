@@ -359,6 +359,59 @@ export class DatabaseStorage implements IStorage {
     await db.insert(serverMetrics).values(metricsWithDefaults);
   }
 
+  // Session-level duplicate tracking to prevent race conditions during parallel uploads
+  private uploadSessionKeys = new Set<string>();
+
+  async bulkInsertMetricsWithDuplicateCheck(metrics: InsertServerMetrics[], sessionId?: string): Promise<number> {
+    if (metrics.length === 0) return 0;
+    
+    // Add IDs and timestamps to all metrics, ensure all required fields have values
+    const metricsWithDefaults = metrics.map(m => ({
+      ...m,
+      id: m.id || nanoid(),
+      timestamp: m.timestamp || new Date(),
+      processCount: m.processCount ?? 100,
+      memoryTotal: m.memoryTotal ?? 8192,
+      diskTotal: m.diskTotal ?? 256,
+      networkThroughput: m.networkThroughput ?? '0'
+    }));
+
+    // Get all existing combinations from database
+    const existingKeys = await db.select({
+      key: sql<string>`CONCAT(${serverMetrics.serverId}, '|', ${serverMetrics.timestamp}, '|', ${serverMetrics.cpuUsage}, '|', ${serverMetrics.memoryUsage})`
+    }).from(serverMetrics);
+    
+    const existingSet = new Set(existingKeys.map(row => row.key));
+
+    // Filter out duplicates using both database and session-level tracking
+    const newMetrics = metricsWithDefaults.filter(m => {
+      const key = `${m.serverId}|${m.timestamp.toISOString()}|${m.cpuUsage}|${m.memoryUsage}`;
+      
+      // Check if already exists in database OR in current upload session
+      if (existingSet.has(key) || this.uploadSessionKeys.has(key)) {
+        return false;
+      }
+      
+      // Add to session tracking to prevent other parallel batches from inserting
+      this.uploadSessionKeys.add(key);
+      return true;
+    });
+
+    if (newMetrics.length > 0) {
+      await db.insert(serverMetrics).values(newMetrics);
+    }
+
+    const duplicatesSkipped = metricsWithDefaults.length - newMetrics.length;
+    console.log(`🛡️ Duplicate prevention: ${duplicatesSkipped} duplicates skipped, ${newMetrics.length} new metrics inserted`);
+    
+    return newMetrics.length;
+  }
+
+  // Clear session keys after upload completes
+  clearUploadSession(): void {
+    this.uploadSessionKeys.clear();
+  }
+
   // Alias for consistency with bulk upload
   async createMetric(metrics: InsertServerMetrics): Promise<ServerMetrics> {
     return await this.addServerMetrics(metrics);
