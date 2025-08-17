@@ -490,21 +490,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const analysis = DataAutoMapper.analyzeDataStructure(rawData);
       console.log(`📊 Data Analysis:`, analysis);
       
-      // Auto-map the data to standard format
-      const mappedData = DataAutoMapper.autoMapData(rawData);
-      
-      if (mappedData.length === 0) {
-        return res.status(400).json({ 
-          error: "No valid data could be mapped from the uploaded file",
+      // Route to appropriate handler based on detected data type
+      if (analysis.dataType === 'servers') {
+        console.log(`🖥️ Detected server data - processing as servers (bypassing metrics validation)`);
+        
+        let count = 0;
+        const errors: string[] = [];
+        
+        for (const serverData of rawData) {
+          try {
+            // Check if server already exists by hostname
+            const hostname = serverData.hostname || serverData.serverId || serverData.server_id;
+            const existingServer = hostname ? 
+              await storage.getServerByHostname(hostname) : null;
+            
+            if (!existingServer && hostname) {
+              await storage.createServer({
+                id: nanoid(),
+                hostname: hostname,
+                ipAddress: serverData.ipAddress || serverData.ip_address || serverData.ipaddress || 
+                          `192.168.1.${Math.floor(Math.random() * 254) + 1}`,
+                environment: serverData.environment || 'production',
+                status: serverData.status || 'healthy',
+                location: serverData.location || 'Unknown',
+                tags: serverData.tags ? (typeof serverData.tags === 'string' ? 
+                      { custom: serverData.tags } : serverData.tags) : {},
+                createdAt: new Date(),
+                updatedAt: new Date()
+              });
+              count++;
+              console.log(`✅ Created server: ${hostname}`);
+            } else if (existingServer) {
+              console.log(`⏭️ Server already exists: ${hostname}`);
+            } else {
+              console.log(`⚠️ Skipped record without hostname`);
+            }
+          } catch (error) {
+            console.error(`Failed to create server:`, error);
+            errors.push(`Failed to create server ${serverData.hostname || 'unknown'}: ${error.message}`);
+          }
+        }
+        
+        return res.json({ 
+          count, 
+          message: `Successfully processed ${count} servers`,
+          errors: errors.length > 0 ? errors : undefined,
+          analysis 
+        });
+        
+      } else if (analysis.dataType === 'metrics') {
+        // Auto-map the data to standard format
+        const mappedData = DataAutoMapper.autoMapData(rawData);
+        
+        if (mappedData.length === 0) {
+          return res.status(400).json({ 
+            error: "No valid data could be mapped from the uploaded file",
+            analysis: analysis,
+            recommendations: analysis.recommendations
+          });
+        }
+
+        console.log(`✅ Successfully mapped ${mappedData.length}/${rawData.length} records`);
+        
+        // Use the existing bulk upload logic with mapped data
+        return await processBulkMetrics(req, res, mappedData, analysis);
+        
+      } else {
+        return res.status(400).json({
+          error: "Unable to determine data type from uploaded data",
           analysis: analysis,
-          recommendations: analysis.recommendations
+          recommendations: [
+            "Ensure your data contains either server information (hostname, IP address) or metrics data (CPU, memory usage)",
+            "Check column headers match expected formats",
+            "Verify data is properly formatted"
+          ]
         });
       }
-
-      console.log(`✅ Successfully mapped ${mappedData.length}/${rawData.length} records`);
-      
-      // Use the existing bulk upload logic with mapped data
-      return await processBulkMetrics(req, res, mappedData, analysis);
       
     } catch (error) {
       console.error("Error in smart upload:", error);
