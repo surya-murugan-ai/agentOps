@@ -490,10 +490,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Pre-fetch all servers once to avoid repeated DB calls
       const allServers = await storage.getAllServers();
       const serverMap = new Map();
+      let newServersCount = 0;
+      
+      console.log(`📋 Available servers: ${allServers.length}`);
       allServers.forEach(server => {
         serverMap.set(server.hostname, server.id);
         serverMap.set(server.id, server.id);
       });
+      
+      // AUTO-CREATE MISSING SERVERS - Identify missing servers from metrics
+      const uniqueServerIds = new Set();
+      metrics.forEach(metric => {
+        if (metric.serverId) uniqueServerIds.add(metric.serverId);
+        if (metric.hostname) uniqueServerIds.add(metric.hostname);
+      });
+      
+      // Create missing servers
+      for (const serverId of uniqueServerIds) {
+        if (!serverMap.has(serverId)) {
+          console.log(`🆕 Auto-creating missing server: ${serverId}`);
+          try {
+            const newServer = await storage.createServer({
+              id: nanoid(),
+              hostname: serverId,
+              ipAddress: `192.168.1.${Math.floor(Math.random() * 254) + 1}`,
+              environment: 'production',
+              status: 'healthy',
+              location: 'auto-generated',
+              tags: { type: 'auto-created' },
+              createdAt: new Date(),
+              updatedAt: new Date()
+            });
+            serverMap.set(serverId, newServer.id);
+            serverMap.set(newServer.id, newServer.id);
+            newServersCount++;
+            console.log(`✅ Created server: ${serverId} → ${newServer.id}`);
+          } catch (error) {
+            console.error(`❌ Failed to create server ${serverId}:`, error);
+          }
+        }
+      }
+      
+      console.log(`📊 Server mapping complete: ${serverMap.size} entries (${newServersCount} new servers created)`);
 
       // Process in optimized batches
       for (let i = 0; i < metrics.length; i += BATCH_SIZE) {
@@ -503,9 +541,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Prepare batch with server ID mapping
         const processedBatch = batch
           .map(metricData => {
-            // Fast server ID lookup
-            const serverId = metricData.serverId || serverMap.get(metricData.hostname);
-            if (!serverId) return null;
+            // Fast server ID lookup - check serverId first, then try hostname
+            let serverId = metricData.serverId;
+            let finalServerId = null;
+            
+            // Try to map the serverId (which might be a hostname) to a UUID
+            if (serverId) {
+              finalServerId = serverMap.get(serverId);
+            }
+            
+            // If no match found and we have hostname, try that
+            if (!finalServerId && metricData.hostname) {
+              finalServerId = serverMap.get(metricData.hostname);
+            }
+            
+            if (!finalServerId) {
+              console.log(`⚠️ Skipping metric - no valid server found for: ${metricData.serverId || metricData.hostname}`);
+              return null;
+            }
+            
+            serverId = finalServerId;
 
             return {
               serverId,
@@ -539,6 +594,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ 
         count: totalProcessed, 
+        newServersCount: newServersCount,
         message: `High-speed upload: ${totalProcessed} metrics in ${totalTime}ms`,
         performance: {
           totalRecords: totalProcessed,
@@ -705,11 +761,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           // SINGLE BATCH INSERT - Maximum performance
-          if (metricsToInsert.length > 0) {
-            await storage.bulkInsertMetrics(metricsToInsert);
-          }
-          
-          // BATCH INSERT ALL METRICS AT ONCE
           if (metricsToInsert.length > 0) {
             try {
               await storage.bulkInsertMetrics(metricsToInsert);

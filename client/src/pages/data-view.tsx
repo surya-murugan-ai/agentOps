@@ -57,11 +57,11 @@ export default function DataViewPage() {
   const [_, setLocation] = useLocation();
 
   // Fetch data for different tables - always fetch counts for buttons
-  const { data: servers, isLoading: serversLoading } = useQuery({
+  const { data: servers = [], isLoading: serversLoading } = useQuery({
     queryKey: ["/api/servers"]
   });
 
-  const { data: metrics, isLoading: metricsLoading } = useQuery({
+  const { data: metrics = [], isLoading: metricsLoading } = useQuery({
     queryKey: ["/api/metrics/all"],
     queryFn: async () => {
       const response = await fetch(`/api/metrics/all?limit=50000&_=${Date.now()}`);
@@ -74,19 +74,19 @@ export default function DataViewPage() {
     staleTime: 0  // Always consider data stale to force fresh fetches
   });
 
-  const { data: alerts, isLoading: alertsLoading } = useQuery({
+  const { data: alerts = [], isLoading: alertsLoading } = useQuery({
     queryKey: ["/api/alerts"],
     refetchInterval: 10000,
     staleTime: 0
   });
 
-  const { data: remediations, isLoading: remediationsLoading } = useQuery({
+  const { data: remediations = [], isLoading: remediationsLoading } = useQuery({
     queryKey: ["/api/remediation-actions"],
     refetchInterval: 10000,
     staleTime: 0
   });
 
-  const { data: auditLogs, isLoading: auditLoading } = useQuery({
+  const { data: auditLogs = [], isLoading: auditLoading } = useQuery({
     queryKey: ["/api/audit-logs"],
     refetchInterval: 10000,
     staleTime: 0
