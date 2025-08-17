@@ -104,10 +104,10 @@ export class ApprovalComplianceAgent implements Agent {
       details: `Performed compliance evaluation for ${action.actionType} action`,
       status: complianceResult.passed ? "success" : "warning",
       metadata: {
-        actionId: action.id,
-        complianceScore: complianceResult.score,
-        autoApprovalEligible,
-      },
+        actionId: String(action.id),
+        complianceScore: Number(complianceResult.score),
+        autoApprovalEligible: Boolean(autoApprovalEligible),
+      } as Record<string, any>,
     });
   }
 
@@ -201,10 +201,10 @@ export class ApprovalComplianceAgent implements Agent {
       details: `Auto-approved ${action.actionType} action based on compliance criteria`,
       status: "success",
       metadata: {
-        actionId: action.id,
+        actionId: String(action.id),
         approvalType: "automatic",
         reason: "meets_auto_approval_criteria",
-      },
+      } as Record<string, any>,
     });
 
     console.log(`${this.name}: Auto-approved action ${action.id} for ${action.actionType}`);
@@ -229,10 +229,10 @@ export class ApprovalComplianceAgent implements Agent {
       details: `Routed ${action.actionType} action for manual approval due to compliance requirements`,
       status: "pending",
       metadata: {
-        actionId: action.id,
-        complianceScore: complianceResult.score,
+        actionId: String(action.id),
+        complianceScore: Number(complianceResult.score),
         issues: complianceResult.issues,
-      },
+      } as Record<string, any>,
     });
   }
 
@@ -253,7 +253,7 @@ export class ApprovalComplianceAgent implements Agent {
 
     // Check if server is in production environment or has critical tags
     return server.environment === "prod" || 
-           (server.tags && server.tags.includes("critical"));
+           Boolean(server.tags && (server.tags.critical === true || server.tags.criticality === "high"));
   }
 
   private containsRiskyCommands(command: string): boolean {
