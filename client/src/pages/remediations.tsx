@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Settings, Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { Settings, Clock, CheckCircle, XCircle, AlertTriangle, Terminal, Play } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Sidebar from '@/components/dashboard/Sidebar';
 
@@ -41,6 +41,39 @@ export default function RemediationsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/remediation-actions'] });
       toast({ title: "Remediation action executed successfully" });
+    },
+  });
+
+  const executeCommandMutation = useMutation({
+    mutationFn: async ({ remediation }: { remediation: any }) => {
+      const response = await fetch('/api/commands/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serverId: remediation.serverId,
+          actionType: remediation.actionType || 'investigate',
+          command: remediation.command || `# Execute ${remediation.actionType} action\necho "Executing: ${remediation.description}"`,
+          parameters: {},
+          safetyChecks: [],
+          maxExecutionTime: 300,
+          requiresElevation: false
+        })
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/remediation-actions'] });
+      toast({ 
+        title: "Command executed successfully", 
+        description: `Exit code: ${data.exitCode || 0}` 
+      });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Command execution failed", 
+        description: error.message,
+        variant: "destructive" 
+      });
     },
   });
 
@@ -101,12 +134,12 @@ export default function RemediationsPage() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-white">Remediation Actions</h1>
           <div className="text-sm text-slate-400">
-            {remediations?.filter((r: any) => r.status === 'pending').length || 0} pending actions
+            {Array.isArray(remediations) ? remediations.filter((r: any) => r.status === 'pending').length : 0} pending actions
           </div>
         </div>
 
         <div className="space-y-4">
-          {remediations?.map((remediation: any) => (
+          {Array.isArray(remediations) && remediations.map((remediation: any) => (
             <Card key={remediation.id} className={`bg-dark-surface border-dark-border ${getStatusColor(remediation.status)} border-l-4`}>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -168,11 +201,26 @@ export default function RemediationsPage() {
                   </div>
                   
                   <div className="flex space-x-2">
+                    {/* Execute Command Button - Always Available */}
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => executeCommandMutation.mutate({ remediation })}
+                      disabled={executeCommandMutation.isPending}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      data-testid={`button-execute-command-${remediation.id}`}
+                    >
+                      <Terminal size={16} className="mr-1" />
+                      Execute Command
+                    </Button>
+                    
+                    {/* Approval workflow buttons */}
                     {remediation.status === 'pending' && remediation.requiresApproval && (
                       <Button
                         size="sm"
                         onClick={() => approveMutation.mutate(remediation.id)}
                         disabled={approveMutation.isPending}
+                        data-testid={`button-approve-${remediation.id}`}
                       >
                         <CheckCircle size={16} className="mr-1" />
                         Approve
@@ -184,8 +232,10 @@ export default function RemediationsPage() {
                         variant="outline"
                         onClick={() => executeMutation.mutate(remediation.id)}
                         disabled={executeMutation.isPending}
+                        data-testid={`button-execute-${remediation.id}`}
                       >
-                        Execute
+                        <Play size={16} className="mr-1" />
+                        Execute Via Workflow
                       </Button>
                     )}
                   </div>

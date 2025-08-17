@@ -4,6 +4,12 @@
 AgentOps is an AI-powered server health monitoring and automated remediation platform. It provides proactive monitoring of mission-critical servers for financial institutions, insurance companies, and trading firms through real-time telemetry, anomaly detection, predictive analytics, and automated remediation. The platform includes a comprehensive dashboard for visualizing server health, managing alerts, and overseeing AI agent operations. Its primary purpose is to ensure high availability and performance of critical server infrastructure while reducing operational costs and potential downtime.
 
 ## Recent Changes (August 17, 2025)
+- **DIRECT COMMAND EXECUTION FROM REMEDIATION CARDS**: Added "Execute Command" button to all remediation action cards for immediate command execution
+  - **Instant Action**: Execute remediation commands directly from the remediation list without approval workflows
+  - **Bypass Approval Process**: Direct command execution available alongside traditional approval-based workflow
+  - **Real-time Feedback**: Command execution results displayed via toast notifications with exit codes and execution status
+  - **Backend Integration**: Full integration with existing command execution system supporting SSH, WinRM, REST API, and local execution
+  - **Audit Trail**: All direct executions logged for compliance and tracking
 - **FILE-HASH DUPLICATE PREVENTION SYSTEM COMPLETE**: Implemented bulletproof duplicate prevention using SHA-256 file hashing
   - **Bulletproof File-Level Prevention**: File hash-based detection prevents identical file uploads with 100% accuracy
   - **Upload History Tracking**: Complete audit trail with upload_history table tracking filename, hash, count, and timestamp
