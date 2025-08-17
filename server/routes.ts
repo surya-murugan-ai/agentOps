@@ -1029,13 +1029,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/admin/clear-all-data", async (req, res) => {
     try {
-      // Clear all AI-generated data
+      // Clear all data including servers
       await storage.clearAllMetrics();
       await storage.clearAllAlerts();
       await storage.clearAllRemediationActions();
       await storage.clearAllAuditLogs();
-      console.log("✅ All AI-generated data cleared from database");
-      res.json({ success: true, message: "All synthetic data cleared" });
+      await storage.clearAllServers();
+      console.log("✅ All data cleared from database including servers");
+      res.json({ success: true, message: "All data cleared including servers" });
     } catch (error) {
       console.error("Error clearing all data:", error);
       res.status(500).json({ error: "Failed to clear all data" });
@@ -1068,6 +1069,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting server:", error);
       res.status(500).json({ error: "Failed to delete server" });
+    }
+  });
+
+  // Clear all servers endpoint
+  app.delete("/api/servers/all", async (req, res) => {
+    try {
+      await storage.clearAllServers();
+      console.log("✅ All servers cleared from database");
+      res.json({ success: true, message: "All servers cleared successfully" });
+    } catch (error) {
+      console.error("Error clearing all servers:", error);
+      res.status(500).json({ error: "Failed to clear all servers" });
     }
   });
 
