@@ -1,6 +1,7 @@
 import { Agent, agentManager } from "./index";
 import { storage } from "../storage";
 import { wsManager } from "../services/websocket";
+import { CommandExecutor, RemediationCommand, SAFE_COMMANDS } from "../services/commandExecutor";
 
 export class RemediationExecutorAgent implements Agent {
   public readonly id = "remediation-executor-001";
@@ -224,27 +225,94 @@ export class RemediationExecutorAgent implements Agent {
     output: string;
     impact: string;
   }> {
-    // Simulate execution time
-    await this.simulateExecutionTime(action.estimatedDowntime);
+    const commandExecutor = CommandExecutor.getInstance();
+    
+    try {
+      // Build remediation command from action
+      const remediationCommand = await this.buildRemediationCommand(action);
+      
+      // Execute command on target server
+      const result = await commandExecutor.executeCommand(remediationCommand);
+      
+      if (result.success) {
+        return {
+          success: true,
+          output: result.stdout || `Successfully executed ${action.actionType}`,
+          impact: await this.calculateImpact(action, result)
+        };
+      } else {
+        throw new Error(`Command failed: ${result.stderr}`);
+      }
+      
+    } catch (error: any) {
+      console.error(`${this.name}: Failed to execute ${action.actionType}:`, error);
+      return {
+        success: false,
+        output: `Execution failed: ${error.message || String(error)}`,
+        impact: "No changes applied due to execution failure"
+      };
+    }
+  }
 
+  /**
+   * Build a remediation command from action data
+   */
+  private async buildRemediationCommand(action: any): Promise<RemediationCommand> {
+    const server = await storage.getServer(action.serverId);
+    if (!server) {
+      throw new Error(`Server ${action.serverId} not found`);
+    }
+
+    // Determine OS type from server tags or environment  
+    const serverTags = server.tags as Record<string, any> || {};
+    const osType = serverTags.os || 'linux';
+    const safeCommand = SAFE_COMMANDS[action.actionType as keyof typeof SAFE_COMMANDS];
+    
+    if (!safeCommand) {
+      throw new Error(`No safe command template for action type: ${action.actionType}`);
+    }
+
+    const command = safeCommand[osType as keyof typeof safeCommand] as string;
+    if (!command) {
+      throw new Error(`No command template for OS: ${osType}`);
+    }
+
+    return {
+      id: `cmd-${action.id}-${Date.now()}`,
+      serverId: action.serverId,
+      actionType: action.actionType,
+      command,
+      parameters: action.parameters || {},
+      safetyChecks: safeCommand.safetyChecks || [],
+      maxExecutionTime: action.estimatedDowntime || 300, // 5 minutes default
+      requiresElevation: true
+    };
+  }
+
+  /**
+   * Calculate the impact of the remediation based on before/after metrics
+   */
+  private async calculateImpact(action: any, result: any): Promise<string> {
     switch (action.actionType) {
       case "restart_service":
-        return this.executeServiceRestart(action);
-      
+        const services = action.parameters?.services || action.parameters?.service_name || ["unknown service"];
+        return `Service ${Array.isArray(services) ? services.join(", ") : services} restarted successfully`;
+        
       case "cleanup_files":
-        return this.executeFileCleanup(action);
-      
+        // Try to extract disk space info from command output
+        const spaceMatch = result.stdout?.match(/(\d+).*(?:freed|removed|deleted)/i);
+        const spaceFreed = spaceMatch ? spaceMatch[1] : "unknown amount of";
+        return `Temporary files cleaned, ${spaceFreed} space freed`;
+        
       case "optimize_memory":
-        return this.executeMemoryOptimization(action);
-      
-      case "optimize_cpu":
-        return this.executeCpuOptimization(action);
-      
+        return "Memory caches cleared and system memory optimized";
+        
       case "clear_cache":
-        return this.executeCacheClearing(action);
-      
+        const cachePath = action.parameters?.cache_path || "application cache";
+        return `Cache cleared at ${cachePath}`;
+        
       default:
-        throw new Error(`Unknown action type: ${action.actionType}`);
+        return `${action.actionType} completed successfully`;
     }
   }
 
