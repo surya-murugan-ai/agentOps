@@ -64,7 +64,7 @@ export default function DataViewPage() {
   const { data: metrics, isLoading: metricsLoading } = useQuery({
     queryKey: ["/api/metrics/all"],
     queryFn: async () => {
-      const response = await fetch(`/api/metrics/all?limit=1000&_=${Date.now()}`);
+      const response = await fetch(`/api/metrics/all?limit=50000&_=${Date.now()}`);
       if (!response.ok) {
         throw new Error('Failed to fetch metrics');
       }

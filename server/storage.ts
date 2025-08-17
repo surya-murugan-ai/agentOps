@@ -363,7 +363,7 @@ export class DatabaseStorage implements IStorage {
       .limit(100);
   }
 
-  async getAllMetrics(limit: number = 200): Promise<ServerMetrics[]> {
+  async getAllMetrics(limit: number = 50000): Promise<ServerMetrics[]> {
     return await db
       .select()
       .from(serverMetrics)

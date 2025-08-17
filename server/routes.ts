@@ -182,7 +182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // All metrics endpoint with pagination for data viewer - no caching for accurate counts
   app.get("/api/metrics/all", asyncHandler(async (req, res) => {
-    const limit = req.query.limit ? parseInt(req.query.limit as string) : 1000;
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 50000;
     const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
     
     // Direct database call for real-time accurate count
