@@ -1,0 +1,44 @@
+# AgentOps Local Development Dockerfile
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apk add --no-cache \
+    python3 \
+    py3-pip \
+    postgresql-client \
+    bash \
+    curl \
+    git
+
+# Copy package files
+COPY package*.json ./
+
+# Install Node.js dependencies
+RUN npm ci
+
+# Copy Python requirements if exists
+COPY requirements.txt* ./
+RUN if [ -f requirements.txt ]; then pip3 install -r requirements.txt; fi
+
+# Copy application code
+COPY . .
+
+# Create necessary directories
+RUN mkdir -p uploads logs
+
+# Set permissions
+RUN chown -R node:node /app
+USER node
+
+# Expose port
+EXPOSE 5000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:5000/api/system/health || exit 1
+
+# Default command
+CMD ["npm", "run", "dev"]

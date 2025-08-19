@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:14-alpine
+    container_name: agentops-postgres
+    environment:
+      POSTGRES_DB: agentops_dev
+      POSTGRES_USER: agentops
+      POSTGRES_PASSWORD: agentops123
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - agentops-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agentops -d agentops_dev"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # AgentOps Application (Development)
+  agentops:
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    container_name: agentops-app
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://agentops:agentops123@postgres:5432/agentops_dev
+      - PGHOST=postgres
+      - PGPORT=5432
+      - PGUSER=agentops
+      - PGPASSWORD=agentops123
+      - PGDATABASE=agentops_dev
+      - SESSION_SECRET=your_session_secret_change_this
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-your_openai_key_here}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-your_anthropic_key_here}
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - agentops-network
+    restart: unless-stopped
+    command: ["npm", "run", "dev"]
+
+  # Redis for Caching (Optional)
+  redis:
+    image: redis:7-alpine
+    container_name: agentops-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - agentops-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  agentops-network:
+    driver: bridge

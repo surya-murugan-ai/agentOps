@@ -4,6 +4,12 @@
 AgentOps is an AI-powered server health monitoring and automated remediation platform. It provides proactive monitoring of mission-critical servers for financial institutions, insurance companies, and trading firms through real-time telemetry, anomaly detection, predictive analytics, and automated remediation. The platform includes a comprehensive dashboard for visualizing server health, managing alerts, and overseeing AI agent operations. Its primary purpose is to ensure high availability and performance of critical server infrastructure while reducing operational costs and potential downtime.
 
 ## Recent Changes (August 17, 2025)
+- **LOCAL DEPLOYMENT COMPLETE**: Comprehensive local deployment documentation and automation tools
+  - **3-Minute Setup**: Automated setup script (`setup-local.sh`) for one-command installation
+  - **Docker Support**: Full Docker Compose configuration for containerized deployment
+  - **Multiple Options**: Manual, automated, and Docker deployment paths
+  - **Production Ready**: Nginx config, PM2 process management, and security hardening
+  - **Complete Documentation**: `LOCAL_DEPLOYMENT_GUIDE.md` with troubleshooting and maintenance
 - **DIRECT COMMAND EXECUTION FROM REMEDIATION CARDS**: Added "Execute Command" button to all remediation action cards for immediate command execution
   - **Instant Action**: Execute remediation commands directly from the remediation list without approval workflows
   - **Bypass Approval Process**: Direct command execution available alongside traditional approval-based workflow
