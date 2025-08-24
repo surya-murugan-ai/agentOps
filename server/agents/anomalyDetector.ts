@@ -405,20 +405,59 @@ export class AnomalyDetectorAgent implements Agent {
         return;
       }
 
+      // Get proper threshold values for this metric type
+      const server = await storage.getServer(anomaly.serverId);
+      const environment = server?.environment || 'default';
+      const thresholds = thresholdConfig.getThresholds(environment);
+      
+      let thresholdValue = 0;
+      let actualValue = 0;
+      
+      // Get the appropriate threshold based on metric type
+      switch (anomaly.metricType.toLowerCase()) {
+        case 'cpu':
+          thresholdValue = mappedSeverity === 'critical' ? thresholds.cpu.critical : thresholds.cpu.warning;
+          break;
+        case 'memory':
+          thresholdValue = mappedSeverity === 'critical' ? thresholds.memory.critical : thresholds.memory.warning;
+          break;
+        case 'disk':
+          thresholdValue = mappedSeverity === 'critical' ? thresholds.disk.critical : thresholds.disk.warning;
+          break;
+        default:
+          thresholdValue = 80; // Default threshold
+      }
+      
+      // Try to get actual metric value from recent metrics
+      const recentMetrics = await storage.getServerMetrics(anomaly.serverId, 1);
+      if (recentMetrics.length > 0) {
+        const latestMetric = recentMetrics[0];
+        switch (anomaly.metricType.toLowerCase()) {
+          case 'cpu':
+            actualValue = parseFloat(latestMetric.cpuUsage || '0');
+            break;
+          case 'memory':
+            actualValue = parseFloat(latestMetric.memoryUsage || '0');
+            break;
+          case 'disk':
+            actualValue = parseFloat(latestMetric.diskUsage || '0');
+            break;
+        }
+      }
+
       // Create anomaly record
       await storage.createAnomaly({
         serverId: anomaly.serverId,
         agentId: this.id,
         metricType: anomaly.metricType,
-        actualValue: "0.0",
-        expectedValue: "0.0", 
+        actualValue: actualValue.toString(),
+        expectedValue: thresholdValue.toString(), 
         deviationScore: anomaly.confidence.toString(),
         severity: mappedSeverity,
         detectionMethod: "ai_analysis",
       });
 
       // Create corresponding alert
-      const server = await storage.getServer(anomaly.serverId);
       const alert = await storage.createAlert({
         serverId: anomaly.serverId,
         hostname: server?.hostname || anomaly.serverId,
@@ -427,8 +466,8 @@ export class AnomalyDetectorAgent implements Agent {
         description: anomaly.description,
         severity: mappedSeverity,
         metricType: anomaly.metricType,
-        metricValue: anomaly.confidence.toString(),
-        threshold: "0.0",
+        metricValue: actualValue.toString(),
+        threshold: thresholdValue.toString(),
       });
 
       // Broadcast new alert

@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Settings, Clock, CheckCircle, XCircle, AlertTriangle, Terminal, Play } from 'lucide-react';
+import { Settings, Clock, CheckCircle, XCircle, AlertTriangle, Terminal, Play, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Sidebar from '@/components/dashboard/Sidebar';
 
@@ -10,10 +10,15 @@ export default function RemediationsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  const { data: remediations, isLoading } = useQuery({
+  const { data: remediations, isLoading, refetch } = useQuery({
     queryKey: ['/api/remediation-actions'],
     refetchInterval: 30000,
   });
+
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/remediation-actions'] });
+    refetch();
+  };
 
   const approveMutation = useMutation({
     mutationFn: async (remediationId: string) => {
@@ -133,8 +138,19 @@ export default function RemediationsPage() {
       <div className="ml-64 p-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-white">Remediation Actions</h1>
-          <div className="text-sm text-slate-400">
-            {Array.isArray(remediations) ? remediations.filter((r: any) => r.status === 'pending').length : 0} pending actions
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-slate-400">
+              {Array.isArray(remediations) ? remediations.filter((r: any) => r.status === 'pending').length : 0} pending actions
+            </div>
+            <Button 
+              onClick={handleRefresh} 
+              variant="outline" 
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <RefreshCw size={16} />
+              Refresh
+            </Button>
           </div>
         </div>
 

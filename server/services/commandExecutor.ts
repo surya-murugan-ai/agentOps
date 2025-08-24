@@ -63,6 +63,21 @@ export class CommandExecutor {
   }
 
   /**
+   * Get all registered server connections
+   */
+  getRegisteredConnections(): ServerConnection[] {
+    return Array.from(this.connectionPool.values());
+  }
+
+  /**
+   * Remove a server connection
+   */
+  removeConnection(serverId: string): void {
+    this.connectionPool.delete(serverId);
+    console.log(`CommandExecutor: Removed connection for server ${serverId}`);
+  }
+
+  /**
    * Execute a remediation command on a specific server
    */
   async executeCommand(command: RemediationCommand): Promise<CommandResult> {
@@ -254,10 +269,8 @@ export class CommandExecutor {
       fullCommand = fullCommand.replace(new RegExp(`\\$\\{${key}\\}`, 'g'), String(value));
     }
     
-    // Add timeout wrapper for safety
-    if (command.maxExecutionTime > 0) {
-      fullCommand = `timeout ${command.maxExecutionTime} ${fullCommand}`;
-    }
+    // Note: timeout is handled by the execAsync timeout option, not command wrapper
+    // This prevents issues with Windows vs Unix timeout commands
     
     return fullCommand;
   }
@@ -271,11 +284,21 @@ export class CommandExecutor {
       
       // Execute safety check command first
       try {
-        const checkResult = await this.executeSSHCommand({
-          ...command,
-          command: check,
-          maxExecutionTime: 30, // Quick safety checks
-        }, connection);
+        let checkResult: CommandResult;
+        
+        if (connection.connectionType === 'local') {
+          checkResult = await this.executeLocalCommand({
+            ...command,
+            command: check,
+            maxExecutionTime: 30, // Quick safety checks
+          });
+        } else {
+          checkResult = await this.executeSSHCommand({
+            ...command,
+            command: check,
+            maxExecutionTime: 30, // Quick safety checks
+          }, connection);
+        }
         
         if (!checkResult.success) {
           throw new Error(`Safety check failed: ${check} - ${checkResult.stderr}`);
@@ -306,6 +329,11 @@ export class CommandExecutor {
           throw new Error('WinRM connection requires host and username');
         }
         break;
+      case 'local':
+        // Local connections don't need validation
+        break;
+      default:
+        throw new Error(`Unsupported connection type: ${connection.connectionType}`);
     }
   }
 

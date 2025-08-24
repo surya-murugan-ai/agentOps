@@ -22,6 +22,7 @@ interface UploadState {
   progress: number;
   currentFile?: File;
   previewData?: any[];
+  fullData?: any[];
   dataType?: string;
   validationErrors?: string[];
   processed?: number;
@@ -83,6 +84,25 @@ export default function DataUploadPage() {
               status: data.data.status,
               errors: data.data.errors
             }));
+          } else if (data.type === 'data_upload') {
+            // Force refresh all queries when upload completes
+            console.log('WebSocket: Data upload completed, refreshing queries');
+            queryClient.invalidateQueries({ queryKey: ['/api/servers'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/metrics/range'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/metrics/all'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/alerts'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/remediation-actions'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/audit-logs'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/dashboard/metrics'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/agents'] });
+            
+            // Force refetch with a small delay
+            setTimeout(() => {
+              queryClient.refetchQueries({ queryKey: ['/api/servers'] });
+              queryClient.refetchQueries({ queryKey: ['/api/metrics/range'] });
+              queryClient.refetchQueries({ queryKey: ['/api/alerts'] });
+              queryClient.refetchQueries({ queryKey: ['/api/remediation-actions'] });
+            }, 200);
           }
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
@@ -233,10 +253,29 @@ export default function DataUploadPage() {
       return response.json();
     },
     onSuccess: (result, { type }) => {
+      // Force refresh all related queries to ensure UI updates
       queryClient.invalidateQueries({ queryKey: ['/api/servers'] });
       queryClient.invalidateQueries({ queryKey: ['/api/metrics/range'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/metrics/all'] });
       queryClient.invalidateQueries({ queryKey: ['/api/alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/remediation-actions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/audit-logs'] });
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/agents'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/analytics/metrics/24h'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/analytics/trends/24h'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/analytics/alerts/24h'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/analytics/performance/24h'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/predictions'] });
+      
+      // Force refetch to bypass cache with immediate execution
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ['/api/servers'] });
+        queryClient.refetchQueries({ queryKey: ['/api/metrics/range'] });
+        queryClient.refetchQueries({ queryKey: ['/api/alerts'] });
+        queryClient.refetchQueries({ queryKey: ['/api/remediation-actions'] });
+        queryClient.refetchQueries({ queryKey: ['/api/dashboard/metrics'] });
+      }, 100);
       
       const confidence = result.confidence ? ` (${Math.round(result.confidence * 100)}% confidence)` : '';
       const dataTypeInfo = result.dataType ? ` as ${result.dataType}` : '';
@@ -504,7 +543,8 @@ export default function DataUploadPage() {
         isUploading: false,
         progress: 100,
         currentFile: file,
-        previewData: data.slice(0, 10), // Show first 10 rows
+        previewData: data.slice(0, 10), // Show first 10 rows for preview
+        fullData: data, // Store full data for upload
         dataType: detectedType,
         validationErrors
       });
@@ -556,9 +596,9 @@ export default function DataUploadPage() {
   }, [processFileData]);
 
   const confirmUpload = () => {
-    if (uploadState.previewData && uploadState.dataType) {
+    if (uploadState.fullData && uploadState.dataType) {
       uploadDataMutation.mutate({ 
-        data: uploadState.previewData, 
+        data: uploadState.fullData, 
         type: uploadState.dataType 
       });
     }

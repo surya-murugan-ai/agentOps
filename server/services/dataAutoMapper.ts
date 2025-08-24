@@ -24,10 +24,16 @@ export class DataAutoMapper {
   // Standard field mappings with multiple variations and patterns
   private static readonly FIELD_MAPPINGS = {
     serverId: [
-      'serverId', 'server_id', 'serverid', 'id', 'hostname', 'host',
+      'serverId', 'server_id', 'serverid', 'id',
       'machine_name', 'machine', 'server', 'device', 'node', 'instance',
-      'Server Name', 'server name', 'Host Name', 'host name', 'Machine',
-      /^srv[-_]?\d+$/i, /^server[-_]?\d+$/i, /^host[-_]?\d+$/i
+      'Server Name', 'server name', 'Machine',
+      /^srv[-_]?\d+$/i, /^server[-_]?\d+$/i
+    ],
+    
+    hostname: [
+      'hostname', 'Hostname', 'host', 'server_name',
+      'Host Name', 'host name', 'Server Hostname',
+      /^host[-_]?\d+$/i
     ],
     
     cpuUsage: [
@@ -122,17 +128,29 @@ export class DataAutoMapper {
       }
     }
 
-    // Calculate overall confidence
+    // Calculate detected count first
     const detectedCount = Object.keys(detectedFields).length;
-    const totalFields = Object.keys(this.FIELD_MAPPINGS).length;
-    const confidence = detectedCount / totalFields;
-
+    
     // Determine data type based on detected fields
     let dataType = 'metrics'; // Default assumption
     if (detectedFields.serverId && detectedFields.cpuUsage && detectedFields.memoryUsage) {
       dataType = 'server-metrics';
     } else if (detectedFields.serverId && detectedCount < 3) {
       dataType = 'servers';
+    }
+
+    // Calculate overall confidence based on data type
+    let confidence: number;
+    
+    if (dataType === 'servers') {
+      // For server inventory, we only need serverId and optionally hostname
+      const requiredFields = ['serverId'];
+      const requiredDetected = requiredFields.filter(field => detectedFields[field]);
+      confidence = requiredDetected.length / requiredFields.length;
+    } else {
+      // For metrics, use all field mappings
+      const totalFields = Object.keys(this.FIELD_MAPPINGS).length;
+      confidence = detectedCount / totalFields;
     }
 
     // Generate recommendations
@@ -160,7 +178,9 @@ export class DataAutoMapper {
     const analysis = this.analyzeDataStructure(rawData);
     
     // If confidence is too low, return empty array with warnings
-    if (analysis.confidence < 0.3) {
+    // Lower threshold for server data since it has fewer required fields
+    const minConfidence = analysis.dataType === 'servers' ? 0.5 : 0.3;
+    if (analysis.confidence < minConfidence) {
       console.warn(`⚠️ Low mapping confidence (${Math.round(analysis.confidence * 100)}%) - may not be suitable for auto-mapping`);
       return [];
     }
@@ -175,6 +195,7 @@ export class DataAutoMapper {
         // Map each detected field
         for (const [standardField, originalField] of Object.entries(analysis.detectedFields)) {
           let value = row[originalField];
+          console.log(`🔍 Mapping ${originalField} -> ${standardField}: ${value}`);
 
           // Apply field-specific transformations
           switch (standardField) {

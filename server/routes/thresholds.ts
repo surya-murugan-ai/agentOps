@@ -132,4 +132,104 @@ thresholdsRouter.get("/status/all", async (req, res) => {
   }
 });
 
+// Fix existing alerts with incorrect threshold values
+thresholdsRouter.post("/fix-alerts", async (req, res) => {
+  try {
+    const { storage } = await import("../storage.js");
+    const { alerts, servers } = await import("../../shared/schema.js");
+    const { eq, and, or, isNull } = await import("drizzle-orm");
+    const { db } = await import("../db.js");
+    
+    console.log('🔧 Starting alert threshold fix...');
+    
+    // Get all active alerts with threshold = 0 or null
+    const alertsToFix = await db.select().from(alerts).where(
+      and(
+        eq(alerts.status, 'active'),
+        or(
+          eq(alerts.threshold, '0'),
+          eq(alerts.threshold, '0.0'),
+          eq(alerts.threshold, '0.000'),
+          isNull(alerts.threshold)
+        )
+      )
+    );
+    
+    console.log(`📊 Found ${alertsToFix.length} alerts with incorrect threshold values`);
+    
+    if (alertsToFix.length === 0) {
+      return res.json({
+        message: 'No alerts need fixing!',
+        fixedCount: 0,
+        totalAlerts: 0
+      });
+    }
+    
+    let fixedCount = 0;
+    
+    for (const alert of alertsToFix) {
+      try {
+        // Skip alerts without serverId
+        if (!alert.serverId) {
+          console.log(`⚠️ Skipping alert ${alert.id}: no serverId`);
+          continue;
+        }
+        
+        // Get server environment
+        const serverResult = await db.select().from(servers).where(
+          eq(servers.id, alert.serverId)
+        ).limit(1);
+        
+        const environment = serverResult[0]?.environment || 'default';
+        const thresholds = thresholdConfig.getThresholds(environment);
+        
+        let newThreshold = 80; // Default threshold
+        
+        // Set appropriate threshold based on metric type and severity
+        if (alert.metricType) {
+          const metricType = alert.metricType.toLowerCase();
+          const severity = alert.severity?.toLowerCase();
+          
+          switch (metricType) {
+            case 'cpu':
+              newThreshold = severity === 'critical' ? thresholds.cpu.critical : thresholds.cpu.warning;
+              break;
+            case 'memory':
+              newThreshold = severity === 'critical' ? thresholds.memory.critical : thresholds.memory.warning;
+              break;
+            case 'disk':
+              newThreshold = severity === 'critical' ? thresholds.disk.critical : thresholds.disk.warning;
+              break;
+            default:
+              newThreshold = severity === 'critical' ? 90 : 80;
+          }
+        }
+        
+        // Update the alert with the correct threshold
+        await db.update(alerts)
+          .set({ threshold: newThreshold.toString() })
+          .where(eq(alerts.id, alert.id));
+        
+        console.log(`✅ Fixed alert ${alert.id}: ${alert.metricType} threshold updated to ${newThreshold}`);
+        fixedCount++;
+        
+      } catch (error) {
+        console.error(`❌ Failed to fix alert ${alert.id}:`, error instanceof Error ? error.message : 'Unknown error');
+      }
+    }
+    
+    console.log(`🎉 Successfully fixed ${fixedCount} out of ${alertsToFix.length} alerts`);
+    
+    res.json({
+      message: `Successfully fixed ${fixedCount} out of ${alertsToFix.length} alerts`,
+      fixedCount,
+      totalAlerts: alertsToFix.length
+    });
+    
+  } catch (error) {
+    console.error('❌ Error fixing alert thresholds:', error);
+    res.status(500).json({ error: "Failed to fix alert thresholds" });
+  }
+});
+
 export default thresholdsRouter;

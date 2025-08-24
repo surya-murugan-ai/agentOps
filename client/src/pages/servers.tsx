@@ -1,14 +1,21 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Server } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Server, RefreshCw } from 'lucide-react';
 import Sidebar from '@/components/dashboard/Sidebar';
 
 export default function ServersPage() {
-  const { data: servers, isLoading } = useQuery({
+  const queryClient = useQueryClient();
+  const { data: servers, isLoading, refetch } = useQuery({
     queryKey: ['/api/servers'],
     refetchInterval: 30000,
   });
+
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/servers'] });
+    refetch();
+  };
 
   if (isLoading) {
     return (
@@ -46,8 +53,19 @@ export default function ServersPage() {
       <div className="ml-64 p-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-white">Server Management</h1>
-          <div className="text-sm text-slate-400">
-            {servers?.length || 0} servers monitored
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-slate-400">
+              {servers?.length || 0} servers monitored
+            </div>
+            <Button 
+              onClick={handleRefresh} 
+              variant="outline" 
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <RefreshCw size={16} />
+              Refresh
+            </Button>
           </div>
         </div>
 

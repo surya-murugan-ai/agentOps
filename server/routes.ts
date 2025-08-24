@@ -12,6 +12,7 @@ import { registerAgentControlRoutes } from "./routes/agentControlRoutes";
 import { systemRouter } from "./routes/system";
 import { thresholdsRouter } from "./routes/thresholds";
 import cloudRoutes from "./routes/cloudRoutes";
+import { commandExecutionRoutes } from "./routes/commandExecution";
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
@@ -792,11 +793,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (analysis.dataType === 'servers') {
         console.log(`🖥️ Detected server data - processing as servers (bypassing metrics validation)`);
         
+        // Auto-map the data to standard format first
+        const mappedData = DataAutoMapper.autoMapData(rawData);
+        console.log(`✅ Auto-mapped ${mappedData.length}/${rawData.length} server records`);
+        
         let count = 0;
         const errors: string[] = [];
         
-        for (const serverData of rawData) {
+        for (const serverData of mappedData) {
           try {
+            console.log(`🔍 Processing server data:`, serverData);
             // Check if server already exists by hostname
             const hostname = serverData.hostname || serverData.serverId || serverData.server_id;
             const existingServer = hostname ? 
@@ -836,7 +842,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           analysis 
         });
         
-      } else if (analysis.dataType === 'metrics') {
+      } else if (analysis.dataType === 'metrics' || analysis.dataType === 'server-metrics') {
         // Auto-map the data to standard format
         const mappedData = DataAutoMapper.autoMapData(rawData);
         
@@ -1724,6 +1730,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // LLM Usage tracking routes
   app.use("/api/llm-usage", (await import("./routes/llmUsageRoutes")).default);
+
+  // Command execution routes
+  app.use("/api/commands", commandExecutionRoutes);
 
   // Cloud infrastructure routes
   app.use("/api", cloudRoutes);

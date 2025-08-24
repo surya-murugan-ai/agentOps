@@ -12,7 +12,7 @@ export const approvalStatusEnum = pgEnum("approval_status", ["pending", "approve
 export const approverRoleEnum = pgEnum("approver_role", ["operator", "supervisor", "manager", "director", "compliance_officer"]);
 export const workflowStepTypeEnum = pgEnum("workflow_step_type", ["basic_approval", "compliance_check", "impact_assessment", "security_review", "change_board"]);
 export const agentStatusEnum = pgEnum("agent_status", ["active", "inactive", "error"]);
-export const agentTypeEnum = pgEnum("agent_type", ["collector", "detector", "predictor", "recommender", "approval", "executor", "audit", "cloud_collector"]);
+export const agentTypeEnum = pgEnum("agent_type", ["collector", "detector", "predictor", "recommender", "approval", "executor", "audit", "cloud_collector", "conversational_ai"]);
 
 // Cloud provider enums
 export const cloudProviderEnum = pgEnum("cloud_provider", ["aws", "azure", "gcp"]);

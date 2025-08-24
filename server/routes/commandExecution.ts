@@ -142,6 +142,22 @@ commandExecutionRoutes.post('/execute', async (req, res) => {
 
     const executor = CommandExecutor.getInstance();
     
+    // Check if server connection exists, if not create a local connection for testing
+    const connection = executor.getRegisteredConnections().find(c => c.id === serverId);
+    if (!connection) {
+      console.log(`No connection registered for server ${serverId}, creating local connection for testing`);
+      
+      // Create a local connection for testing purposes
+      await executor.registerServerConnection({
+        id: serverId,
+        hostname: `server-${serverId}`,
+        connectionType: 'local',
+        connectionConfig: {
+          timeout: maxExecutionTime * 1000
+        }
+      });
+    }
+    
     const result = await executor.executeCommand({
       id: `manual-${Date.now()}`,
       serverId,
