@@ -1,7 +1,7 @@
 FROM node:18-alpine
 
-# Install Python for data processing scripts
-RUN apk add --no-cache python3 py3-pip
+# Install Python and curl for health checks
+RUN apk add --no-cache python3 py3-pip curl
 
 # Set working directory
 WORKDIR /app
@@ -20,6 +20,9 @@ RUN pip3 install pandas openpyxl requests
 
 # Build the application
 RUN npm run build
+
+# Create necessary directories
+RUN mkdir -p uploads logs
 
 # Expose port
 EXPOSE 3000

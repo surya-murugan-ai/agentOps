@@ -5,27 +5,25 @@ services:
   postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_DB: agentops_dev
-      POSTGRES_USER: agentops_user
-      POSTGRES_PASSWORD: agentops_password
-    ports:
-      - "5432:5432"
+      POSTGRES_DB: ${DB_NAME:-agenticauto}
+      POSTGRES_USER: ${DB_USER:-agenticauto}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U agentops_user -d agentops_dev"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-agenticauto} -d ${DB_NAME:-agenticauto}"]
       interval: 30s
       timeout: 10s
       retries: 3
 
-  # Redis for session storage (optional)
+  # Redis for caching and sessions
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
+    restart: unless-stopped
 
   # Main Application
   app:
@@ -33,22 +31,52 @@ services:
     ports:
       - "3000:3000"
     environment:
-      NODE_ENV: development
-      DATABASE_URL: postgresql://agentops_user:agentops_password@postgres:5432/agentops_dev
-      PGHOST: postgres
-      PGPORT: 5432
-      PGUSER: agentops_user
-      PGPASSWORD: agentops_password
-      PGDATABASE: agentops_dev
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${DB_USER:-agenticauto}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-agenticauto}
+      REDIS_URL: redis://redis:6379
+      # WebSocket configuration
+      WS_PORT: 3000
+      ENABLE_REAL_TIME_UPDATES: "true"
+      # AI APIs
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      # Cloud credentials (if using)
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      # Email configuration
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY}
+      EMAIL_FROM: ${EMAIL_FROM}
+      # Security
+      SESSION_SECRET: ${SESSION_SECRET}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
     volumes:
-      - .:/app
-      - /app/node_modules
-    command: npm run dev
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx reverse proxy (for WebSocket support)
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - app
+    restart: unless-stopped
 
 volumes:
   postgres_data:
