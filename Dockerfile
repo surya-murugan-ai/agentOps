@@ -9,27 +9,38 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install Node.js dependencies
-RUN npm ci --only=production
+# Install all Node.js dependencies (including dev dependencies for build)
+RUN npm ci
 
 # Copy application code
 COPY . .
 
-# Install Python dependencies
-RUN pip3 install pandas openpyxl requests
+# Install Python dependencies with --break-system-packages flag
+RUN pip3 install --break-system-packages pandas openpyxl requests
 
 # Build the application
 RUN npm run build
+
+# Copy and set up the startup script
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# Remove dev dependencies but keep necessary packages for migrations
+RUN npm prune --production --include=dev && npm install drizzle-kit typescript tsx
+
+# Set environment variable
+ENV NODE_ENV=production
+ENV PORT=5000
 
 # Create necessary directories
 RUN mkdir -p uploads logs
 
 # Expose port
-EXPOSE 3000
+EXPOSE 5000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD curl -f http://localhost:3000/api/health || exit 1
+  CMD curl -f http://localhost:5000/api/health || exit 1
 
 # Start the application
-CMD ["npm", "start"]
+CMD ["/app/start.sh"]

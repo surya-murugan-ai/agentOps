@@ -1,8 +1,21 @@
 import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
+
+// Import appropriate module based on environment
+let setupVite: any, serveStatic: any, log: any;
+if (process.env.NODE_ENV === "development") {
+  const viteModule = await import("./vite");
+  setupVite = viteModule.setupVite;
+  serveStatic = viteModule.serveStatic;
+  log = viteModule.log;
+} else {
+  // In production, use production module
+  const productionModule = await import("./production");
+  serveStatic = productionModule.serveStatic;
+  log = productionModule.log;
+}
 
 const app = express();
 app.use(express.json({ limit: '10mb' })); // Increased limit for large data uploads

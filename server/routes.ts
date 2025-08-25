@@ -390,6 +390,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register system routes (includes API status tracking)
   app.use('/api/system', systemRouter);
   
+  // Simple health check endpoint for Docker
+  app.get('/api/health', (req, res) => {
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      message: 'AgentOps API is running'
+    });
+  });
+  
   // Register threshold configuration routes
   app.use('/api/thresholds', thresholdsRouter);
 
